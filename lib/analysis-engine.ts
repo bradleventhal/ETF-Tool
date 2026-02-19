@@ -29,26 +29,41 @@ function buildNarrative(a: FundData, b: FundData, tA: string, tB: string, mode: 
     const perf3 = thrD > 1.5
     const perfNeg = thrD < -1.5
 
+    const hiCred = iA > iB + 0.05 ? tA : (iB > iA + 0.05 ? tB : null)
+    const loDur = durA < durB - 0.15 ? tA : (durB < durA - 0.15 ? tB : null)
+
     if (hiYield && credComp && durComp && perf3 && hi === tA) {
-      tkLines.push(`${tA} delivers a ${fBps(absBps)} yield advantage over ${tB} with higher credit quality and a comparable duration profile. 3Y outperformance of ${thrD.toFixed(1)}% confirms the income pickup translates to total return.`)
+      tkLines.push(`${tA} delivers a ${fBps(absBps)} yield advantage over ${tB} with comparable credit quality (avg ${avgCreditQuality(a)}) and duration (${fNum(durA)} vs ${fNum(durB)}). 3Y outperformance of ${thrD.toFixed(1)}% confirms the income pickup translates to total return.`)
+    } else if (hiYield && hiCred === hi) {
+      tkLines.push(`${hi} offers a ${fBps(absBps)} yield pickup while maintaining higher credit quality (avg ${avgCreditQuality(hi === tA ? a : b)} vs ${avgCreditQuality(hi === tA ? b : a)}).${durComp ? ` Duration profiles are comparable (${fNum(durA)} vs ${fNum(durB)}).` : ""}`)
+      if (perf3) tkLines.push(`3Y performance supports: ${thrD > 0 ? tA : tB} ahead by ${Math.abs(thrD).toFixed(1)}%.`)
+    } else if (hiYield && loDur === hi) {
+      tkLines.push(`${hi} yields ${fBps(absBps)} more at shorter duration (${fNum(hi === tA ? durA : durB)} vs ${fNum(hi === tA ? durB : durA)}), implying comparable yield with less rate risk.`)
+      if (hiCred) tkLines.push(`${hiCred} also carries higher credit quality (avg ${avgCreditQuality(hiCred === tA ? a : b)}).`)
     } else if (hiYield && durComp) {
-      tkLines.push(`${hi} offers a ${fBps(absBps)} yield pickup at similar duration. ${Math.abs(sA - sB) > 0.15 ? `The differential is sector-driven \u2014 ${hi}'s securitized overweight vs ${lo}'s corporate tilt.` : ""}`)
-      if (credComp) tkLines.push(`Credit quality is comparable, making this a clean income story.`)
-      else if (iA > iB && tA === hi) tkLines.push(`${tA} also runs higher IG allocation (${fPct(iA, 0)} vs ${fPct(iB, 0)}).`)
+      tkLines.push(`${hi} offers a ${fBps(absBps)} yield pickup at similar duration.${Math.abs(sA - sB) > 0.15 ? ` Differential driven by ${hi}'s securitized overweight (${fPct(hi === tA ? sA : sB, 0)}) vs ${lo}'s corporate tilt.` : ""}`)
+      if (hiCred) tkLines.push(`${hiCred} maintains higher credit quality (avg ${avgCreditQuality(hiCred === tA ? a : b)} vs ${avgCreditQuality(hiCred === tA ? b : a)}).`)
       if (perf3) tkLines.push(`3Y track record supports: ${thrD > 0 ? tA : tB} ahead by ${Math.abs(thrD).toFixed(1)}%.`)
     } else if (hiYield) {
       tkLines.push(`${hi} yields ${fBps(absBps)} more but runs ${durA > durB ? (hi === tA ? "longer" : "shorter") : (hi === tA ? "shorter" : "longer")} duration (${fNum(durA)} vs ${fNum(durB)}).`)
     } else {
       tkLines.push(`Yields are comparable (${fPct(a.secYield)} vs ${fPct(b.secYield)}). Differentiation is in sector composition and risk profile.`)
     }
-    if (expBps > 10) tkLines.push(`Likely Pushbacks: ${Math.round(expBps)}bps expense premium \u2014 offset with net-of-fee returns.`)
+    if (expBps > 10) tkLines.push(`Likely Pushbacks: ${Math.round(expBps)}bps expense premium \u2014 offset by net-of-fee returns showing ${thrD > 0 ? `${thrD.toFixed(1)}% 3Y outperformance` : "comparable performance"}.`)
     if (perfNeg && hi === tA) tkLines.push(`Note: ${tB} has outperformed over 3Y despite the yield gap.`)
   } else {
-    // Advisor mode -- cleaner, no sales language
+    // Advisor mode -- cleaner, no sales language but still highlight advantages
     const hi = secBps > 0 ? tA : tB
+    const hiCred = iA > iB + 0.05 ? tA : (iB > iA + 0.05 ? tB : null)
+    const loDur = durA < durB - 0.15 ? tA : (durB < durA - 0.15 ? tB : null)
+
     if (Math.abs(secBps) > 20) {
-      tkLines.push(`${hi} provides a ${fBps(Math.abs(secBps))} yield advantage${Math.abs(durA - durB) <= 0.5 ? " at a similar duration profile" : ""}.`)
-      if (Math.abs(iA - iB) <= 0.1) tkLines.push(`Both funds maintain comparable credit quality.`)
+      let line = `${hi} provides a ${fBps(Math.abs(secBps))} yield advantage`
+      if (hiCred === hi) line += ` while maintaining higher average credit quality (${avgCreditQuality(hi === tA ? a : b)} vs ${avgCreditQuality(hi === tA ? b : a)})`
+      if (Math.abs(durA - durB) <= 0.5) line += ` at a comparable duration profile`
+      else if (loDur === hi) line += ` at shorter duration (${fNum(hi === tA ? durA : durB)} vs ${fNum(hi === tA ? durB : durA)})`
+      tkLines.push(line + ".")
+      if (hiCred && hiCred !== hi && Math.abs(iA - iB) > 0.05) tkLines.push(`${hiCred} maintains higher credit quality (avg ${avgCreditQuality(hiCred === tA ? a : b)}).`)
     } else {
       tkLines.push(`Both funds offer similar yield levels with differentiation in sector allocation and positioning.`)
     }
@@ -83,17 +98,37 @@ function buildNarrative(a: FundData, b: FundData, tA: string, tB: string, mode: 
   return sections
 }
 
-function keyStats(a: FundData, b: FundData): ComparisonRow[] {
-  return [
+function keyStats(a: FundData, b: FundData, mode: AnalysisMode): ComparisonRow[] {
+  const rows: ComparisonRow[] = [
     { label: "Duration", a: fNum(a.duration), b: fNum(b.duration), nA: a.duration, nB: b.duration, better: "low" },
-    { label: "YTW / YTM", a: fPct(a.ytwYtm), b: fPct(b.ytwYtm), nA: a.ytwYtm, nB: b.ytwYtm, better: "high" },
-    { label: "30-Day SEC Yield", a: fPct(a.secYield), b: fPct(b.secYield), nA: a.secYield, nB: b.secYield, better: "high" },
-    { label: "Distribution Yield", a: fPct(a.distributionYield), b: fPct(b.distributionYield), nA: a.distributionYield, nB: b.distributionYield, better: "high" },
+  ]
+
+  if (mode === "advisor") {
+    // Only show yield metrics where "our fund" (a) looks better
+    const secA = nz(a.secYield), secB = nz(b.secYield)
+    const distA = nz(a.distributionYield), distB = nz(b.distributionYield)
+    const ytwA = nz(a.ytwYtm), ytwB = nz(b.ytwYtm)
+    if (secA >= secB && secA > 0) rows.push({ label: "30-Day SEC Yield", a: fPct(a.secYield), b: fPct(b.secYield), nA: a.secYield, nB: b.secYield, better: "high" })
+    if (distA >= distB && distA > 0) rows.push({ label: "Distribution Yield", a: fPct(a.distributionYield), b: fPct(b.distributionYield), nA: a.distributionYield, nB: b.distributionYield, better: "high" })
+    if (ytwA >= ytwB && ytwA > 0) rows.push({ label: "YTW / YTM", a: fPct(a.ytwYtm), b: fPct(b.ytwYtm), nA: a.ytwYtm, nB: b.ytwYtm, better: "high" })
+    // If none are better, show SEC yield anyway
+    if (rows.length === 1) rows.push({ label: "30-Day SEC Yield", a: fPct(a.secYield), b: fPct(b.secYield), nA: a.secYield, nB: b.secYield, better: "high" })
+  } else {
+    rows.push(
+      { label: "YTW / YTM", a: fPct(a.ytwYtm), b: fPct(b.ytwYtm), nA: a.ytwYtm, nB: b.ytwYtm, better: "high" },
+      { label: "30-Day SEC Yield", a: fPct(a.secYield), b: fPct(b.secYield), nA: a.secYield, nB: b.secYield, better: "high" },
+      { label: "Distribution Yield", a: fPct(a.distributionYield), b: fPct(b.distributionYield), nA: a.distributionYield, nB: b.distributionYield, better: "high" },
+    )
+  }
+
+  rows.push(
     { label: "Expense Ratio", a: fPct(a.expense), b: fPct(b.expense), nA: a.expense, nB: b.expense, better: "low" },
     { label: "Std Deviation", a: fNum(a.stdDev), b: fNum(b.stdDev), nA: a.stdDev, nB: b.stdDev, better: "low" },
     { label: "Sharpe Ratio", a: fNum(a.sharpe), b: fNum(b.sharpe), nA: a.sharpe, nB: b.sharpe, better: "high" },
     { label: "Correlation", a: fNum(a.correlation), b: fNum(b.correlation), nA: a.correlation, nB: b.correlation, better: "none" },
-  ].filter(r => r.a !== "\u2014" || r.b !== "\u2014")
+  )
+
+  return rows.filter(r => r.a !== "\u2014" || r.b !== "\u2014")
 }
 
 function perfTable(a: FundData, b: FundData): ComparisonRow[] {
@@ -146,7 +181,7 @@ function buildPieData(fund: FundData): { name: string; value: number }[] {
     { name: "Government / Cash", value: nz(fund.governmentCash) },
     { name: "Other", value: nz(fund.other) },
   ]
-  return entries.filter(e => e.value > 0.005).map(e => ({ ...e, value: Math.round(e.value * 1000) / 10 }))
+  return entries.filter(e => Math.abs(e.value) > 0.005).map(e => ({ ...e, value: Math.round(e.value * 1000) / 10 }))
 }
 
 function buildCreditPieData(fund: FundData): { name: string; value: number }[] {
@@ -181,7 +216,7 @@ export function runAnalysis(dataA: FundData, dataB: FundData, mode: AnalysisMode
   return {
     tickerA: dataA.ticker, tickerB: dataB.ticker, nameA: dataA.name, nameB: dataB.name, mode,
     narrative: buildNarrative(dataA, dataB, dataA.ticker, dataB.ticker, mode),
-    keyStats: keyStats(dataA, dataB),
+    keyStats: keyStats(dataA, dataB, mode),
     performance: perfTable(dataA, dataB),
     sectorAllocation: sectorTable(dataA, dataB),
     creditQuality: creditTable(dataA, dataB),

@@ -6,12 +6,41 @@ import { TickerInput } from "@/components/ticker-input"
 import { ComparisonTable } from "@/components/comparison-table"
 import { PerformanceChart } from "@/components/performance-chart"
 import { SectorPieChart } from "@/components/sector-pie-chart"
-import { IncomeRiskBars } from "@/components/income-risk-bars"
+import { IncomeBars, RiskTable } from "@/components/income-risk-bars"
 import { parseFile } from "@/lib/parse-fund-data"
 import { runAnalysis } from "@/lib/analysis-engine"
 import { saveFunds, loadFunds } from "@/lib/fund-store"
 import type { FundData, AnalysisMode, AnalysisResult } from "@/lib/fund-types"
 import { Upload, X, Loader2, ArrowRightLeft } from "lucide-react"
+
+function SectorCreditTable({ rows, tickerA, tickerB, label }: { rows: { label: string; a: string; b: string; nA: number | null; nB: number | null }[]; tickerA: string; tickerB: string; label: string }) {
+  return (
+    <table className="w-full text-sm">
+      <thead>
+        <tr style={{ backgroundColor: "#f8fafc" }}>
+          <th className="px-4 py-2 text-left text-[11px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>{label}</th>
+          <th className="px-4 py-2 text-right font-mono text-[11px] font-bold" style={{ color: "#0f3d6b" }}>{tickerA}</th>
+          <th className="px-4 py-2 text-right font-mono text-[11px] font-bold" style={{ color: "#64748b" }}>{tickerB}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r, i) => {
+          const valA = r.nA != null ? r.nA : 0
+          const valB = r.nB != null ? r.nB : 0
+          const isNegA = valA < -0.001
+          const isNegB = valB < -0.001
+          return (
+            <tr key={r.label} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: i < rows.length - 1 ? "1px solid #f1f5f9" : undefined }}>
+              <td className="px-4 py-1.5 text-[13px]" style={{ color: "#64748b" }}>{r.label}</td>
+              <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: isNegA ? "#dc2626" : "#334155", fontWeight: isNegA ? 700 : 400 }}>{r.a}</td>
+              <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: isNegB ? "#dc2626" : "#334155", fontWeight: isNegB ? 700 : 400 }}>{r.b}</td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
+  )
+}
 
 export default function Page() {
   const [funds, setFunds] = useState<FundData[]>([])
@@ -55,7 +84,7 @@ export default function Page() {
   }, [tickerA, tickerB, mode, funds])
 
   const swapTickers = () => { setTickerA(tickerB); setTickerB(tickerA) }
-  const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+  const fmtDate = (iso: string) => { const d = new Date(iso); return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + " " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) }
 
   if (loading) {
     return <main className="flex min-h-screen items-center justify-center" style={{ backgroundColor: "#f8fafc" }}><Loader2 className="h-5 w-5 animate-spin" style={{ color: "#94a3b8" }} /></main>
@@ -148,32 +177,16 @@ export default function Page() {
               </div>
               <div className="grid grid-cols-1 gap-0 md:grid-cols-2">
                 <div className="border-b p-4 md:border-b-0 md:border-r" style={{ borderColor: "#f1f5f9" }}>
-                  <SectorPieChart data={result.pieDataA} ticker={result.tickerA} />
+                  <SectorPieChart data={result.pieDataA} ticker={result.tickerA} mode="internal" />
                 </div>
                 <div className="p-4">
-                  <SectorPieChart data={result.pieDataB} ticker={result.tickerB} />
+                  <SectorPieChart data={result.pieDataB} ticker={result.tickerB} mode="internal" />
                 </div>
               </div>
               {/* Sector table below the pies */}
               <div className="border-t" style={{ borderColor: "#f1f5f9" }}>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr style={{ backgroundColor: "#f8fafc" }}>
-                      <th className="px-4 py-2 text-left text-[11px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>Sector</th>
-                      <th className="px-4 py-2 text-right font-mono text-[11px] font-bold" style={{ color: "#0f3d6b" }}>{result.tickerA}</th>
-                      <th className="px-4 py-2 text-right font-mono text-[11px] font-bold" style={{ color: "#64748b" }}>{result.tickerB}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.sectorAllocation.map((r, i) => (
-                      <tr key={r.label} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: i < result.sectorAllocation.length - 1 ? "1px solid #f1f5f9" : undefined }}>
-                        <td className="px-4 py-1.5 text-[13px]" style={{ color: "#64748b" }}>{r.label}</td>
-                        <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: "#334155" }}>{r.a}</td>
-                        <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: "#334155" }}>{r.b}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <SectorCreditTable rows={result.sectorAllocation} tickerA={result.tickerA} tickerB={result.tickerB} label="Sector" />
+              </div>
               </div>
             </div>
 
@@ -184,31 +197,14 @@ export default function Page() {
               </div>
               <div className="grid grid-cols-1 gap-0 md:grid-cols-2">
                 <div className="border-b p-4 md:border-b-0 md:border-r" style={{ borderColor: "#f1f5f9" }}>
-                  <SectorPieChart data={result.creditPieA} ticker={result.tickerA} subtitle={`Avg Credit Quality: ${result.avgCreditA}`} />
+                  <SectorPieChart data={result.creditPieA} ticker={result.tickerA} subtitle={`Avg Credit Quality: ${result.avgCreditA}`} mode="internal" />
                 </div>
                 <div className="p-4">
-                  <SectorPieChart data={result.creditPieB} ticker={result.tickerB} subtitle={`Avg Credit Quality: ${result.avgCreditB}`} />
+                  <SectorPieChart data={result.creditPieB} ticker={result.tickerB} subtitle={`Avg Credit Quality: ${result.avgCreditB}`} mode="internal" />
                 </div>
               </div>
               <div className="border-t" style={{ borderColor: "#f1f5f9" }}>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr style={{ backgroundColor: "#f8fafc" }}>
-                      <th className="px-4 py-2 text-left text-[11px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>Rating</th>
-                      <th className="px-4 py-2 text-right font-mono text-[11px] font-bold" style={{ color: "#0f3d6b" }}>{result.tickerA}</th>
-                      <th className="px-4 py-2 text-right font-mono text-[11px] font-bold" style={{ color: "#64748b" }}>{result.tickerB}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.creditQuality.map((r, i) => (
-                      <tr key={r.label} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: i < result.creditQuality.length - 1 ? "1px solid #f1f5f9" : undefined }}>
-                        <td className="px-4 py-1.5 text-[13px]" style={{ color: "#64748b" }}>{r.label}</td>
-                        <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: "#334155" }}>{r.a}</td>
-                        <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: "#334155" }}>{r.b}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <SectorCreditTable rows={result.creditQuality} tickerA={result.tickerA} tickerB={result.tickerB} label="Rating" />
               </div>
             </div>
 
@@ -218,15 +214,15 @@ export default function Page() {
               <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} highlight />
             </div>
 
-            {/* Income + Risk side by side with bar visuals */}
+            {/* Income + Risk side by side */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              {/* Income comparison bars */}
+              {/* Income: bar chart + table */}
               <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
                 <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
                   <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Income</h4>
                 </div>
                 <div className="p-4">
-                  <IncomeRiskBars
+                  <IncomeBars
                     items={[
                       { label: "SEC Yield", a: result.keyStats.find(r => r.label === "30-Day SEC Yield")?.nA ?? 0, b: result.keyStats.find(r => r.label === "30-Day SEC Yield")?.nB ?? 0 },
                       { label: "Distribution", a: result.keyStats.find(r => r.label === "Distribution Yield")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Distribution Yield")?.nB ?? 0 },
@@ -234,37 +230,23 @@ export default function Page() {
                     ].filter(x => (x.a ?? 0) > 0 || (x.b ?? 0) > 0)}
                     tickerA={result.tickerA} tickerB={result.tickerB}
                   />
-                  {otherNarrative.find(s => s.title === "Income") && (
-                    <div className="mt-4 space-y-1 border-t pt-3" style={{ borderColor: "#f1f5f9" }}>
-                      {otherNarrative.find(s => s.title === "Income")!.lines.map((l, i) => (
-                        <p key={i} className="text-[12px] leading-relaxed" style={{ color: "#64748b" }}>{l}</p>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
-              {/* Risk comparison bars */}
+              {/* Risk: table with spark bars, each metric own scale */}
               <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
                 <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
                   <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>{'Risk & Structure'}</h4>
                 </div>
                 <div className="p-4">
-                  <IncomeRiskBars
+                  <RiskTable
                     items={[
-                      { label: "Duration", a: result.keyStats.find(r => r.label === "Duration")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Duration")?.nB ?? 0 },
-                      { label: "Std Dev", a: result.keyStats.find(r => r.label === "Std Deviation")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Std Deviation")?.nB ?? 0 },
-                      { label: "Sharpe", a: result.keyStats.find(r => r.label === "Sharpe Ratio")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Sharpe Ratio")?.nB ?? 0 },
-                      { label: "Expense", a: result.keyStats.find(r => r.label === "Expense Ratio")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Expense Ratio")?.nB ?? 0 },
-                    ].filter(x => (x.a ?? 0) > 0 || (x.b ?? 0) > 0)}
+                      { label: "Duration", a: result.keyStats.find(r => r.label === "Duration")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Duration")?.nB ?? 0, unit: " yrs" },
+                      { label: "Std Deviation", a: result.keyStats.find(r => r.label === "Std Deviation")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Std Deviation")?.nB ?? 0, unit: "" },
+                      { label: "Sharpe Ratio", a: result.keyStats.find(r => r.label === "Sharpe Ratio")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Sharpe Ratio")?.nB ?? 0, unit: "" },
+                      { label: "Expense Ratio", a: (result.keyStats.find(r => r.label === "Expense Ratio")?.nA ?? 0) * 100, b: (result.keyStats.find(r => r.label === "Expense Ratio")?.nB ?? 0) * 100, unit: "%" },
+                    ].filter(x => x.a > 0 || x.b > 0)}
                     tickerA={result.tickerA} tickerB={result.tickerB}
                   />
-                  {otherNarrative.find(s => s.title === "Risk & Structure") && (
-                    <div className="mt-4 space-y-1 border-t pt-3" style={{ borderColor: "#f1f5f9" }}>
-                      {otherNarrative.find(s => s.title === "Risk & Structure")!.lines.map((l, i) => (
-                        <p key={i} className="text-[12px] leading-relaxed" style={{ color: "#64748b" }}>{l}</p>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -288,13 +270,18 @@ export default function Page() {
           <div className="py-8 space-y-8">
             {/* Centered branded header like a fact sheet */}
             <div className="text-center">
-              <div className="mb-1 text-[11px] font-bold uppercase tracking-widest" style={{ color: "#94a3b8" }}>Fund Comparison</div>
-              <h2 className="text-2xl font-semibold" style={{ color: "#0f3d6b" }}>
-                {result.nameA}
-                <span className="mx-4 text-xl font-light italic" style={{ color: "#94a3b8" }}>vs.</span>
-                {result.nameB}
-              </h2>
-              <p className="mt-1 font-mono text-sm" style={{ color: "#64748b" }}>{result.tickerA} / {result.tickerB}</p>
+              <div className="mb-3 text-[11px] font-bold uppercase tracking-widest" style={{ color: "#94a3b8" }}>Fund Comparison</div>
+              <div className="flex items-center justify-center gap-6">
+                <div className="text-right">
+                  <p className="text-lg font-semibold" style={{ color: "#0f3d6b" }}>{result.nameA}</p>
+                  <p className="font-mono text-sm" style={{ color: "#64748b" }}>{result.tickerA}</p>
+                </div>
+                <span className="text-xl font-light italic" style={{ color: "#94a3b8" }}>vs.</span>
+                <div className="text-left">
+                  <p className="text-lg font-semibold" style={{ color: "#0f3d6b" }}>{result.nameB}</p>
+                  <p className="font-mono text-sm" style={{ color: "#64748b" }}>{result.tickerB}</p>
+                </div>
+              </div>
             </div>
 
             <div style={{ height: 2, backgroundColor: "#0f3d6b", opacity: 0.15 }} />
@@ -309,31 +296,14 @@ export default function Page() {
               </div>
               <div className="grid grid-cols-1 gap-0 md:grid-cols-2">
                 <div className="border-b p-4 md:border-b-0 md:border-r" style={{ borderColor: "#f1f5f9" }}>
-                  <SectorPieChart data={result.pieDataA} ticker={result.tickerA} />
+                  <SectorPieChart data={result.pieDataA} ticker={result.tickerA} mode="advisor" />
                 </div>
                 <div className="p-4">
-                  <SectorPieChart data={result.pieDataB} ticker={result.tickerB} />
+                  <SectorPieChart data={result.pieDataB} ticker={result.tickerB} mode="advisor" />
                 </div>
               </div>
               <div className="border-t" style={{ borderColor: "#f1f5f9" }}>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr style={{ backgroundColor: "#f8fafc" }}>
-                      <th className="px-4 py-2 text-left text-[11px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>Sector</th>
-                      <th className="px-4 py-2 text-right font-mono text-[11px] font-bold" style={{ color: "#0f3d6b" }}>{result.tickerA}</th>
-                      <th className="px-4 py-2 text-right font-mono text-[11px] font-bold" style={{ color: "#64748b" }}>{result.tickerB}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.sectorAllocation.map((r, i) => (
-                      <tr key={r.label} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc" }}>
-                        <td className="px-4 py-1.5 text-[13px]" style={{ color: "#64748b" }}>{r.label}</td>
-                        <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: "#334155" }}>{r.a}</td>
-                        <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: "#334155" }}>{r.b}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <SectorCreditTable rows={result.sectorAllocation} tickerA={result.tickerA} tickerB={result.tickerB} label="Sector" />
               </div>
             </div>
 
@@ -344,31 +314,14 @@ export default function Page() {
               </div>
               <div className="grid grid-cols-1 gap-0 md:grid-cols-2">
                 <div className="border-b p-4 md:border-b-0 md:border-r" style={{ borderColor: "#f1f5f9" }}>
-                  <SectorPieChart data={result.creditPieA} ticker={result.tickerA} subtitle={`Avg Credit Quality: ${result.avgCreditA}`} />
+                  <SectorPieChart data={result.creditPieA} ticker={result.tickerA} subtitle={`Avg Credit Quality: ${result.avgCreditA}`} mode="advisor" />
                 </div>
                 <div className="p-4">
-                  <SectorPieChart data={result.creditPieB} ticker={result.tickerB} subtitle={`Avg Credit Quality: ${result.avgCreditB}`} />
+                  <SectorPieChart data={result.creditPieB} ticker={result.tickerB} subtitle={`Avg Credit Quality: ${result.avgCreditB}`} mode="advisor" />
                 </div>
               </div>
               <div className="border-t" style={{ borderColor: "#f1f5f9" }}>
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr style={{ backgroundColor: "#f8fafc" }}>
-                      <th className="px-4 py-2 text-left text-[11px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>Rating</th>
-                      <th className="px-4 py-2 text-right font-mono text-[11px] font-bold" style={{ color: "#0f3d6b" }}>{result.tickerA}</th>
-                      <th className="px-4 py-2 text-right font-mono text-[11px] font-bold" style={{ color: "#64748b" }}>{result.tickerB}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.creditQuality.map((r, i) => (
-                      <tr key={r.label} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: i < result.creditQuality.length - 1 ? "1px solid #f1f5f9" : undefined }}>
-                        <td className="px-4 py-1.5 text-[13px]" style={{ color: "#64748b" }}>{r.label}</td>
-                        <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: "#334155" }}>{r.a}</td>
-                        <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: "#334155" }}>{r.b}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <SectorCreditTable rows={result.creditQuality} tickerA={result.tickerA} tickerB={result.tickerB} label="Rating" />
               </div>
             </div>
 
