@@ -244,7 +244,7 @@ export default function Page() {
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <PerformanceChart tickerA={result.tickerA} tickerB={result.tickerB} />
-              <GrowthChart tickerA={result.tickerA} tickerB={result.tickerB} />
+              <GrowthChart tickerA={result.tickerA} tickerB={result.tickerB} mode="internal" />
             </div>
             <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} highlight />
 
@@ -315,7 +315,7 @@ export default function Page() {
 
             <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} />
 
-            <GrowthChart tickerA={result.tickerA} tickerB={result.tickerB} />
+            <GrowthChart tickerA={result.tickerA} tickerB={result.tickerB} mode="advisor" />
 
             {takeaway && (
               <div className="rounded border p-6" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
