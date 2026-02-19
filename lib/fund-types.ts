@@ -58,10 +58,10 @@ export interface SectorRow {
 export interface AnalysisResult {
   title: string
   structureText: string
-  sectorTable: SectorRow[]
+  sectorText: string
   incomeText: string
   riskText: string
-  performanceTable: SectorRow[]
+  performanceText: string
   summaryLabel: string
   summaryText: string
   keyStats: ComparisonRow[]
