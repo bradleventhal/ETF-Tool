@@ -12,8 +12,12 @@ interface Props {
   tickerB: string
 }
 
-const PRESETS = ["1Y", "3Y", "5Y", "Max"] as const
+const PRESETS = ["YTD", "1Y", "3Y", "5Y", "Max"] as const
 type Preset = typeof PRESETS[number]
+
+function ytdStart(): string {
+  return `${new Date().getFullYear()}-01-01`
+}
 
 function dateMinusYears(years: number): string {
   const d = new Date()
@@ -58,6 +62,7 @@ export function GrowthChart({ tickerA, tickerB }: Props) {
       return { start: customStart || "2000-01-01", end: customEnd || today }
     }
     switch (preset) {
+      case "YTD": return { start: ytdStart(), end: today }
       case "1Y": return { start: dateMinusYears(1), end: today }
       case "3Y": return { start: dateMinusYears(3), end: today }
       case "5Y": return { start: dateMinusYears(5), end: today }
@@ -92,20 +97,68 @@ export function GrowthChart({ tickerA, tickerB }: Props) {
 
   const tickInterval = data.length > 500 ? Math.floor(data.length / 6) : data.length > 200 ? Math.floor(data.length / 5) : Math.floor(data.length / 4)
 
-  // Editable date display component
+  // Text-based date input: user types MM/DD/YYYY, we store as YYYY-MM-DD internally
   function DateInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+    // Convert YYYY-MM-DD to MM/DD/YYYY for display
+    function toDisplay(iso: string): string {
+      if (!iso) return ""
+      const [y, m, d] = iso.split("-")
+      return `${m}/${d}/${y}`
+    }
+    // Convert MM/DD/YYYY to YYYY-MM-DD for storage
+    function toIso(display: string): string | null {
+      const match = display.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+      if (!match) return null
+      const [, m, d, y] = match
+      return `${y}-${m}-${d}`
+    }
+
+    const [text, setText] = useState(toDisplay(value))
+    const prevValue = useRef(value)
+    // Sync external changes
+    if (value !== prevValue.current) {
+      prevValue.current = value
+      setText(toDisplay(value))
+    }
+
+    function handleChange(raw: string) {
+      // Auto-insert slashes as user types digits
+      const digitsOnly = raw.replace(/[^\d]/g, "")
+      let formatted = ""
+      for (let i = 0; i < Math.min(digitsOnly.length, 8); i++) {
+        if (i === 2 || i === 4) formatted += "/"
+        formatted += digitsOnly[i]
+      }
+      setText(formatted)
+      const iso = toIso(formatted)
+      if (iso) {
+        prevValue.current = iso
+        onChange(iso)
+      }
+    }
+
+    function handleBlur() {
+      const iso = toIso(text)
+      if (iso) {
+        prevValue.current = iso
+        onChange(iso)
+      } else {
+        setText(toDisplay(value))
+      }
+    }
+
     return (
       <div className="flex items-center gap-1.5">
         <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#94a3b8" }}>{label}</span>
-        <div className="relative flex items-center gap-1 rounded border px-2.5 py-1 transition-colors hover:border-[#94a3b8]" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-          <input
-            type="date"
-            value={value}
-            onChange={e => onChange(e.target.value)}
-            className="font-mono text-xs"
-            style={{ color: "#334155", border: "none", outline: "none", background: "transparent", width: "110px" }}
-          />
-        </div>
+        <input
+          type="text"
+          value={text}
+          onChange={e => handleChange(e.target.value)}
+          onBlur={handleBlur}
+          placeholder="MM/DD/YYYY"
+          className="rounded border px-2.5 py-1 font-mono text-xs transition-colors hover:border-[#94a3b8] focus:border-[#0f3d6b] focus:outline-none"
+          style={{ borderColor: "#e2e8f0", color: "#334155", backgroundColor: "#fff", width: "105px" }}
+        />
       </div>
     )
   }

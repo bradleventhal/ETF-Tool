@@ -243,7 +243,7 @@ export default function Page() {
               rows={result.creditQuality} rowLabel="Rating" viewMode="internal" />
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <PerformanceChart data={result.chartData} tickerA={result.tickerA} tickerB={result.tickerB} />
+              <PerformanceChart tickerA={result.tickerA} tickerB={result.tickerB} />
               <GrowthChart tickerA={result.tickerA} tickerB={result.tickerB} />
             </div>
             <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} highlight />
