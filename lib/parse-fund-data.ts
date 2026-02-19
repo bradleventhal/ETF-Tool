@@ -17,7 +17,7 @@ const HEADER_MAP: Record<string, keyof FundData> = {
   "1Y": "oneYear",
   "Common Inception Performance (Net of Fees)": "commonInception",
   "3Y": "threeYear",
-  "Non-Agency RMBS": "nonAgencyRmbs",
+  "Non-Agency MBS": "nonAgencyRmbs",
   "Agency RMBS": "agencyRmbs",
   "ABS": "abs",
   "CLO": "clo",
@@ -87,8 +87,7 @@ export function parseFile(buffer: ArrayBuffer, fileName: string): FundData[] {
   for (const row of jsonData) {
     const ticker = row["Ticker"]
     if (!ticker || typeof ticker !== "string" || ticker.trim() === "") continue
-    console.log("[v0] Row headers for", ticker, ":", Object.keys(row).filter(k => k.toLowerCase().includes("non") || k.toLowerCase().includes("agency") || k.toLowerCase().includes("rmbs")))
-    console.log("[v0] Non-Agency RMBS raw value:", row["Non-Agency RMBS"], "| nonAgencyRmbs parsed:", parseNumericValue(row["Non-Agency RMBS"]))
+
 
     const fund: FundData = {
       ticker: String(ticker).trim(),
@@ -106,7 +105,7 @@ export function parseFile(buffer: ArrayBuffer, fileName: string): FundData[] {
       oneYear: parseNumericValue(row["1Y"]),
       commonInception: parseNumericValue(row["Common Inception Performance (Net of Fees)"]),
       threeYear: parseNumericValue(row["3Y"]),
-      nonAgencyRmbs: parseNumericValue(row["Non-Agency RMBS"]),
+      nonAgencyRmbs: parseNumericValue(row["Non-Agency MBS"]),
       agencyRmbs: parseNumericValue(row["Agency RMBS"]),
       abs: parseNumericValue(row["ABS"]),
       clo: parseNumericValue(row["CLO"]),
