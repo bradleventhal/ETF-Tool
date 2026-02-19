@@ -6,17 +6,14 @@ interface NarrativeSectionProps {
   result: AnalysisResult
 }
 
-function SectionHeader({ children }: { children: React.ReactNode }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <h3 className="text-sm font-bold uppercase tracking-wider text-primary">
+    <div className="flex flex-col gap-1.5">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-primary">
+        {title}
+      </h3>
       {children}
-    </h3>
-  )
-}
-
-function NarrativeText({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-sm leading-relaxed text-foreground">{children}</p>
+    </div>
   )
 }
 
@@ -31,17 +28,15 @@ function MiniTable({
 }) {
   if (rows.length === 0) return null
   return (
-    <div className="overflow-hidden rounded-md border border-border">
+    <div className="overflow-hidden rounded-md border border-border text-xs">
       <table className="w-full">
         <thead>
-          <tr className="border-b border-border bg-primary/5">
-            <th className="px-3 py-1.5 text-left text-xs font-semibold text-foreground">
-              Sector
-            </th>
-            <th className="px-3 py-1.5 text-center text-xs font-semibold text-foreground">
+          <tr className="border-b border-border bg-secondary/50">
+            <th className="px-3 py-1.5 text-left font-semibold text-foreground" />
+            <th className="px-3 py-1.5 text-center font-semibold text-foreground">
               {tickerA}
             </th>
-            <th className="px-3 py-1.5 text-center text-xs font-semibold text-foreground">
+            <th className="px-3 py-1.5 text-center font-semibold text-foreground">
               {tickerB}
             </th>
           </tr>
@@ -50,11 +45,15 @@ function MiniTable({
           {rows.map((row, i) => (
             <tr
               key={row.label}
-              className={`border-b border-border last:border-b-0 ${i % 2 === 0 ? "bg-card" : "bg-background"}`}
+              className={i % 2 === 0 ? "bg-card" : "bg-background"}
             >
-              <td className="px-3 py-1.5 text-xs text-muted-foreground">{row.label}</td>
-              <td className="px-3 py-1.5 text-center text-xs font-medium text-foreground">{row.valueA}</td>
-              <td className="px-3 py-1.5 text-center text-xs font-medium text-foreground">{row.valueB}</td>
+              <td className="px-3 py-1.5 text-muted-foreground">{row.label}</td>
+              <td className="px-3 py-1.5 text-center font-medium text-foreground">
+                {row.valueA}
+              </td>
+              <td className="px-3 py-1.5 text-center font-medium text-foreground">
+                {row.valueB}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -65,61 +64,46 @@ function MiniTable({
 
 export function NarrativeSection({ result }: NarrativeSectionProps) {
   return (
-    <div className="flex flex-col gap-6">
-      {/* Title */}
-      <div className="rounded-lg bg-primary/5 px-5 py-4 text-center">
-        <h2 className="text-xl font-bold tracking-tight text-primary">
-          {result.title}
-        </h2>
-      </div>
+    <div className="flex flex-col gap-5">
+      <Section title="Structure">
+        <p className="text-sm leading-relaxed text-foreground">{result.structureText}</p>
+      </Section>
 
-      {/* Structure */}
-      <div className="flex flex-col gap-2">
-        <SectionHeader>Structure</SectionHeader>
-        <NarrativeText>{result.structureText}</NarrativeText>
-      </div>
+      {result.sectorTable.length > 0 && (
+        <Section title="Sector Allocation">
+          <MiniTable
+            rows={result.sectorTable}
+            tickerA={result.tickerA}
+            tickerB={result.tickerB}
+          />
+        </Section>
+      )}
 
-      {/* Sector Allocation Table */}
-      <div className="flex flex-col gap-2">
-        <SectionHeader>Sector Allocation</SectionHeader>
-        <MiniTable
-          rows={result.sectorTable}
-          tickerA={result.tickerA}
-          tickerB={result.tickerB}
-        />
-      </div>
+      <Section title="Income">
+        <p className="text-sm leading-relaxed text-foreground">{result.incomeText}</p>
+      </Section>
 
-      {/* Income */}
-      <div className="flex flex-col gap-2">
-        <SectionHeader>Income</SectionHeader>
-        <NarrativeText>{result.incomeText}</NarrativeText>
-      </div>
+      <Section title="Risk">
+        <p className="text-sm leading-relaxed text-foreground">{result.riskText}</p>
+      </Section>
 
-      {/* Risk */}
-      <div className="flex flex-col gap-2">
-        <SectionHeader>Risk</SectionHeader>
-        <NarrativeText>{result.riskText}</NarrativeText>
-      </div>
+      {result.performanceTable.length > 0 && (
+        <Section title="Performance">
+          <MiniTable
+            rows={result.performanceTable}
+            tickerA={result.tickerA}
+            tickerB={result.tickerB}
+          />
+        </Section>
+      )}
 
-      {/* Performance Table */}
-      <div className="flex flex-col gap-2">
-        <SectionHeader>Performance</SectionHeader>
-        <MiniTable
-          rows={result.performanceTable}
-          tickerA={result.tickerA}
-          tickerB={result.tickerB}
-        />
-      </div>
-
-      {/* Summary / Takeaway */}
-      <div className="flex flex-col gap-2">
-        <SectionHeader>{result.summaryLabel}</SectionHeader>
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
-          <p className="text-sm leading-relaxed text-amber-950">
+      <Section title={result.summaryLabel}>
+        <div className="rounded-md border border-primary/20 bg-primary/5 px-4 py-3">
+          <p className="text-sm leading-relaxed text-foreground">
             {result.summaryText}
           </p>
         </div>
-      </div>
+      </Section>
     </div>
   )
 }
