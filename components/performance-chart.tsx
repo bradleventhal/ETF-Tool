@@ -2,36 +2,34 @@
 
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer, Tooltip } from "recharts"
 
-interface PerformanceChartProps {
+interface Props {
   data: { period: string; fundA: number; fundB: number }[]
   tickerA: string
   tickerB: string
 }
 
-export function PerformanceChart({ data, tickerA, tickerB }: PerformanceChartProps) {
-  const colorA = "#1e3a5f"
-  const colorB = "#2a9d8f"
-
+export function PerformanceChart({ data, tickerA, tickerB }: Props) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card">
-      <div className="border-b border-border bg-secondary/60 px-3 py-2">
-        <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          Total Return Comparison
-        </h4>
+    <div className="overflow-hidden rounded border border-[#1e3048]">
+      <div className="bg-[#0f1c2e] px-3 py-2.5">
+        <h4 className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Total Return Comparison</h4>
       </div>
-      <div className="p-4">
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={data} barCategoryGap="25%">
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-            <XAxis dataKey="period" tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v.toFixed(1)}%`} width={50} />
+      <div className="bg-[#101b2e] px-4 py-5">
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={data} barCategoryGap="20%">
+            <CartesianGrid strokeDasharray="3 3" stroke="#1e3048" vertical={false} />
+            <XAxis dataKey="period" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v.toFixed(1)}%`} width={48} />
             <Tooltip
               formatter={(value: number) => [`${value.toFixed(2)}%`]}
-              contentStyle={{ backgroundColor: "#fff", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: 11, padding: "6px 10px" }}
+              contentStyle={{ backgroundColor: "#0f1c2e", border: "1px solid #1e3048", borderRadius: "4px", fontSize: 11, padding: "8px 12px", color: "#e2e8f0" }}
+              labelStyle={{ color: "#94a3b8", fontSize: 10, marginBottom: 4 }}
+              itemStyle={{ color: "#e2e8f0" }}
+              cursor={{ fill: "rgba(255,255,255,0.03)" }}
             />
-            <Legend wrapperStyle={{ fontSize: 11, paddingTop: 4 }} />
-            <Bar dataKey="fundA" name={tickerA} fill={colorA} radius={[3, 3, 0, 0]} />
-            <Bar dataKey="fundB" name={tickerB} fill={colorB} radius={[3, 3, 0, 0]} />
+            <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8, color: "#94a3b8" }} />
+            <Bar dataKey="fundA" name={tickerA} fill="#3b82f6" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="fundB" name={tickerB} fill="#64748b" radius={[3, 3, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

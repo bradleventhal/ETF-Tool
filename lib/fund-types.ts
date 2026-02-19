@@ -38,11 +38,11 @@ export type AnalysisMode = "advisor" | "internal"
 
 export interface ComparisonRow {
   label: string
-  valueA: string
-  valueB: string
-  numA: number | null
-  numB: number | null
-  higherIsBetter: boolean
+  a: string
+  b: string
+  nA: number | null
+  nB: number | null
+  better: "high" | "low" | "none"
 }
 
 export interface AnalysisResult {
@@ -50,18 +50,12 @@ export interface AnalysisResult {
   tickerB: string
   nameA: string
   nameB: string
-  sections: NarrativeSection[]
+  mode: AnalysisMode
+  advisorSummary: string
+  bullets: { text: string; type: "edge" | "neutral" | "handle" }[]
   keyStats: ComparisonRow[]
-  performanceComp: ComparisonRow[]
-  creditQuality: ComparisonRow[]
+  performance: ComparisonRow[]
   sectorAllocation: ComparisonRow[]
+  creditQuality: ComparisonRow[]
   chartData: { period: string; fundA: number; fundB: number }[]
-  durComp: boolean
-  creditComp: boolean
-}
-
-export interface NarrativeSection {
-  heading: string
-  body: string
-  type: "text" | "callout"
 }
