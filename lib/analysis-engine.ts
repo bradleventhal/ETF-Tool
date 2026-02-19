@@ -46,7 +46,7 @@ function structure(a: FundData, b: FundData, tA: string, tB: string, durC: boole
     const hyHi = igA > igB ? tB : tA
     const hyVal = igA > igB ? hyPct(b) : hyPct(a)
     if (hyVal > 0.05) {
-      p.push(`${hyHi}'s ${fPct(hyVal, 0)} sub-IG allocation introduces spread widening risk in a credit downturn, but offers higher current income as compensation.`)
+      p.push(`${hyHi} carries ${fPct(hyVal, 0)} sub-IG.`)
     }
   }
   return p.join(" ")
@@ -63,16 +63,10 @@ function sectors(a: FundData, b: FundData, tA: string, tB: string, mode: Analysi
     const secH = sA > sB ? tA : tB, corpH = sA > sB ? tB : tA
     const secHpct = Math.max(sA, sB), corpHpct = sA > sB ? cB : cA
     p.push(`Fundamentally different sector orientation: ${secH} is ${fPct(secHpct, 0)} securitized while ${corpH} leans corporate at ${fPct(corpHpct, 0)}.`)
-    if (mode === "internal") {
-      p.push(`Securitized credit typically trades at wider spreads per unit of duration versus comparably-rated corporates. As of recent market levels, AAA CLO tranches offer 120\u2013150bps while AAA-rated corporates price inside 60bps\u2014this structural spread advantage partially explains the yield differential. Securitized sectors also exhibit lower sensitivity to corporate spread widening events given distinct collateral and cash flow dynamics.`)
-    } else {
-      p.push(`This structural difference means return drivers are distinct: one is driven by prepayment, housing, and consumer credit dynamics, the other by corporate fundamentals, M&A activity, and credit spreads.`)
-    }
+    p.push(`Return drivers are distinct: ${secH} is driven by prepayment, housing, and consumer credit dynamics, while ${corpH} is tied to corporate fundamentals and spread movements.`)
   } else if (secDiff > 0.05) {
     p.push(`Both funds blend securitized and corporate exposure, though ${sA > sB ? tA : tB} tilts more toward securitized (${fPct(Math.max(sA, sB), 0)} vs ${fPct(Math.min(sA, sB), 0)}).`)
-    if (mode === "internal" && cA > 0.15 && cB > 0.15) {
-      p.push(`The shared corporate allocation means both carry some exposure to IG/HY spread movements, but the securitized overweight provides marginal diversification.`)
-    }
+
   } else {
     p.push(`Sector allocations are broadly similar with securitized at ${fPct(sA, 0)} vs ${fPct(sB, 0)}.`)
   }
@@ -87,23 +81,20 @@ function sectors(a: FundData, b: FundData, tA: string, tB: string, mode: Analysi
   if (Math.abs(clA - clB) > 0.1 && (clA > 0.1 || clB > 0.1)) {
     const clH = clA > clB ? tA : tB
     p.push(`Notable CLO divergence: ${clH} at ${fPct(Math.max(clA, clB), 0)} vs ${fPct(Math.min(clA, clB), 0)}.`)
-    if (mode === "internal") {
-      p.push(`CLOs offer floating-rate exposure and structural subordination, but carry complexity and liquidity premiums that widen in risk-off environments.`)
-    }
   }
 
   // Non-Agency RMBS
   const rA = nz(a.nonAgencyRmbs), rB = nz(b.nonAgencyRmbs)
   if (Math.abs(rA - rB) > 0.1 && (rA > 0.1 || rB > 0.1)) {
     const rH = rA > rB ? tA : tB
-    p.push(`${rH}'s non-agency RMBS overweight (${fPct(Math.max(rA, rB), 0)}) targets residential mortgage credit risk, which historically exhibits lower correlation to corporate spreads and benefits from housing appreciation tailwinds.`)
+    p.push(`${rH} has a non-agency RMBS overweight at ${fPct(Math.max(rA, rB), 0)} vs ${fPct(Math.min(rA, rB), 0)}.`)
   }
 
   // Agency RMBS
   const agA = nz(a.agencyRmbs), agB = nz(b.agencyRmbs)
   if (Math.abs(agA - agB) > 0.15 && (agA > 0.15 || agB > 0.15)) {
     const agH = agA > agB ? tA : tB
-    p.push(`${agH} carries a meaningful Agency RMBS position (${fPct(Math.max(agA, agB), 0)})\u2014government-guaranteed but subject to prepayment and negative convexity risk.`)
+    p.push(`${agH} carries a meaningful Agency RMBS position at ${fPct(Math.max(agA, agB), 0)} vs ${fPct(Math.min(agA, agB), 0)}.`)
   }
 
   return p.join(" ")
@@ -117,23 +108,23 @@ function income(a: FundData, b: FundData, tA: string, tB: string, secBps: number
   const iA = igPct(a), iB = igPct(b)
   const hi = secBps >= 0 ? tA : tB
 
-  if (Math.abs(secBps) > 20) {
+    if (Math.abs(secBps) > 20) {
     if (Math.abs(sA - sB) > 0.15) {
       const secH = sA > sB ? tA : tB
       if (secH === hi) {
-        p.push(`The yield advantage is largely attributable to ${hi}'s heavier securitized allocation, where structured credit spreads remain wider than comparably-rated corporates\u2014a function of complexity premium and less index-driven demand.`)
+        p.push(`The yield advantage is attributable to ${hi}'s heavier securitized allocation (${fPct(Math.max(sA, sB), 0)} vs ${fPct(Math.min(sA, sB), 0)}).`)
       } else {
         p.push(`Despite ${secBps >= 0 ? tB : tA}'s larger securitized allocation, ${hi} achieves the yield pickup through credit positioning and duration extension.`)
       }
     } else if (Math.abs(iA - iB) > 0.1) {
       const loIg = iA < iB ? tA : tB
       if (loIg === hi) {
-        p.push(`The yield advantage reflects ${hi}'s greater sub-IG allocation where spread compensation is wider\u2014approximately 200\u2013400bps over IG in current markets.`)
+        p.push(`The yield advantage reflects ${hi}'s greater sub-IG allocation (${fPct(1 - Math.min(iA, iB), 0)} sub-IG).`)
       }
     } else if (Math.abs(nz(a.duration) - nz(b.duration)) > 0.5) {
       const longD = nz(a.duration) > nz(b.duration) ? tA : tB
       if (longD === hi) {
-        p.push(`Duration extension contributes to the yield differential\u2014${hi}'s longer profile captures term premium.`)
+        p.push(`Duration extension contributes to the yield differential (${fNum(longD === tA ? a.duration : b.duration)} vs ${fNum(longD === tA ? b.duration : a.duration)} years).`)
       }
     }
   }
@@ -167,7 +158,7 @@ function risk(a: FundData, b: FundData, tA: string, tB: string, mode: AnalysisMo
     p.push(`${hv} exhibits higher volatility (${fNum(hv === tA ? a.stdDev : b.stdDev)} vs ${fNum(hv === tA ? b.stdDev : a.stdDev)}), indicating greater price dispersion.`)
     const sH = secPct(hv === tA ? a : b), sL = secPct(lv === tA ? a : b)
     if (sH > sL + 0.15) {
-      p.push(`This likely reflects the mark-to-market nature of securitized holdings, which can gap wider in liquidity-driven selloffs even when fundamental credit quality remains intact.`)
+      p.push(`Higher vol is consistent with ${hv}'s larger securitized allocation.`)
     }
   }
 
@@ -191,9 +182,7 @@ function risk(a: FundData, b: FundData, tA: string, tB: string, mode: AnalysisMo
   if (Math.abs(expBps) > 10) {
     const cheaper = expBps < 0 ? tA : tB, pricier = expBps < 0 ? tB : tA
     p.push(`${pricier} carries a ${Math.abs(Math.round(expBps))}bps expense premium over ${cheaper} (${fPct(expBps < 0 ? b.expense : a.expense)} vs ${fPct(expBps < 0 ? a.expense : b.expense)}).`)
-    if (mode === "internal" && pricier === tA) {
-      p.push(`Frame the cost as access to active securitized credit management, which requires specialized analytics and deal-level diligence.`)
-    }
+
   }
 
   return p.join(" ")
@@ -238,8 +227,8 @@ function summary(a: FundData, b: FundData, tA: string, tB: string, mode: Analysi
   if (mode === "advisor") {
     if (secBps > 30 && durC && credC) {
       let s = `${tA} offers a clear income upgrade: ${fBps(secBps)} yield advantage with comparable duration and credit quality. `
-      if (Math.abs(sA - sB) > 0.15) s += `The differential is sector-driven\u2014securitized credit spreads remain attractive relative to corporates at current levels. `
-      s += thrD > 1 ? "The multi-year track record validates the quality of the income advantage." : "This makes it a straightforward income-enhancement opportunity."
+      if (Math.abs(sA - sB) > 0.15) s += `The differential is sector-driven\u2014${fPct(sA, 0)} securitized vs ${fPct(sB, 0)}. `
+      s += thrD > 1 ? "Multi-year track record validates the income advantage." : "Straightforward income-enhancement opportunity."
       return s
     }
     if (secBps > 0) {
@@ -257,15 +246,15 @@ function summary(a: FundData, b: FundData, tA: string, tB: string, mode: Analysi
   // Internal
   if (secBps > 30 && durC && credC) {
     let s = `LEAD WITH: ${fBps(secBps)} yield pickup, no structural sacrifice. `
-    if (Math.abs(sA - sB) > 0.15) s += `KEY DIFFERENTIATOR: Securitized allocation (${fPct(sA, 0)}) vs corporate tilt (${fPct(nz(b.corporateCredit), 0)}) captures wider structured credit spreads without corporate event risk. `
-    s += `TALKING POINTS: (1) meaningful income advantage, (2) ${thrD > 1 ? `${thrD.toFixed(1)}pp 3Y outperformance` : "comparable risk characteristics"}, (3) expense of ${fPct(a.expense)} justified by alpha generation. `
+    if (Math.abs(sA - sB) > 0.15) s += `KEY DIFFERENTIATOR: Securitized allocation (${fPct(sA, 0)}) vs corporate tilt (${fPct(nz(b.corporateCredit), 0)}). `
+    s += `TALKING POINTS: (1) ${fBps(secBps)} income advantage, (2) ${thrD > 1 ? `${thrD.toFixed(1)}pp 3Y outperformance` : "comparable risk characteristics"}, (3) ${fPct(a.expense)} expense ratio. `
     if (shD < -0.3) s += `HANDLE: Lower Sharpe\u2014pivot to total return and income. `
     if (expBps > 10) s += `HANDLE: ${Math.round(expBps)}bps expense gap offset by ${Math.round(secBps)}bps yield advantage. `
     return s
   }
   if (secBps > 0) {
     let s = `POSITIONING: Tactical income upgrade. ${fBps(secBps)} pickup driven by `
-    if (Math.abs(sA - sB) > 0.15) s += `securitized overweight\u2014structured spreads remain historically wide vs corporates. `
+    if (Math.abs(sA - sB) > 0.15) s += `securitized overweight (${fPct(secPct(dataA), 0)} vs ${fPct(secPct(dataB), 0)}). `
     else if (!durC) s += `duration extension of ${Math.abs(nz(a.duration) - nz(b.duration)).toFixed(1)}yr. `
     else if (!credC) s += `credit positioning (${fPct(iA, 0)} IG vs ${fPct(iB, 0)}). `
     else s += "portfolio construction. "
@@ -273,7 +262,7 @@ function summary(a: FundData, b: FundData, tA: string, tB: string, mode: Analysi
     return s
   }
   let s = "CHALLENGE: No yield advantage. "
-  if (thrD > 2) s += `BEST ANGLE: ${thrD.toFixed(1)}pp 3Y outperformance\u2014position as alpha-generating manager swap. ${Math.abs(sA - sB) > 0.15 ? `Differentiated securitized exposure provides diversification from corporate spread risk. ` : ""}`
+  if (thrD > 2) s += `BEST ANGLE: ${thrD.toFixed(1)}pp 3Y outperformance. ${Math.abs(sA - sB) > 0.15 ? `Differentiated securitized exposure (${fPct(sA, 0)} vs ${fPct(sB, 0)}). ` : ""}`
   else s += `Lead with structural diversification${Math.abs(sA - sB) > 0.15 ? ` (${fPct(sA, 0)} securitized vs ${fPct(sB, 0)})` : ""}. This requires a consultative portfolio-fit conversation.`
   return s
 }
