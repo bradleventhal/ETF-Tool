@@ -13,7 +13,7 @@ interface TickerInputProps {
   placeholder?: string
 }
 
-export function TickerInput({ label, value, onChange, options, placeholder = "Type ticker..." }: TickerInputProps) {
+export function TickerInput({ label, value, onChange, options, placeholder = "Search ticker or name..." }: TickerInputProps) {
   const [query, setQuery] = useState("")
   const [isOpen, setIsOpen] = useState(false)
   const [hlIdx, setHlIdx] = useState(0)
@@ -59,20 +59,20 @@ export function TickerInput({ label, value, onChange, options, placeholder = "Ty
   }, [isOpen, filtered, hlIdx, select])
 
   return (
-    <div className="flex flex-col gap-1" ref={wrapperRef}>
-      <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">{label}</span>
+    <div className="flex flex-col gap-1.5" ref={wrapperRef}>
+      <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</label>
       <div className="relative">
         {value && selected ? (
-          <div className="flex h-8 items-center gap-2 rounded border border-[#1e3048] bg-[#0b1322] px-3">
-            <span className="font-mono text-sm font-bold text-slate-100">{selected.ticker}</span>
-            <span className="flex-1 truncate text-xs text-slate-500">{selected.name}</span>
-            <button onClick={() => { onChange(""); setQuery(""); setTimeout(() => inputRef.current?.focus(), 0) }} className="shrink-0 rounded p-0.5 text-slate-500 hover:text-slate-300" aria-label="Clear">
-              <X className="h-3 w-3" />
+          <div className="flex h-10 items-center gap-2.5 rounded-md border border-border bg-card px-3 shadow-sm">
+            <span className="font-mono text-sm font-bold text-primary">{selected.ticker}</span>
+            <span className="flex-1 truncate text-xs text-muted-foreground">{selected.name}</span>
+            <button onClick={() => { onChange(""); setQuery(""); setTimeout(() => inputRef.current?.focus(), 0) }} className="shrink-0 rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-foreground" aria-label="Clear">
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
         ) : (
           <>
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground/50" />
             <input
               ref={inputRef}
               type="text"
@@ -81,16 +81,16 @@ export function TickerInput({ label, value, onChange, options, placeholder = "Ty
               onFocus={() => { setIsOpen(true); setHlIdx(0) }}
               onKeyDown={onKey}
               placeholder={placeholder}
-              className="h-8 w-full rounded border border-[#1e3048] bg-[#0b1322] pl-8 pr-3 text-sm text-slate-100 placeholder:text-slate-600 focus:border-blue-500/50 focus:outline-none focus:ring-1 focus:ring-blue-500/30"
+              className="h-10 w-full rounded-md border border-border bg-card px-3 pl-9 text-sm text-foreground shadow-sm placeholder:text-muted-foreground/50 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/10"
               autoComplete="off"
             />
           </>
         )}
 
         {isOpen && !value && (
-          <ul ref={listRef} className="absolute z-50 mt-1 max-h-56 w-full overflow-auto rounded border border-[#1e3048] bg-[#0f1c2e] shadow-xl shadow-black/40" role="listbox">
+          <ul ref={listRef} className="absolute z-50 mt-1.5 max-h-64 w-full overflow-auto rounded-md border border-border bg-card shadow-lg" role="listbox">
             {filtered.length === 0 ? (
-              <li className="px-3 py-2.5 text-sm text-slate-500">No match</li>
+              <li className="px-3 py-3 text-sm text-muted-foreground">No match</li>
             ) : (
               filtered.map((opt, i) => (
                 <li
@@ -99,10 +99,10 @@ export function TickerInput({ label, value, onChange, options, placeholder = "Ty
                   aria-selected={i === hlIdx}
                   onMouseDown={(e) => { e.preventDefault(); select(opt.ticker) }}
                   onMouseEnter={() => setHlIdx(i)}
-                  className={`flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm ${i === hlIdx ? "bg-blue-600/20 text-slate-100" : "text-slate-300 hover:bg-[#1e3048]"}`}
+                  className={`flex cursor-pointer items-center gap-3 px-3 py-2 text-sm transition-colors ${i === hlIdx ? "bg-primary/5 text-foreground" : "text-foreground hover:bg-muted"}`}
                 >
-                  <span className="w-14 shrink-0 font-mono text-xs font-bold text-slate-200">{opt.ticker}</span>
-                  <span className="truncate text-xs text-slate-500">{opt.name}</span>
+                  <span className="w-14 shrink-0 font-mono text-xs font-bold text-primary">{opt.ticker}</span>
+                  <span className="truncate text-xs text-muted-foreground">{opt.name}</span>
                 </li>
               ))
             )}

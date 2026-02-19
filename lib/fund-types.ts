@@ -45,14 +45,18 @@ export interface ComparisonRow {
   better: "high" | "low" | "none"
 }
 
+export interface NarrativeSection {
+  title: string
+  lines: string[]
+}
+
 export interface AnalysisResult {
   tickerA: string
   tickerB: string
   nameA: string
   nameB: string
   mode: AnalysisMode
-  advisorSummary: string
-  bullets: { text: string; type: "edge" | "neutral" | "handle" }[]
+  narrative: NarrativeSection[]
   keyStats: ComparisonRow[]
   performance: ComparisonRow[]
   sectorAllocation: ComparisonRow[]

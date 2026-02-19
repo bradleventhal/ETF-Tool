@@ -5,12 +5,10 @@ import { Upload } from "lucide-react"
 
 interface FileUploadProps {
   onFileLoaded: (buffer: ArrayBuffer, fileName: string) => void
-  hasExistingData: boolean
-  fundCount: number
-  lastUpdated: string | null
+  compact?: boolean
 }
 
-export function FileUpload({ onFileLoaded, hasExistingData }: FileUploadProps) {
+export function FileUpload({ onFileLoaded, compact }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false)
 
   const handleFile = useCallback(
@@ -42,15 +40,15 @@ export function FileUpload({ onFileLoaded, hasExistingData }: FileUploadProps) {
       onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
       onDragLeave={(e) => { e.preventDefault(); setIsDragging(false) }}
       onClick={handleClick}
-      className={`flex w-full cursor-pointer flex-col items-center gap-2 rounded border-2 border-dashed px-6 py-6 transition-colors ${
-        isDragging ? "border-blue-500 bg-blue-500/5" : "border-[#1e3048] hover:border-blue-500/30 hover:bg-[#0f1c2e]"
-      }`}
+      className={`flex w-full cursor-pointer flex-col items-center gap-2 rounded-md border-2 border-dashed transition-colors ${
+        isDragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/30 hover:bg-muted/50"
+      } ${compact ? "px-4 py-4" : "px-6 py-8"}`}
     >
-      <Upload className="h-5 w-5 text-slate-500" />
-      <p className="text-sm font-medium text-slate-300">
-        {hasExistingData ? "Drop updated file to replace data" : "Drop your Excel or CSV file here"}
+      <Upload className={`text-muted-foreground/60 ${compact ? "h-4 w-4" : "h-5 w-5"}`} />
+      <p className={`font-medium text-foreground ${compact ? "text-xs" : "text-sm"}`}>
+        Drop your Excel or CSV file here
       </p>
-      <p className="text-[11px] text-slate-600">.xlsx, .xls, or .csv</p>
+      <p className="text-[11px] text-muted-foreground">.xlsx, .xls, or .csv</p>
     </button>
   )
 }

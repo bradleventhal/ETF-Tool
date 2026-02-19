@@ -1,4 +1,4 @@
-import type { FundData, AnalysisMode, AnalysisResult, ComparisonRow } from "./fund-types"
+import type { FundData, AnalysisMode, AnalysisResult, ComparisonRow, NarrativeSection } from "./fund-types"
 
 // --- Helpers ---
 function nz(v: number | null): number { return v == null || isNaN(v) ? 0 : v }
@@ -7,99 +7,142 @@ function fNum(v: number | null, d = 2): string { return v == null || isNaN(v) ? 
 function fBps(v: number): string { const a = Math.abs(Math.round(v)); return `${v >= 0 ? "+" : "\u2212"}${a}bps` }
 function secPct(d: FundData) { return nz(d.nonAgencyRmbs) + nz(d.agencyRmbs) + nz(d.abs) + nz(d.clo) + nz(d.cmbs) }
 function igPct(d: FundData) { return nz(d.aaa) + nz(d.aa) + nz(d.a) + nz(d.bbb) }
-function hyPct(d: FundData) { return nz(d.bb) + nz(d.b) + nz(d.ccc) + nz(d.belowCcc) }
 
-// --- Internal mode: bullet-point takeaway ---
-interface Bullet { text: string; type: "edge" | "neutral" | "handle" }
-
-function internalBullets(a: FundData, b: FundData, tA: string, tB: string): Bullet[] {
-  const out: Bullet[] = []
+// --- Narrative sections ---
+function buildNarrative(a: FundData, b: FundData, tA: string, tB: string, mode: AnalysisMode): NarrativeSection[] {
+  const sections: NarrativeSection[] = []
   const secBps = (nz(a.secYield) - nz(b.secYield)) * 10000
   const sA = secPct(a), sB = secPct(b)
+  const cA = nz(a.corporateCredit), cB = nz(b.corporateCredit)
   const iA = igPct(a), iB = igPct(b)
+  const durA = nz(a.duration), durB = nz(b.duration)
   const thrD = (nz(a.threeYear) - nz(b.threeYear)) * 100
-  const expBps = (nz(a.expense) - nz(b.expense)) * 10000
   const shA = nz(a.sharpe), shB = nz(b.sharpe)
+  const expBps = (nz(a.expense) - nz(b.expense)) * 10000
 
-  // Yield
-  if (secBps > 20) out.push({ text: `${fBps(secBps)} SEC yield advantage`, type: "edge" })
-  else if (secBps < -20) out.push({ text: `${fBps(secBps)} SEC yield vs ${tB}`, type: "handle" })
-  else out.push({ text: `SEC yields are comparable (${fPct(a.secYield)} vs ${fPct(b.secYield)})`, type: "neutral" })
-
-  // Duration
-  const durDiff = Math.abs(nz(a.duration) - nz(b.duration))
-  if (durDiff <= 0.75) out.push({ text: `Duration aligned (${fNum(a.duration)} vs ${fNum(b.duration)})`, type: "edge" })
-  else out.push({ text: `Duration gap of ${durDiff.toFixed(2)}yr (${fNum(a.duration)} vs ${fNum(b.duration)})`, type: "neutral" })
-
-  // Credit
-  if (Math.abs(iA - iB) <= 0.1) out.push({ text: `Comparable IG allocation (${fPct(iA, 0)} vs ${fPct(iB, 0)})`, type: "edge" })
-  else if (iA > iB) out.push({ text: `Higher quality: ${fPct(iA, 0)} IG vs ${fPct(iB, 0)}`, type: "edge" })
-  else out.push({ text: `Lower IG allocation (${fPct(iA, 0)} vs ${fPct(iB, 0)})`, type: "handle" })
-
-  // Sector differentiation
-  if (Math.abs(sA - sB) > 0.15) {
-    out.push({ text: `Securitized: ${fPct(sA, 0)} vs ${fPct(sB, 0)} \u2014 different sector profile`, type: "neutral" })
+  // --- Sector ---
+  const secLines: string[] = []
+  if (Math.abs(sA - sB) > 0.10) {
+    const secH = sA > sB ? tA : tB, secL = sA > sB ? tB : tA
+    secLines.push(`${secH} is securitized-heavy at ${fPct(sA > sB ? sA : sB, 0)} vs ${fPct(sA > sB ? sB : sA, 0)} for ${secL}.`)
+    if (cA > 0.10 || cB > 0.10) {
+      const corpH = cA > cB ? tA : tB
+      secLines.push(`${corpH} carries the larger corporate allocation (${fPct(Math.max(cA, cB), 0)} vs ${fPct(Math.min(cA, cB), 0)}).`)
+    }
+  } else {
+    secLines.push(`Both funds have similar securitized weightings (${fPct(sA, 0)} vs ${fPct(sB, 0)}).`)
   }
+  // Sub-sector callouts
+  const clA = nz(a.clo), clB = nz(b.clo)
+  if (Math.abs(clA - clB) > 0.05) {
+    const clH = clA > clB ? tA : tB
+    secLines.push(`CLO divergence: ${clH} at ${fPct(Math.max(clA, clB), 0)} vs ${fPct(Math.min(clA, clB), 0)}.`)
+  }
+  const rA = nz(a.nonAgencyRmbs), rB = nz(b.nonAgencyRmbs)
+  if (Math.abs(rA - rB) > 0.05) {
+    const rH = rA > rB ? tA : tB
+    secLines.push(`Non-agency RMBS: ${rH} at ${fPct(Math.max(rA, rB), 0)} vs ${fPct(Math.min(rA, rB), 0)}.`)
+  }
+  const agA = nz(a.agencyRmbs), agB = nz(b.agencyRmbs)
+  if (Math.abs(agA - agB) > 0.05) {
+    const agH = agA > agB ? tA : tB
+    secLines.push(`Agency RMBS: ${agH} at ${fPct(Math.max(agA, agB), 0)} vs ${fPct(Math.min(agA, agB), 0)}.`)
+  }
+  sections.push({ title: "Sector Allocation", lines: secLines })
 
-  // Performance
-  if (thrD > 1) out.push({ text: `3Y outperformance of ${thrD.toFixed(1)}pp`, type: "edge" })
-  else if (thrD < -1) out.push({ text: `3Y underperformance of ${Math.abs(thrD).toFixed(1)}pp`, type: "handle" })
-  else if (nz(a.threeYear) !== 0 && nz(b.threeYear) !== 0) out.push({ text: `3Y performance comparable`, type: "neutral" })
+  // --- Income ---
+  const incLines: string[] = []
+  if (Math.abs(secBps) > 20) {
+    const hi = secBps > 0 ? tA : tB
+    incLines.push(`${hi} offers a ${fBps(Math.abs(secBps))} SEC yield advantage (${fPct(a.secYield)} vs ${fPct(b.secYield)}).`)
+    // Attribute to sector if meaningful
+    if (Math.abs(sA - sB) > 0.15) {
+      const secH = sA > sB ? tA : tB
+      if (secH === hi) incLines.push(`Yield pickup aligns with the heavier securitized allocation.`)
+      else incLines.push(`Yield pickup despite a lower securitized allocation, driven by credit positioning and duration.`)
+    }
+  } else {
+    incLines.push(`SEC yields are comparable (${fPct(a.secYield)} vs ${fPct(b.secYield)}).`)
+  }
+  if (nz(a.distributionYield) > 0 || nz(b.distributionYield) > 0) {
+    incLines.push(`Distribution yield: ${fPct(a.distributionYield)} vs ${fPct(b.distributionYield)}.`)
+  }
+  if (nz(a.ytwYtm) > 0 || nz(b.ytwYtm) > 0) {
+    incLines.push(`YTW/YTM: ${fPct(a.ytwYtm)} vs ${fPct(b.ytwYtm)}.`)
+  }
+  sections.push({ title: "Income", lines: incLines })
 
-  // Sharpe
+  // --- Risk ---
+  const riskLines: string[] = []
+  const durDiff = Math.abs(durA - durB)
+  if (durDiff <= 0.5) {
+    riskLines.push(`Duration is aligned (${fNum(a.duration)} vs ${fNum(b.duration)}).`)
+  } else {
+    const longer = durA > durB ? tA : tB
+    riskLines.push(`${longer} runs longer duration at ${fNum(durA > durB ? durA : durB)} vs ${fNum(durA > durB ? durB : durA)}.`)
+  }
+  if (nz(a.stdDev) > 0 && nz(b.stdDev) > 0) {
+    const hvol = nz(a.stdDev) > nz(b.stdDev) ? tA : tB
+    riskLines.push(`${hvol} shows higher vol (${fNum(a.stdDev)} vs ${fNum(b.stdDev)} std dev).`)
+  }
   if (shA > 0 && shB > 0) {
-    if (shA > shB + 0.2) out.push({ text: `Better risk-adjusted return (Sharpe ${fNum(a.sharpe)} vs ${fNum(b.sharpe)})`, type: "edge" })
-    else if (shB > shA + 0.2) out.push({ text: `Lower Sharpe (${fNum(a.sharpe)} vs ${fNum(b.sharpe)}) \u2014 pivot to income`, type: "handle" })
+    if (Math.abs(shA - shB) > 0.15) {
+      const better = shA > shB ? tA : tB
+      riskLines.push(`${better} has the better Sharpe (${fNum(shA > shB ? shA : shB)} vs ${fNum(shA > shB ? shB : shA)}).`)
+    } else {
+      riskLines.push(`Sharpe ratios are comparable (${fNum(shA)} vs ${fNum(shB)}).`)
+    }
   }
+  // Credit quality
+  if (Math.abs(iA - iB) > 0.08) {
+    const hiIg = iA > iB ? tA : tB
+    riskLines.push(`${hiIg} is higher quality (${fPct(iA > iB ? iA : iB, 0)} IG vs ${fPct(iA > iB ? iB : iA, 0)}).`)
+  }
+  if (expBps > 10 || expBps < -10) {
+    const pricier = expBps > 0 ? tA : tB
+    riskLines.push(`${pricier} is ${Math.abs(Math.round(expBps))}bps more expensive (${fPct(a.expense)} vs ${fPct(b.expense)}).`)
+  }
+  sections.push({ title: "Risk & Structure", lines: riskLines })
 
-  // Expense
-  if (expBps > 10) out.push({ text: `${Math.round(expBps)}bps expense premium (${fPct(a.expense)} vs ${fPct(b.expense)})`, type: "handle" })
-  else if (expBps < -10) out.push({ text: `${Math.abs(Math.round(expBps))}bps cheaper (${fPct(a.expense)} vs ${fPct(b.expense)})`, type: "edge" })
+  // --- Performance ---
+  const perfLines: string[] = []
+  if (nz(a.ytd) !== 0 || nz(b.ytd) !== 0) perfLines.push(`YTD: ${fPct(a.ytd)} vs ${fPct(b.ytd)}.`)
+  if (nz(a.oneYear) !== 0 || nz(b.oneYear) !== 0) perfLines.push(`1Y: ${fPct(a.oneYear)} vs ${fPct(b.oneYear)}.`)
+  if (nz(a.threeYear) !== 0 || nz(b.threeYear) !== 0) {
+    perfLines.push(`3Y: ${fPct(a.threeYear)} vs ${fPct(b.threeYear)}${Math.abs(thrD) > 1 ? ` (${thrD > 0 ? tA : tB} by ${Math.abs(thrD).toFixed(1)}pp)` : ""}.`)
+  }
+  if (nz(a.commonInception) !== 0 || nz(b.commonInception) !== 0) perfLines.push(`Common inception: ${fPct(a.commonInception)} vs ${fPct(b.commonInception)}.`)
+  sections.push({ title: "Performance", lines: perfLines })
 
-  return out
-}
-
-// --- Advisor mode: clean summary paragraphs ---
-function advisorSummary(a: FundData, b: FundData, tA: string, tB: string): string {
-  const secBps = (nz(a.secYield) - nz(b.secYield)) * 10000
-  const durDiff = Math.abs(nz(a.duration) - nz(b.duration))
-  const iA = igPct(a), iB = igPct(b)
-  const sA = secPct(a), sB = secPct(b)
-  const thrD = (nz(a.threeYear) - nz(b.threeYear)) * 100
-  const parts: string[] = []
-
-  // Lead
-  if (secBps > 20) {
-    parts.push(`${tA} offers a ${fBps(secBps)} yield advantage over ${tB}.`)
-  } else if (secBps < -20) {
-    parts.push(`${tB} holds a ${fBps(Math.abs(secBps))} yield edge, though ${tA} differs in key structural areas.`)
+  // --- Takeaway ---
+  const tkLines: string[] = []
+  if (mode === "internal") {
+    // Lean-on / handle / positioning
+    if (secBps > 30 && Math.abs(sA - sB) > 0.15) {
+      tkLines.push(`Lead with the ${fBps(Math.abs(secBps))} yield pickup -- directly tied to the securitized overweight (${fPct(sA, 0)} vs ${fPct(sB, 0)}).`)
+    } else if (secBps > 20) {
+      tkLines.push(`${fBps(secBps)} income advantage is the primary talking point.`)
+    }
+    if (thrD > 1.5) tkLines.push(`3Y outperformance of ${thrD.toFixed(1)}pp supports the track record argument.`)
+    if (expBps > 10) tkLines.push(`Expect the expense objection (${Math.round(expBps)}bps premium) -- offset with net-of-fee returns and income differential.`)
+    if (shA > shB + 0.2) tkLines.push(`Sharpe advantage (${fNum(shA)} vs ${fNum(shB)}) helps on the risk-adjusted angle.`)
+    else if (shB > shA + 0.2) tkLines.push(`They have the Sharpe edge (${fNum(shB)} vs ${fNum(shA)}) -- pivot to income and absolute return.`)
+    if (durDiff <= 0.5 && Math.abs(iA - iB) <= 0.1 && secBps > 20) {
+      tkLines.push(`Comparable duration and credit quality make this a clean income upgrade story.`)
+    }
+    if (tkLines.length === 0) tkLines.push(`Positioning depends on client priorities -- income, risk-adjusted return, or sector diversification.`)
   } else {
-    parts.push(`Both funds offer comparable current income.`)
+    // Advisor -- cleaner summary
+    if (secBps > 20) tkLines.push(`${tA} provides additional yield (${fBps(Math.abs(secBps))}) through its securitized allocation.`)
+    else if (secBps < -20) tkLines.push(`${tB} offers higher current income, though ${tA} differs in sector composition and risk profile.`)
+    if (durDiff <= 0.5) tkLines.push(`Both funds have similar rate sensitivity.`)
+    if (thrD > 1.5) tkLines.push(`${tA} has outperformed over 3 years by ${thrD.toFixed(1)} percentage points.`)
+    else if (thrD < -1.5) tkLines.push(`${tB} has outperformed over 3 years by ${Math.abs(thrD).toFixed(1)} percentage points.`)
+    if (tkLines.length === 0) tkLines.push(`Both funds are broadly comparable across key metrics.`)
   }
+  sections.push({ title: "Takeaway", lines: tkLines })
 
-  // Duration
-  if (durDiff <= 0.75) {
-    parts.push(`Duration profiles are aligned at ${fNum(a.duration)} and ${fNum(b.duration)} years, so rate sensitivity is similar.`)
-  } else {
-    const longer = nz(a.duration) > nz(b.duration) ? tA : tB
-    parts.push(`${longer} carries more duration (${fNum(a.duration)} vs ${fNum(b.duration)}), resulting in different rate sensitivity.`)
-  }
-
-  // Sector
-  if (Math.abs(sA - sB) > 0.15) {
-    const secH = sA > sB ? tA : tB
-    const secL = sA > sB ? tB : tA
-    parts.push(`${secH} is primarily securitized credit (${fPct(Math.max(sA, sB), 0)}) while ${secL} leans corporate (${fPct(secH === tA ? nz(b.corporateCredit) : nz(a.corporateCredit), 0)}).`)
-  }
-
-  // Performance
-  if (thrD > 1) {
-    parts.push(`Over 3 years, ${tA} has outperformed by ${thrD.toFixed(1)} percentage points.`)
-  } else if (thrD < -1) {
-    parts.push(`Over 3 years, ${tB} has outperformed by ${Math.abs(thrD).toFixed(1)} percentage points.`)
-  }
-
-  return parts.join(" ")
+  return sections
 }
 
 // --- Tables ---
@@ -138,8 +181,7 @@ function sectorTable(a: FundData, b: FundData): ComparisonRow[] {
   add("CMBS", a.cmbs, b.cmbs)
   add("Corporate Credit", a.corporateCredit, b.corporateCredit)
   add("Government / Cash", a.governmentCash, b.governmentCash)
-  if (nz(a.other) > 0.005 || nz(b.other) > 0.005)
-    rows.push({ label: "Other", a: fPct(a.other, 1), b: fPct(b.other, 1), nA: a.other, nB: b.other, better: "none" })
+  add("Other", a.other, b.other)
   return rows
 }
 
@@ -160,11 +202,8 @@ function creditTable(a: FundData, b: FundData): ComparisonRow[] {
 export function runAnalysis(dataA: FundData, dataB: FundData, mode: AnalysisMode): AnalysisResult {
   const tA = dataA.ticker, tB = dataB.ticker
   return {
-    tickerA: tA, tickerB: tB,
-    nameA: dataA.name, nameB: dataB.name,
-    mode,
-    advisorSummary: mode === "advisor" ? advisorSummary(dataA, dataB, tA, tB) : "",
-    bullets: mode === "internal" ? internalBullets(dataA, dataB, tA, tB) : [],
+    tickerA: tA, tickerB: tB, nameA: dataA.name, nameB: dataB.name, mode,
+    narrative: buildNarrative(dataA, dataB, tA, tB, mode),
     keyStats: keyStats(dataA, dataB),
     performance: perfTable(dataA, dataB),
     sectorAllocation: sectorTable(dataA, dataB),
