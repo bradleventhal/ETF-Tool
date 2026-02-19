@@ -1,5 +1,5 @@
 "use client"
-// Fund Discovery v2
+
 import { useState, useMemo, useCallback, useEffect } from "react"
 import { FileUpload } from "@/components/file-upload"
 import { TickerInput } from "@/components/ticker-input"
@@ -84,10 +84,17 @@ export default function Page() {
   }, [tickerA, tickerB, mode, funds])
 
   const swapTickers = () => { setTickerA(tickerB); setTickerB(tickerA) }
-  const fmtDate = (iso: string) => { const d = new Date(iso); return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + " " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) }
+  const fmtDate = (iso: string) => {
+    const d = new Date(iso)
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + " " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+  }
 
   if (loading) {
-    return <main className="flex min-h-screen items-center justify-center" style={{ backgroundColor: "#f8fafc" }}><Loader2 className="h-5 w-5 animate-spin" style={{ color: "#94a3b8" }} /></main>
+    return (
+      <main className="flex min-h-screen items-center justify-center" style={{ backgroundColor: "#f8fafc" }}>
+        <Loader2 className="h-5 w-5 animate-spin" style={{ color: "#94a3b8" }} />
+      </main>
+    )
   }
 
   if (funds.length === 0) {
@@ -106,11 +113,9 @@ export default function Page() {
   }
 
   const takeaway = result?.narrative.find(s => s.title === "Takeaway")
-  const otherNarrative = result?.narrative.filter(s => s.title !== "Takeaway") ?? []
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#f8fafc" }}>
-      {/* Header */}
       <header style={{ backgroundColor: "#0f3d6b" }}>
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-4">
@@ -123,27 +128,30 @@ export default function Page() {
               {showUpload ? <X className="h-3.5 w-3.5" /> : <Upload className="h-3.5 w-3.5" />}
               {showUpload ? "Close" : "Update Data"}
             </button>
-            <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>{funds.length} funds{lastUpdated ? ` \u00b7 Updated ${fmtDate(lastUpdated)}` : ""}</span>
+            <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+              {funds.length} funds{lastUpdated ? ` \u00b7 Updated ${fmtDate(lastUpdated)}` : ""}
+            </span>
           </div>
         </div>
       </header>
 
       {showUpload && (
         <div className="border-b px-6 py-5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
-          <div className="mx-auto max-w-sm"><FileUpload onFileLoaded={handleFileLoaded} compact /></div>
+          <div className="mx-auto max-w-sm">
+            <FileUpload onFileLoaded={handleFileLoaded} compact />
+          </div>
         </div>
       )}
 
       <div className="mx-auto max-w-6xl px-6">
-        {/* Controls */}
         <div className="flex flex-col gap-3 border-b py-5 sm:flex-row sm:items-end sm:gap-4" style={{ borderColor: "#e2e8f0" }}>
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <TickerInput label="Our Fund" value={tickerA} onChange={setTickerA} options={tickers} />
           </div>
-          <button onClick={swapTickers} disabled={!tickerA && !tickerB} className="hidden self-end mb-1 rounded p-2 transition-opacity hover:opacity-70 disabled:opacity-20 sm:flex" aria-label="Swap">
+          <button onClick={swapTickers} disabled={!tickerA && !tickerB} className="mb-1 hidden self-end rounded p-2 transition-opacity hover:opacity-70 disabled:opacity-20 sm:flex" aria-label="Swap">
             <ArrowRightLeft className="h-4 w-4" style={{ color: "#94a3b8" }} />
           </button>
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <TickerInput label="Competitor" value={tickerB} onChange={setTickerB} options={tickers} />
           </div>
           <div className="flex shrink-0 flex-col gap-1.5">
@@ -164,13 +172,10 @@ export default function Page() {
           </div>
         )}
 
-        {/* ===== INTERNAL MODE ===== */}
         {result && mode === "internal" && (
           <div className="space-y-6 py-6">
-            {/* Key Stats at the top */}
             <ComparisonTable title="Key Statistics" rows={result.keyStats} tickerA={result.tickerA} tickerB={result.tickerB} highlight />
 
-            {/* Sector allocation: pie charts + table */}
             <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
               <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
                 <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Sector Allocation</h4>
@@ -183,13 +188,11 @@ export default function Page() {
                   <SectorPieChart data={result.pieDataB} ticker={result.tickerB} mode="internal" />
                 </div>
               </div>
-              {/* Sector table below the pies */}
               <div className="border-t" style={{ borderColor: "#f1f5f9" }}>
                 <SectorCreditTable rows={result.sectorAllocation} tickerA={result.tickerA} tickerB={result.tickerB} label="Sector" />
               </div>
             </div>
 
-            {/* Credit Quality: pie charts + table */}
             <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
               <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
                 <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Credit Quality</h4>
@@ -207,15 +210,12 @@ export default function Page() {
               </div>
             </div>
 
-            {/* Performance chart + table side by side */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <PerformanceChart data={result.chartData} tickerA={result.tickerA} tickerB={result.tickerB} />
               <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} highlight />
             </div>
 
-            {/* Income + Risk side by side */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              {/* Income: bar chart + table */}
               <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
                 <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
                   <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Income</h4>
@@ -231,18 +231,17 @@ export default function Page() {
                   />
                 </div>
               </div>
-              {/* Risk: clean comparison table */}
               <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
                 <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
-                  <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>{'Risk & Structure'}</h4>
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>{"Risk & Structure"}</h4>
                 </div>
                 <div className="p-4">
                   <RiskTable
                     items={[
-                      { label: "Duration", a: result.keyStats.find(r => r.label === "Duration")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Duration")?.nB ?? 0, unit: " yrs", better: "low" },
-                      { label: "Std Deviation", a: result.keyStats.find(r => r.label === "Std Deviation")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Std Deviation")?.nB ?? 0, unit: "", better: "low" },
-                      { label: "Sharpe Ratio", a: result.keyStats.find(r => r.label === "Sharpe Ratio")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Sharpe Ratio")?.nB ?? 0, unit: "", better: "high" },
-                      { label: "Expense Ratio", a: (result.keyStats.find(r => r.label === "Expense Ratio")?.nA ?? 0) * 100, b: (result.keyStats.find(r => r.label === "Expense Ratio")?.nB ?? 0) * 100, unit: "%", better: "low" },
+                      { label: "Duration", a: result.keyStats.find(r => r.label === "Duration")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Duration")?.nB ?? 0, unit: " yrs", better: "low" as const },
+                      { label: "Std Deviation", a: result.keyStats.find(r => r.label === "Std Deviation")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Std Deviation")?.nB ?? 0, unit: "", better: "low" as const },
+                      { label: "Sharpe Ratio", a: result.keyStats.find(r => r.label === "Sharpe Ratio")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Sharpe Ratio")?.nB ?? 0, unit: "", better: "high" as const },
+                      { label: "Expense Ratio", a: (result.keyStats.find(r => r.label === "Expense Ratio")?.nA ?? 0) * 100, b: (result.keyStats.find(r => r.label === "Expense Ratio")?.nB ?? 0) * 100, unit: "%", better: "low" as const },
                     ].filter(x => x.a > 0 || x.b > 0)}
                     tickerA={result.tickerA} tickerB={result.tickerB}
                   />
@@ -250,7 +249,6 @@ export default function Page() {
               </div>
             </div>
 
-            {/* Takeaway at the bottom */}
             {takeaway && (
               <div className="rounded border-l-4 p-5" style={{ borderColor: "#0f3d6b", backgroundColor: "#f0f7ff" }}>
                 <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: "#0f3d6b" }}>Key Takeaway</h3>
@@ -264,10 +262,8 @@ export default function Page() {
           </div>
         )}
 
-        {/* ===== ADVISOR MODE ===== */}
         {result && mode === "advisor" && (
-          <div className="py-8 space-y-8">
-            {/* Centered branded header like a fact sheet */}
+          <div className="space-y-8 py-8">
             <div className="text-center">
               <div className="mb-4 text-[11px] font-bold uppercase tracking-widest" style={{ color: "#94a3b8" }}>Fund Comparison</div>
               <div className="inline-grid items-center gap-x-5 gap-y-0" style={{ gridTemplateColumns: "1fr auto 1fr" }}>
@@ -281,10 +277,8 @@ export default function Page() {
 
             <div style={{ height: 2, backgroundColor: "#0f3d6b", opacity: 0.15 }} />
 
-            {/* Key Stats at top, prominent */}
             <ComparisonTable title="Key Statistics" rows={result.keyStats} tickerA={result.tickerA} tickerB={result.tickerB} />
 
-            {/* Sector: pie charts + table */}
             <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
               <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
                 <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Sector Allocation</h4>
@@ -302,7 +296,6 @@ export default function Page() {
               </div>
             </div>
 
-            {/* Credit Quality: pie charts + table */}
             <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
               <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
                 <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Credit Quality</h4>
@@ -320,13 +313,10 @@ export default function Page() {
               </div>
             </div>
 
-            {/* Performance table */}
             <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} />
 
-            {/* Chart full width */}
             <PerformanceChart data={result.chartData} tickerA={result.tickerA} tickerB={result.tickerB} />
 
-            {/* Investment Considerations at bottom -- advisor appropriate */}
             {takeaway && (
               <div className="rounded border p-6" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
                 <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: "#0f3d6b" }}>Investment Considerations</h3>
@@ -338,7 +328,6 @@ export default function Page() {
               </div>
             )}
 
-            {/* Footer */}
             <div className="pt-4 text-center" style={{ borderTop: "1px solid #e2e8f0" }}>
               <img src="/images/logo.png" alt="Angel Oak Capital Advisors" className="mx-auto opacity-40" style={{ width: 120, height: "auto" }} />
               <p className="mt-2 text-[10px]" style={{ color: "#94a3b8" }}>For informational purposes only. Past performance is not indicative of future results.</p>
