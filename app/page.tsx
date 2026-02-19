@@ -187,7 +187,6 @@ export default function Page() {
               <div className="border-t" style={{ borderColor: "#f1f5f9" }}>
                 <SectorCreditTable rows={result.sectorAllocation} tickerA={result.tickerA} tickerB={result.tickerB} label="Sector" />
               </div>
-              </div>
             </div>
 
             {/* Credit Quality: pie charts + table */}
