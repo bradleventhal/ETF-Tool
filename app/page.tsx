@@ -1,5 +1,4 @@
 "use client"
-
 import { useState, useMemo, useCallback, useEffect } from "react"
 import { FileUpload } from "@/components/file-upload"
 import { TickerInput } from "@/components/ticker-input"
@@ -13,7 +12,10 @@ import { saveFunds, loadFunds } from "@/lib/fund-store"
 import type { FundData, AnalysisMode, AnalysisResult } from "@/lib/fund-types"
 import { Upload, X, Loader2, ArrowRightLeft } from "lucide-react"
 
-function SectorCreditTable({ rows, tickerA, tickerB, label }: { rows: { label: string; a: string; b: string; nA: number | null; nB: number | null }[]; tickerA: string; tickerB: string; label: string }) {
+function NegTable({ rows, tickerA, tickerB, label }: {
+  rows: { label: string; a: string; b: string; nA: number | null; nB: number | null }[]
+  tickerA: string; tickerB: string; label: string
+}) {
   return (
     <table className="w-full text-sm">
       <thead>
@@ -25,20 +27,48 @@ function SectorCreditTable({ rows, tickerA, tickerB, label }: { rows: { label: s
       </thead>
       <tbody>
         {rows.map((r, i) => {
-          const valA = r.nA != null ? r.nA : 0
-          const valB = r.nB != null ? r.nB : 0
-          const isNegA = valA < -0.001
-          const isNegB = valB < -0.001
+          const nA = r.nA != null ? r.nA : 0
+          const nB = r.nB != null ? r.nB : 0
           return (
             <tr key={r.label} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: i < rows.length - 1 ? "1px solid #f1f5f9" : undefined }}>
               <td className="px-4 py-1.5 text-[13px]" style={{ color: "#64748b" }}>{r.label}</td>
-              <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: isNegA ? "#dc2626" : "#334155", fontWeight: isNegA ? 700 : 400 }}>{r.a}</td>
-              <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: isNegB ? "#dc2626" : "#334155", fontWeight: isNegB ? 700 : 400 }}>{r.b}</td>
+              <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: nA < -0.001 ? "#dc2626" : "#334155", fontWeight: nA < -0.001 ? 700 : 400 }}>{r.a}</td>
+              <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: nB < -0.001 ? "#dc2626" : "#334155", fontWeight: nB < -0.001 ? 700 : 400 }}>{r.b}</td>
             </tr>
           )
         })}
       </tbody>
     </table>
+  )
+}
+
+function PieSection({ title, dataA, dataB, tickerA, tickerB, subtitleA, subtitleB, rows, rowLabel, viewMode }: {
+  title: string
+  dataA: { name: string; value: number }[]
+  dataB: { name: string; value: number }[]
+  tickerA: string; tickerB: string
+  subtitleA?: string; subtitleB?: string
+  rows: { label: string; a: string; b: string; nA: number | null; nB: number | null }[]
+  rowLabel: string
+  viewMode: "internal" | "advisor"
+}) {
+  return (
+    <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+      <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
+        <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>{title}</h4>
+      </div>
+      <div className="grid grid-cols-1 gap-0 md:grid-cols-2">
+        <div className="border-b p-4 md:border-b-0 md:border-r" style={{ borderColor: "#f1f5f9" }}>
+          <SectorPieChart data={dataA} ticker={tickerA} subtitle={subtitleA} mode={viewMode} />
+        </div>
+        <div className="p-4">
+          <SectorPieChart data={dataB} ticker={tickerB} subtitle={subtitleB} mode={viewMode} />
+        </div>
+      </div>
+      <div className="border-t" style={{ borderColor: "#f1f5f9" }}>
+        <NegTable rows={rows} tickerA={tickerA} tickerB={tickerB} label={rowLabel} />
+      </div>
+    </div>
   )
 }
 
@@ -71,7 +101,7 @@ export default function Page() {
       setFunds(parsed); setTickerA(""); setTickerB(""); setResult(null); setError(null); setShowUpload(false)
       await saveFunds(parsed); setLastUpdated(new Date().toISOString())
     } catch (err) {
-      setError(`Parse error: ${err instanceof Error ? err.message : "Unknown"}`)
+      setError("Parse error: " + (err instanceof Error ? err.message : "Unknown"))
     }
   }, [])
 
@@ -114,6 +144,19 @@ export default function Page() {
 
   const takeaway = result?.narrative.find(s => s.title === "Takeaway")
 
+  const incomeItems = result ? [
+    { label: "SEC Yield", a: result.keyStats.find(r => r.label === "30-Day SEC Yield")?.nA ?? 0, b: result.keyStats.find(r => r.label === "30-Day SEC Yield")?.nB ?? 0 },
+    { label: "Distribution", a: result.keyStats.find(r => r.label === "Distribution Yield")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Distribution Yield")?.nB ?? 0 },
+    { label: "YTW/YTM", a: result.keyStats.find(r => r.label === "YTW / YTM")?.nA ?? 0, b: result.keyStats.find(r => r.label === "YTW / YTM")?.nB ?? 0 },
+  ].filter(x => (x.a ?? 0) > 0 || (x.b ?? 0) > 0) : []
+
+  const riskItems = result ? [
+    { label: "Duration", a: result.keyStats.find(r => r.label === "Duration")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Duration")?.nB ?? 0, unit: " yrs", better: "low" as const },
+    { label: "Std Deviation", a: result.keyStats.find(r => r.label === "Std Deviation")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Std Deviation")?.nB ?? 0, unit: "", better: "low" as const },
+    { label: "Sharpe Ratio", a: result.keyStats.find(r => r.label === "Sharpe Ratio")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Sharpe Ratio")?.nB ?? 0, unit: "", better: "high" as const },
+    { label: "Expense Ratio", a: (result.keyStats.find(r => r.label === "Expense Ratio")?.nA ?? 0) * 100, b: (result.keyStats.find(r => r.label === "Expense Ratio")?.nB ?? 0) * 100, unit: "%", better: "low" as const },
+  ].filter(x => x.a > 0 || x.b > 0) : []
+
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#f8fafc" }}>
       <header style={{ backgroundColor: "#0f3d6b" }}>
@@ -129,7 +172,7 @@ export default function Page() {
               {showUpload ? "Close" : "Update Data"}
             </button>
             <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>
-              {funds.length} funds{lastUpdated ? ` \u00b7 Updated ${fmtDate(lastUpdated)}` : ""}
+              {funds.length} funds{lastUpdated ? " \u00b7 Updated " + fmtDate(lastUpdated) : ""}
             </span>
           </div>
         </div>
@@ -176,39 +219,14 @@ export default function Page() {
           <div className="space-y-6 py-6">
             <ComparisonTable title="Key Statistics" rows={result.keyStats} tickerA={result.tickerA} tickerB={result.tickerB} highlight />
 
-            <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-              <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
-                <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Sector Allocation</h4>
-              </div>
-              <div className="grid grid-cols-1 gap-0 md:grid-cols-2">
-                <div className="border-b p-4 md:border-b-0 md:border-r" style={{ borderColor: "#f1f5f9" }}>
-                  <SectorPieChart data={result.pieDataA} ticker={result.tickerA} mode="internal" />
-                </div>
-                <div className="p-4">
-                  <SectorPieChart data={result.pieDataB} ticker={result.tickerB} mode="internal" />
-                </div>
-              </div>
-              <div className="border-t" style={{ borderColor: "#f1f5f9" }}>
-                <SectorCreditTable rows={result.sectorAllocation} tickerA={result.tickerA} tickerB={result.tickerB} label="Sector" />
-              </div>
-            </div>
+            <PieSection title="Sector Allocation" dataA={result.pieDataA} dataB={result.pieDataB}
+              tickerA={result.tickerA} tickerB={result.tickerB}
+              rows={result.sectorAllocation} rowLabel="Sector" viewMode="internal" />
 
-            <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-              <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
-                <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Credit Quality</h4>
-              </div>
-              <div className="grid grid-cols-1 gap-0 md:grid-cols-2">
-                <div className="border-b p-4 md:border-b-0 md:border-r" style={{ borderColor: "#f1f5f9" }}>
-                  <SectorPieChart data={result.creditPieA} ticker={result.tickerA} subtitle={`Avg Credit Quality: ${result.avgCreditA}`} mode="internal" />
-                </div>
-                <div className="p-4">
-                  <SectorPieChart data={result.creditPieB} ticker={result.tickerB} subtitle={`Avg Credit Quality: ${result.avgCreditB}`} mode="internal" />
-                </div>
-              </div>
-              <div className="border-t" style={{ borderColor: "#f1f5f9" }}>
-                <SectorCreditTable rows={result.creditQuality} tickerA={result.tickerA} tickerB={result.tickerB} label="Rating" />
-              </div>
-            </div>
+            <PieSection title="Credit Quality" dataA={result.creditPieA} dataB={result.creditPieB}
+              tickerA={result.tickerA} tickerB={result.tickerB}
+              subtitleA={"Avg Credit Quality: " + result.avgCreditA} subtitleB={"Avg Credit Quality: " + result.avgCreditB}
+              rows={result.creditQuality} rowLabel="Rating" viewMode="internal" />
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <PerformanceChart data={result.chartData} tickerA={result.tickerA} tickerB={result.tickerB} />
@@ -221,14 +239,7 @@ export default function Page() {
                   <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Income</h4>
                 </div>
                 <div className="p-4">
-                  <IncomeBars
-                    items={[
-                      { label: "SEC Yield", a: result.keyStats.find(r => r.label === "30-Day SEC Yield")?.nA ?? 0, b: result.keyStats.find(r => r.label === "30-Day SEC Yield")?.nB ?? 0 },
-                      { label: "Distribution", a: result.keyStats.find(r => r.label === "Distribution Yield")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Distribution Yield")?.nB ?? 0 },
-                      { label: "YTW/YTM", a: result.keyStats.find(r => r.label === "YTW / YTM")?.nA ?? 0, b: result.keyStats.find(r => r.label === "YTW / YTM")?.nB ?? 0 },
-                    ].filter(x => (x.a ?? 0) > 0 || (x.b ?? 0) > 0)}
-                    tickerA={result.tickerA} tickerB={result.tickerB}
-                  />
+                  <IncomeBars items={incomeItems} tickerA={result.tickerA} tickerB={result.tickerB} />
                 </div>
               </div>
               <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
@@ -236,15 +247,7 @@ export default function Page() {
                   <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>{"Risk & Structure"}</h4>
                 </div>
                 <div className="p-4">
-                  <RiskTable
-                    items={[
-                      { label: "Duration", a: result.keyStats.find(r => r.label === "Duration")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Duration")?.nB ?? 0, unit: " yrs", better: "low" as const },
-                      { label: "Std Deviation", a: result.keyStats.find(r => r.label === "Std Deviation")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Std Deviation")?.nB ?? 0, unit: "", better: "low" as const },
-                      { label: "Sharpe Ratio", a: result.keyStats.find(r => r.label === "Sharpe Ratio")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Sharpe Ratio")?.nB ?? 0, unit: "", better: "high" as const },
-                      { label: "Expense Ratio", a: (result.keyStats.find(r => r.label === "Expense Ratio")?.nA ?? 0) * 100, b: (result.keyStats.find(r => r.label === "Expense Ratio")?.nB ?? 0) * 100, unit: "%", better: "low" as const },
-                    ].filter(x => x.a > 0 || x.b > 0)}
-                    tickerA={result.tickerA} tickerB={result.tickerB}
-                  />
+                  <RiskTable items={riskItems} tickerA={result.tickerA} tickerB={result.tickerB} />
                 </div>
               </div>
             </div>
@@ -279,39 +282,14 @@ export default function Page() {
 
             <ComparisonTable title="Key Statistics" rows={result.keyStats} tickerA={result.tickerA} tickerB={result.tickerB} />
 
-            <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-              <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
-                <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Sector Allocation</h4>
-              </div>
-              <div className="grid grid-cols-1 gap-0 md:grid-cols-2">
-                <div className="border-b p-4 md:border-b-0 md:border-r" style={{ borderColor: "#f1f5f9" }}>
-                  <SectorPieChart data={result.pieDataA} ticker={result.tickerA} mode="advisor" />
-                </div>
-                <div className="p-4">
-                  <SectorPieChart data={result.pieDataB} ticker={result.tickerB} mode="advisor" />
-                </div>
-              </div>
-              <div className="border-t" style={{ borderColor: "#f1f5f9" }}>
-                <SectorCreditTable rows={result.sectorAllocation} tickerA={result.tickerA} tickerB={result.tickerB} label="Sector" />
-              </div>
-            </div>
+            <PieSection title="Sector Allocation" dataA={result.pieDataA} dataB={result.pieDataB}
+              tickerA={result.tickerA} tickerB={result.tickerB}
+              rows={result.sectorAllocation} rowLabel="Sector" viewMode="advisor" />
 
-            <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-              <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
-                <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Credit Quality</h4>
-              </div>
-              <div className="grid grid-cols-1 gap-0 md:grid-cols-2">
-                <div className="border-b p-4 md:border-b-0 md:border-r" style={{ borderColor: "#f1f5f9" }}>
-                  <SectorPieChart data={result.creditPieA} ticker={result.tickerA} subtitle={`Avg Credit Quality: ${result.avgCreditA}`} mode="advisor" />
-                </div>
-                <div className="p-4">
-                  <SectorPieChart data={result.creditPieB} ticker={result.tickerB} subtitle={`Avg Credit Quality: ${result.avgCreditB}`} mode="advisor" />
-                </div>
-              </div>
-              <div className="border-t" style={{ borderColor: "#f1f5f9" }}>
-                <SectorCreditTable rows={result.creditQuality} tickerA={result.tickerA} tickerB={result.tickerB} label="Rating" />
-              </div>
-            </div>
+            <PieSection title="Credit Quality" dataA={result.creditPieA} dataB={result.creditPieB}
+              tickerA={result.tickerA} tickerB={result.tickerB}
+              subtitleA={"Avg Credit Quality: " + result.avgCreditA} subtitleB={"Avg Credit Quality: " + result.avgCreditB}
+              rows={result.creditQuality} rowLabel="Rating" viewMode="advisor" />
 
             <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} />
 
