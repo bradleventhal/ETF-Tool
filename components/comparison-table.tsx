@@ -1,6 +1,6 @@
 "use client"
 
-import type { ComparisonRow, AnalysisMode } from "@/lib/fund-types"
+import type { ComparisonRow } from "@/lib/fund-types"
 
 interface Props {
   title: string
@@ -13,31 +13,31 @@ interface Props {
 export function ComparisonTable({ title, rows, tickerA, tickerB, highlight = false }: Props) {
   if (rows.length === 0) return null
 
-  function winClass(row: ComparisonRow, side: "a" | "b"): string {
-    if (!highlight || row.better === "none") return "text-foreground"
+  function cellStyle(row: ComparisonRow, side: "a" | "b"): React.CSSProperties {
+    if (!highlight || row.better === "none") return { color: "#334155" }
     const mine = side === "a" ? row.nA : row.nB
     const theirs = side === "a" ? row.nB : row.nA
-    if (mine == null || theirs == null || mine === 0 || theirs === 0) return "text-foreground"
+    if (mine == null || theirs == null || mine === 0 || theirs === 0) return { color: "#334155" }
     const wins = row.better === "high" ? mine > theirs : mine < theirs
-    return wins ? "text-primary font-bold" : "text-foreground"
+    return wins ? { color: "#0f3d6b", fontWeight: 700 } : { color: "#334155" }
   }
 
   return (
-    <div className="overflow-hidden rounded-md border border-border bg-card shadow-sm">
+    <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-border bg-muted/50">
-            <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</th>
-            <th className="px-4 py-2.5 text-right font-mono text-[11px] font-bold uppercase tracking-wider text-primary">{tickerA}</th>
-            <th className="px-4 py-2.5 text-right font-mono text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{tickerB}</th>
+          <tr style={{ backgroundColor: "#f1f5f9", borderBottom: "1px solid #e2e8f0" }}>
+            <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>{title}</th>
+            <th className="px-4 py-2.5 text-right font-mono text-[11px] font-bold uppercase tracking-wider" style={{ color: "#0f3d6b" }}>{tickerA}</th>
+            <th className="px-4 py-2.5 text-right font-mono text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>{tickerB}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row, i) => (
-            <tr key={row.label} className={`border-b border-border/50 last:border-0 ${i % 2 === 0 ? "bg-card" : "bg-muted/20"}`}>
-              <td className="px-4 py-2 text-[13px] text-muted-foreground">{row.label}</td>
-              <td className={`px-4 py-2 text-right font-mono text-[13px] ${winClass(row, "a")}`}>{row.a}</td>
-              <td className={`px-4 py-2 text-right font-mono text-[13px] ${winClass(row, "b")}`}>{row.b}</td>
+            <tr key={row.label} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: i < rows.length - 1 ? "1px solid #f1f5f9" : undefined }}>
+              <td className="px-4 py-2 text-[13px]" style={{ color: "#64748b" }}>{row.label}</td>
+              <td className="px-4 py-2 text-right font-mono text-[13px]" style={cellStyle(row, "a")}>{row.a}</td>
+              <td className="px-4 py-2 text-right font-mono text-[13px]" style={cellStyle(row, "b")}>{row.b}</td>
             </tr>
           ))}
         </tbody>

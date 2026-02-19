@@ -61,5 +61,7 @@ export interface AnalysisResult {
   performance: ComparisonRow[]
   sectorAllocation: ComparisonRow[]
   creditQuality: ComparisonRow[]
+  pieDataA: { name: string; value: number }[]
+  pieDataB: { name: string; value: number }[]
   chartData: { period: string; fundA: number; fundB: number }[]
 }
