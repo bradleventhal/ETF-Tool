@@ -14,8 +14,6 @@ export interface FundData {
   oneYear: number | null
   commonInception: number | null
   threeYear: number | null
-
-  // Sector breakdown
   nonAgencyRmbs: number | null
   agencyRmbs: number | null
   abs: number | null
@@ -25,8 +23,6 @@ export interface FundData {
   corporateCredit: number | null
   governmentCash: number | null
   other: number | null
-
-  // Credit quality (detailed)
   aaa: number | null
   aa: number | null
   a: number | null
@@ -49,28 +45,23 @@ export interface ComparisonRow {
   higherIsBetter: boolean
 }
 
-export interface SectorRow {
-  label: string
-  valueA: string
-  valueB: string
-}
-
 export interface AnalysisResult {
-  title: string
-  structureText: string
-  sectorText: string
-  incomeText: string
-  riskText: string
-  performanceText: string
-  summaryLabel: string
-  summaryText: string
+  tickerA: string
+  tickerB: string
+  nameA: string
+  nameB: string
+  sections: NarrativeSection[]
   keyStats: ComparisonRow[]
   performanceComp: ComparisonRow[]
   creditQuality: ComparisonRow[]
   sectorAllocation: ComparisonRow[]
   chartData: { period: string; fundA: number; fundB: number }[]
-  tickerA: string
-  tickerB: string
   durComp: boolean
   creditComp: boolean
+}
+
+export interface NarrativeSection {
+  heading: string
+  body: string
+  type: "text" | "callout"
 }

@@ -14,58 +14,35 @@ export function ComparisonTable({ title, rows, tickerA, tickerB, mode }: Compari
   if (rows.length === 0) return null
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
-      <div className="bg-secondary px-4 py-2">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-primary">
-          {title}
-        </h4>
-      </div>
-      <table className="w-full">
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <table className="w-full text-[12px]">
         <thead>
-          <tr className="border-b border-border bg-primary/5">
-            <th className="px-4 py-2 text-left text-xs font-semibold text-foreground">
-              Metric
-            </th>
-            <th className="px-4 py-2 text-center text-xs font-semibold text-foreground">
-              {tickerA}
-            </th>
-            <th className="px-4 py-2 text-center text-xs font-semibold text-foreground">
-              {tickerB}
-            </th>
+          <tr className="border-b border-border bg-secondary/60">
+            <th className="px-3 py-2 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{title}</th>
+            <th className="px-3 py-2 text-right font-mono text-[10px] font-bold uppercase tracking-wider text-foreground">{tickerA}</th>
+            <th className="px-3 py-2 text-right font-mono text-[10px] font-bold uppercase tracking-wider text-foreground">{tickerB}</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row, i) => {
-            const isAlt = i % 2 === 0
+            let cellAExtra = ""
+            let cellBExtra = ""
 
-            let cellAClass = "px-4 py-2 text-center text-sm font-semibold text-foreground"
-            let cellBClass = "px-4 py-2 text-center text-sm font-semibold text-foreground"
-
-            // Green highlight logic in internal mode (from VBA AddCompRow)
-            if (
-              mode === "internal" &&
-              row.numA !== null && row.numB !== null &&
-              row.numA !== 0 && row.numB !== 0
-            ) {
+            if (mode === "internal" && row.numA != null && row.numB != null && row.numA !== 0 && row.numB !== 0) {
               if (row.higherIsBetter) {
-                if (row.numA > row.numB) cellAClass += " bg-emerald-100 text-emerald-900"
-                else if (row.numB > row.numA) cellBClass += " bg-emerald-100 text-emerald-900"
+                if (row.numA > row.numB) cellAExtra = " bg-emerald-50 text-emerald-800 font-bold"
+                else if (row.numB > row.numA) cellBExtra = " bg-emerald-50 text-emerald-800 font-bold"
               } else {
-                if (row.numA < row.numB) cellAClass += " bg-emerald-100 text-emerald-900"
-                else if (row.numB < row.numA) cellBClass += " bg-emerald-100 text-emerald-900"
+                if (row.numA < row.numB) cellAExtra = " bg-emerald-50 text-emerald-800 font-bold"
+                else if (row.numB < row.numA) cellBExtra = " bg-emerald-50 text-emerald-800 font-bold"
               }
             }
 
             return (
-              <tr
-                key={row.label}
-                className={`border-b border-border last:border-b-0 ${isAlt ? "bg-card" : "bg-background"}`}
-              >
-                <td className="px-4 py-2 text-sm text-muted-foreground">
-                  {row.label}
-                </td>
-                <td className={cellAClass}>{row.valueA}</td>
-                <td className={cellBClass}>{row.valueB}</td>
+              <tr key={row.label} className={`border-b border-border last:border-b-0 ${i % 2 === 0 ? "bg-card" : "bg-secondary/20"}`}>
+                <td className="px-3 py-1.5 text-muted-foreground">{row.label}</td>
+                <td className={`px-3 py-1.5 text-right font-mono font-semibold text-foreground${cellAExtra}`}>{row.valueA}</td>
+                <td className={`px-3 py-1.5 text-right font-mono font-semibold text-foreground${cellBExtra}`}>{row.valueB}</td>
               </tr>
             )
           })}

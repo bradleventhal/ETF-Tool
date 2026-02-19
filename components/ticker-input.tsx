@@ -109,12 +109,12 @@ export function TickerInput({
 
   return (
     <div className="flex flex-col gap-1" ref={wrapperRef}>
-      <label className="text-xs font-medium text-muted-foreground">
+      <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </label>
       <div className="relative">
         {value && selectedOption ? (
-          <div className="flex h-10 items-center gap-2 rounded-md border border-border bg-card px-3">
+          <div className="flex h-9 items-center gap-2 rounded border border-border bg-card px-3">
             <span className="font-mono text-sm font-bold text-foreground">
               {selectedOption.ticker}
             </span>
@@ -151,7 +151,7 @@ export function TickerInput({
               }}
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
-              className="h-10 w-full rounded-md border border-border bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
+              className="h-9 w-full rounded border border-border bg-card pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring"
               autoComplete="off"
             />
           </>
