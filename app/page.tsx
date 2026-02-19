@@ -267,11 +267,14 @@ export default function Page() {
             {takeaway && (
               <div className="rounded border-l-4 p-5" style={{ borderColor: "#0f3d6b", backgroundColor: "#f0f7ff" }}>
                 <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: "#0f3d6b" }}>Key Takeaway</h3>
-                <div className="space-y-2">
+                <ul className="space-y-2">
                   {takeaway.lines.map((line, i) => (
-                    <p key={i} className="text-sm leading-relaxed" style={{ color: "#1e293b" }}>{line}</p>
+                    <li key={i} className="flex gap-2.5 text-sm leading-relaxed" style={{ color: "#1e293b" }}>
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: "#0f3d6b" }} />
+                      {line}
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
             )}
           </div>
@@ -314,11 +317,14 @@ export default function Page() {
             {takeaway && (
               <div className="rounded border p-6" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
                 <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: "#0f3d6b" }}>Investment Considerations</h3>
-                <div className="space-y-2">
+                <ul className="space-y-2">
                   {takeaway.lines.map((line, i) => (
-                    <p key={i} className="text-sm leading-relaxed" style={{ color: "#475569" }}>{line}</p>
+                    <li key={i} className="flex gap-2.5 text-sm leading-relaxed" style={{ color: "#475569" }}>
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: "#94a3b8" }} />
+                      {line}
+                    </li>
                   ))}
-                </div>
+                </ul>
               </div>
             )}
 

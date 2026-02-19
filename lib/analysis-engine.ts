@@ -111,9 +111,11 @@ function buildNarrative(a: FundData, b: FundData, tA: string, tB: string, mode: 
 
     // ---- PERFORMANCE ----
     if (perf3) {
-      tkLines.push(`3Y total return confirms the income story: ${thrD > 0 ? tA : tB} has outperformed by ${Math.abs(thrD).toFixed(1)}%.`)
+      tkLines.push(`3Y total return confirms the income story: ${tA} has outperformed by ${Math.abs(thrD).toFixed(1)}%.`)
     } else if (perfNeg) {
       tkLines.push(`Note: ${tB} has outperformed over 3Y (${Math.abs(thrD).toFixed(1)}%) despite the yield gap. Be prepared to address this.`)
+    } else if (Math.abs(thrD) > 0.01) {
+      tkLines.push(`3Y performance is closely matched: ${thrD > 0 ? tA : tB} ahead by ${Math.abs(thrD).toFixed(1)}%.`)
     }
 
     // ---- LEAD WITH / PUSHBACKS ----
@@ -165,7 +167,9 @@ function buildNarrative(a: FundData, b: FundData, tA: string, tB: string, mode: 
     }
 
     if (Math.abs(thrD) > 1.5) {
-      tkLines.push(`3Y performance supports the income advantage: ${thrD > 0 ? tA : tB} ahead by ${Math.abs(thrD).toFixed(1)}%.`)
+      tkLines.push(`3Y performance: ${thrD > 0 ? tA : tB} ahead by ${Math.abs(thrD).toFixed(1)}%.`)
+    } else if (Math.abs(thrD) > 0.01) {
+      tkLines.push(`3Y performance is closely matched: ${thrD > 0 ? tA : tB} ahead by ${Math.abs(thrD).toFixed(1)}%.`)
     }
   }
   sections.push({ title: "Takeaway", lines: tkLines })
@@ -199,7 +203,7 @@ function buildNarrative(a: FundData, b: FundData, tA: string, tB: string, mode: 
 
 function keyStats(a: FundData, b: FundData, mode: AnalysisMode): ComparisonRow[] {
   const rows: ComparisonRow[] = [
-    { label: "Duration", a: fNum(a.duration), b: fNum(b.duration), nA: a.duration, nB: b.duration, better: "low" },
+    { label: "Duration", a: fNum(a.duration), b: fNum(b.duration), nA: a.duration, nB: b.duration, better: "none" },
   ]
 
   if (mode === "advisor") {
