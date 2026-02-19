@@ -12,33 +12,43 @@ import { saveFunds, loadFunds } from "@/lib/fund-store"
 import type { FundData, AnalysisMode, AnalysisResult } from "@/lib/fund-types"
 import { Upload, X, Loader2, ArrowRightLeft } from "lucide-react"
 
-function NegTable({ rows, tickerA, tickerB, label }: {
+function NegTable({ rows, tickerA, tickerB, label, viewMode }: {
   rows: { label: string; a: string; b: string; nA: number | null; nB: number | null }[]
-  tickerA: string; tickerB: string; label: string
+  tickerA: string; tickerB: string; label: string; viewMode: "internal" | "advisor"
 }) {
+  const hasAnyNeg = rows.some(r => (r.nA != null && r.nA < -0.001) || (r.nB != null && r.nB < -0.001))
+  const hasLargeNeg = rows.some(r => (r.nA != null && r.nA < -0.099) || (r.nB != null && r.nB < -0.099))
+  const showNote = viewMode === "internal" ? hasAnyNeg : hasLargeNeg
   return (
-    <table className="w-full text-sm">
-      <thead>
-        <tr style={{ backgroundColor: "#f8fafc" }}>
-          <th className="px-4 py-2 text-left text-[11px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>{label}</th>
-          <th className="px-4 py-2 text-right font-mono text-[11px] font-bold" style={{ color: "#0f3d6b" }}>{tickerA}</th>
-          <th className="px-4 py-2 text-right font-mono text-[11px] font-bold" style={{ color: "#64748b" }}>{tickerB}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r, i) => {
-          const nA = r.nA != null ? r.nA : 0
-          const nB = r.nB != null ? r.nB : 0
-          return (
-            <tr key={r.label} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: i < rows.length - 1 ? "1px solid #f1f5f9" : undefined }}>
-              <td className="px-4 py-1.5 text-[13px]" style={{ color: "#64748b" }}>{r.label}</td>
-              <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: nA < -0.001 ? "#dc2626" : "#334155", fontWeight: nA < -0.001 ? 700 : 400 }}>{r.a}</td>
-              <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: nB < -0.001 ? "#dc2626" : "#334155", fontWeight: nB < -0.001 ? 700 : 400 }}>{r.b}</td>
-            </tr>
-          )
-        })}
-      </tbody>
-    </table>
+    <div>
+      <table className="w-full text-sm">
+        <thead>
+          <tr style={{ backgroundColor: "#f8fafc" }}>
+            <th className="px-4 py-2 text-left text-[11px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>{label}</th>
+            <th className="px-4 py-2 text-right font-mono text-[11px] font-bold" style={{ color: "#0f3d6b" }}>{tickerA}</th>
+            <th className="px-4 py-2 text-right font-mono text-[11px] font-bold" style={{ color: "#64748b" }}>{tickerB}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => {
+            const nA = r.nA != null ? r.nA : 0
+            const nB = r.nB != null ? r.nB : 0
+            return (
+              <tr key={r.label} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: i < rows.length - 1 ? "1px solid #f1f5f9" : undefined }}>
+                <td className="px-4 py-1.5 text-[13px]" style={{ color: "#64748b" }}>{r.label}</td>
+                <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: nA < -0.001 ? "#dc2626" : "#334155", fontWeight: nA < -0.001 ? 700 : 400 }}>{r.a}</td>
+                <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: nB < -0.001 ? "#dc2626" : "#334155", fontWeight: nB < -0.001 ? 700 : 400 }}>{r.b}</td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      {showNote && (
+        <p className="px-4 py-2 text-[11px]" style={{ color: "#dc2626" }}>
+          * Negative allocation implies utilization of leverage in the portfolio.
+        </p>
+      )}
+    </div>
   )
 }
 
@@ -66,7 +76,7 @@ function PieWithTable({ title, dataA, dataB, tickerA, tickerB, subtitleA, subtit
         </div>
       </div>
       <div className="border-t" style={{ borderColor: "#f1f5f9" }}>
-        <NegTable rows={rows} tickerA={tickerA} tickerB={tickerB} label={rowLabel} />
+        <NegTable rows={rows} tickerA={tickerA} tickerB={tickerB} label={rowLabel} viewMode={viewMode} />
       </div>
     </div>
   )
@@ -268,13 +278,17 @@ export default function Page() {
         {result && mode === "advisor" && (
           <div className="space-y-8 py-8">
             <div className="text-center">
-              <div className="mb-4 text-[11px] font-bold uppercase tracking-widest" style={{ color: "#94a3b8" }}>Fund Comparison</div>
-              <div className="inline-grid items-center gap-x-5 gap-y-0" style={{ gridTemplateColumns: "1fr auto 1fr" }}>
-                <p className="text-right text-lg font-semibold leading-tight" style={{ color: "#0f3d6b" }}>{result.tickerA}</p>
-                <span className="row-span-2 text-2xl font-light italic" style={{ color: "#cbd5e1" }}>vs.</span>
-                <p className="text-left text-lg font-semibold leading-tight" style={{ color: "#0f3d6b" }}>{result.tickerB}</p>
-                <p className="text-right text-xs leading-snug" style={{ color: "#94a3b8" }}>{result.nameA}</p>
-                <p className="text-left text-xs leading-snug" style={{ color: "#94a3b8" }}>{result.nameB}</p>
+              <div className="mb-5 text-[11px] font-bold uppercase tracking-widest" style={{ color: "#94a3b8" }}>Fund Comparison</div>
+              <div className="flex items-center justify-center gap-10">
+                <div className="flex flex-col items-center">
+                  <p className="text-xl font-bold tracking-wide" style={{ color: "#0f3d6b" }}>{result.tickerA}</p>
+                  <p className="mt-0.5 max-w-[180px] text-center text-[11px] leading-tight" style={{ color: "#94a3b8" }}>{result.nameA}</p>
+                </div>
+                <span className="text-2xl font-light italic" style={{ color: "#cbd5e1" }}>vs.</span>
+                <div className="flex flex-col items-center">
+                  <p className="text-xl font-bold tracking-wide" style={{ color: "#0f3d6b" }}>{result.tickerB}</p>
+                  <p className="mt-0.5 max-w-[180px] text-center text-[11px] leading-tight" style={{ color: "#94a3b8" }}>{result.nameB}</p>
+                </div>
               </div>
             </div>
 

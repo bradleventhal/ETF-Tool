@@ -29,19 +29,31 @@ export function SectorPieChart({ data, ticker, subtitle, mode = "internal" }: Pr
   return (
     <div className="flex flex-col items-center">
       <p className="mb-0.5 text-center font-mono text-xs font-bold tracking-wider" style={{ color: "#0f3d6b" }}>{ticker}</p>
-      {subtitle && <p className="mb-2 text-center text-[10px] font-medium" style={{ color: "#64748b" }}>{subtitle}</p>}
-      <ResponsiveContainer width="100%" height={220}>
-        <PieChart>
+      {subtitle && <p className="mb-3 text-center text-[10px] font-medium" style={{ color: "#64748b" }}>{subtitle}</p>}
+      <ResponsiveContainer width="100%" height={240}>
+        <PieChart margin={{ top: 15, right: 5, bottom: 5, left: 5 }}>
           <Pie
             data={chartData}
             cx="50%"
             cy="50%"
             innerRadius={45}
-            outerRadius={80}
+            outerRadius={75}
             paddingAngle={2}
             dataKey="value"
             stroke="none"
-            label={({ name, value }) => `${value.toFixed(1)}%`}
+            label={({ cx, cy, midAngle, outerRadius: oR, index }) => {
+              const RADIAN = Math.PI / 180
+              const radius = oR + 16
+              const x = cx + radius * Math.cos(-midAngle * RADIAN)
+              const y = cy + radius * Math.sin(-midAngle * RADIAN)
+              const original = sorted[index]
+              const display = original ? original.value : chartData[index].value
+              return (
+                <text x={x} y={y} fill="#475569" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={10} fontWeight={600}>
+                  {`${display < 0 ? "" : ""}${display.toFixed(1)}%`}
+                </text>
+              )
+            }}
           >
             {chartData.map((_, idx) => (
               <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
@@ -73,12 +85,6 @@ export function SectorPieChart({ data, ticker, subtitle, mode = "internal" }: Pr
           />
         </PieChart>
       </ResponsiveContainer>
-      {showLeverageWarning && (
-        <div className="mt-2 flex items-center gap-1.5 rounded px-3 py-1.5" style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca" }}>
-          <span className="text-xs font-bold" style={{ color: "#dc2626" }}>!</span>
-          <span className="text-[11px] font-medium" style={{ color: "#dc2626" }}>Negative allocation implies use of leverage in the portfolio</span>
-        </div>
-      )}
     </div>
   )
 }

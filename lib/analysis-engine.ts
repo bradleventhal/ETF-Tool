@@ -5,6 +5,10 @@ function fPct(v: number | null, d = 2): string { return v == null || isNaN(v) ||
 function fNum(v: number | null, d = 2): string { return v == null || isNaN(v) ? "\u2014" : v.toFixed(d) }
 function fBps(v: number): string { const a = Math.abs(Math.round(v)); return `${v >= 0 ? "+" : "\u2212"}${a}bps` }
 function secPct(d: FundData) { return nz(d.nonAgencyRmbs) + nz(d.agencyRmbs) + nz(d.abs) + nz(d.clo) + nz(d.cmbs) }
+function creditRank(label: string): number {
+  const ranks: Record<string, number> = { "AAA": 1, "AA": 2, "A": 3, "BBB": 4, "BB": 5, "B": 6, "CCC": 7, "Below CCC": 8 }
+  return ranks[label] ?? 9
+}
 function igPct(d: FundData) { return nz(d.aaa) + nz(d.aa) + nz(d.a) + nz(d.bbb) }
 
 function buildNarrative(a: FundData, b: FundData, tA: string, tB: string, mode: AnalysisMode): NarrativeSection[] {
@@ -27,16 +31,33 @@ function buildNarrative(a: FundData, b: FundData, tA: string, tB: string, mode: 
   const hiYield = absBps > 20
   const perf3 = thrD > 1.5
   const perfNeg = thrD < -1.5
-  const hiCred = iA > iB + 0.05 ? tA : (iB > iA + 0.05 ? tB : null)
-  const loDur = durA < durB - 0.15 ? tA : (durB < durA - 0.15 ? tB : null)
+  // Credit: any step difference is meaningful (AA vs A, etc.)
   const avgCredA = avgCreditQuality(a), avgCredB = avgCreditQuality(b)
+  const credRankA = creditRank(avgCredA), credRankB = creditRank(avgCredB)
+  const hiCred = credRankA < credRankB ? tA : (credRankB < credRankA ? tB : null)
+  const loDur = durA < durB - 0.15 ? tA : (durB < durA - 0.15 ? tB : null)
   const relExpBps = Math.round((nz(a.expense) - nz(b.expense)) * 10000)
-  // Determine which yield label to reference
   const secLabel = "30-Day SEC Yield"
-  const distBps = Math.round((nz(a.distributionYield) - nz(b.distributionYield)) * 10000)
+
+  // Duration category helper
+  function durCategory(d: number): string {
+    if (d < 1) return "Ultrashort"
+    if (d < 2) return "Short"
+    if (d < 5) return "Intermediate"
+    if (d < 7) return "Core/Core Plus"
+    return "Long Duration"
+  }
+  const catA = durCategory(durA), catB = durCategory(durB)
+  const sameCat = catA === catB
+
+  // Sector exposure description
+  function sectorDesc(ticker: string, secVal: number): string {
+    if (secVal < 0.01) return `${ticker} has no meaningful securitized exposure`
+    return `${ticker}'s securitized allocation of ${fPct(secVal, 0)}`
+  }
 
   if (mode === "internal") {
-    // ---- HEADLINE: Yield advantage with context ----
+    // ---- HEADLINE ----
     if (hiYield) {
       tkLines.push(`${hi} delivers a ${fBps(absBps)} ${secLabel} advantage over ${lo} (${fPct(a.secYield)} vs ${fPct(b.secYield)}).`)
     } else {
@@ -45,24 +66,35 @@ function buildNarrative(a: FundData, b: FundData, tA: string, tB: string, mode: 
 
     // ---- CREDIT QUALITY ----
     if (hiCred) {
-      tkLines.push(`${hiCred} maintains higher average credit quality (${hiCred === tA ? avgCredA : avgCredB} vs ${hiCred === tA ? avgCredB : avgCredA}), with IG allocation of ${fPct(hiCred === tA ? iA : iB, 0)} vs ${fPct(hiCred === tA ? iB : iA, 0)}.${hiYield && hiCred === hi ? " Higher yield AND better credit quality is a strong positioning story." : ""}`)
+      const credDiff = Math.abs(credRankA - credRankB)
+      const emphasis = credDiff >= 2 ? "significantly " : ""
+      tkLines.push(`${hiCred} carries ${emphasis}higher average credit quality (${hiCred === tA ? avgCredA : avgCredB} vs ${hiCred === tA ? avgCredB : avgCredA}), with IG allocation of ${fPct(hiCred === tA ? iA : iB, 0)} vs ${fPct(hiCred === tA ? iB : iA, 0)}.${hiYield && hiCred === hi ? " Higher yield AND better credit quality is a strong positioning story." : ""}`)
     } else {
-      tkLines.push(`Credit quality is comparable (avg ${avgCredA} vs ${avgCredB}).`)
+      tkLines.push(`Credit quality is in line across both funds (avg ${avgCredA}).`)
     }
 
     // ---- DURATION ----
     if (loDur && hiYield && loDur === hi) {
-      tkLines.push(`${hi} achieves this yield advantage at shorter duration (${fNum(hi === tA ? durA : durB)} vs ${fNum(hi === tA ? durB : durA)}), meaning similar income with less rate risk.`)
+      tkLines.push(`${hi} achieves this yield advantage at shorter duration (${fNum(hi === tA ? durA : durB)} vs ${fNum(hi === tA ? durB : durA)}). Both funds are classified as ${catA} (${sameCat ? "same" : `${catA} vs ${catB}`} category), meaning comparable income with less rate risk.`)
     } else if (durComp) {
-      tkLines.push(`Duration profiles are aligned (${fNum(durA)} vs ${fNum(durB)}), making this a clean apples-to-apples income comparison.`)
+      tkLines.push(`Duration profiles are aligned at ${fNum(durA)} vs ${fNum(durB)} \u2014 both ${catA} duration. This makes it a clean apples-to-apples income comparison within the same investment category.`)
     } else {
       const longer = durA > durB ? tA : tB
-      tkLines.push(`${longer} runs longer duration (${fNum(Math.max(durA, durB))} vs ${fNum(Math.min(durA, durB))}). Duration difference should be considered in rate risk context.`)
+      const shorter = durA > durB ? tB : tA
+      tkLines.push(`${longer} runs longer duration (${fNum(Math.max(durA, durB))} \u2014 ${durA > durB ? catA : catB}) vs ${shorter} (${fNum(Math.min(durA, durB))} \u2014 ${durA > durB ? catB : catA}). The category difference matters for rate risk context.`)
     }
 
     // ---- SECTOR DRIVER ----
     if (Math.abs(sA - sB) > 0.15) {
-      tkLines.push(`Yield differential is driven by ${hi === tA ? tA : tB}'s securitized overweight (${fPct(hi === tA ? sA : sB, 0)} securitized) vs ${lo}'s corporate tilt (${fPct(lo === tA ? sA : sB, 0)} securitized).`)
+      const hiSec = sA > sB ? tA : tB
+      const loSec = sA > sB ? tB : tA
+      const loSecVal = sA > sB ? sB : sA
+      const hiSecVal = sA > sB ? sA : sB
+      if (loSecVal < 0.01) {
+        tkLines.push(`Yield differential is driven by ${hiSec}'s securitized overweight (${fPct(hiSecVal, 0)}). ${sectorDesc(loSec, loSecVal)} \u2014 it is primarily corporate/government focused.`)
+      } else {
+        tkLines.push(`Yield differential is driven by ${hiSec}'s securitized overweight (${fPct(hiSecVal, 0)} securitized) vs ${loSec}'s lower securitized allocation (${fPct(loSecVal, 0)}).`)
+      }
     }
 
     // ---- PERFORMANCE ----
@@ -87,33 +119,39 @@ function buildNarrative(a: FundData, b: FundData, tA: string, tB: string, mode: 
       tkLines.push(`Likely Pushbacks: 3Y underperformance of ${Math.abs(thrD).toFixed(1)}% \u2014 address with recent trend improvement and yield carry.`)
     }
   } else {
-    // ---- ADVISOR MODE: professional, factual, subtly makes the case ----
+    // ---- ADVISOR MODE ----
     if (hiYield) {
       tkLines.push(`${hi} provides a ${fBps(absBps)} ${secLabel} advantage (${fPct(a.secYield)} vs ${fPct(b.secYield)}).`)
     } else {
       tkLines.push(`Both funds offer similar yield levels (${fPct(a.secYield)} vs ${fPct(b.secYield)}) with differentiation in sector allocation and positioning.`)
     }
 
-    // Credit quality
     if (hiCred) {
-      tkLines.push(`${hiCred} maintains higher average credit quality (${hiCred === tA ? avgCredA : avgCredB} vs ${hiCred === tA ? avgCredB : avgCredA}).${hiYield && hiCred === hi ? " The combination of higher yield and better credit quality is notable." : ""}`)
+      const credDiff = Math.abs(credRankA - credRankB)
+      const emphasis = credDiff >= 2 ? "meaningfully " : ""
+      tkLines.push(`${hiCred} maintains ${emphasis}higher average credit quality (${hiCred === tA ? avgCredA : avgCredB} vs ${hiCred === tA ? avgCredB : avgCredA}).${hiYield && hiCred === hi ? " The combination of higher yield and better credit quality is notable." : ""}`)
     } else {
-      tkLines.push(`Credit quality is comparable across both funds (avg ${avgCredA} vs ${avgCredB}).`)
+      tkLines.push(`Credit quality is in line across both funds (avg ${avgCredA}).`)
     }
 
-    // Duration
     if (loDur && hiYield && loDur === hi) {
-      tkLines.push(`${hi} achieves this at shorter duration (${fNum(hi === tA ? durA : durB)} vs ${fNum(hi === tA ? durB : durA)}), suggesting comparable income with reduced rate sensitivity.`)
+      tkLines.push(`${hi} achieves this at shorter duration (${fNum(hi === tA ? durA : durB)} vs ${fNum(hi === tA ? durB : durA)}). Both are classified as ${catA} duration, suggesting comparable income with reduced rate sensitivity.`)
     } else if (durComp) {
-      tkLines.push(`Duration profiles are aligned (${fNum(durA)} vs ${fNum(durB)}).`)
+      tkLines.push(`Duration profiles are aligned at ${fNum(durA)} vs ${fNum(durB)} \u2014 both ${catA} duration.`)
     }
 
-    // Sector
     if (Math.abs(sA - sB) > 0.15) {
-      tkLines.push(`The income differential reflects ${hi === tA ? tA : tB}'s securitized positioning (${fPct(hi === tA ? sA : sB, 0)}) relative to ${lo}'s corporate allocation.`)
+      const hiSec = sA > sB ? tA : tB
+      const loSec = sA > sB ? tB : tA
+      const loSecVal = sA > sB ? sB : sA
+      const hiSecVal = sA > sB ? sA : sB
+      if (loSecVal < 0.01) {
+        tkLines.push(`The income differential reflects ${hiSec}'s securitized positioning (${fPct(hiSecVal, 0)}), while ${loSec} is primarily corporate/government focused.`)
+      } else {
+        tkLines.push(`The income differential reflects ${hiSec}'s securitized positioning (${fPct(hiSecVal, 0)}) relative to ${loSec}'s allocation (${fPct(loSecVal, 0)}).`)
+      }
     }
 
-    // Performance
     if (Math.abs(thrD) > 1.5) {
       tkLines.push(`3Y performance supports the income advantage: ${thrD > 0 ? tA : tB} ahead by ${Math.abs(thrD).toFixed(1)}%.`)
     }
@@ -192,7 +230,7 @@ function perfTable(a: FundData, b: FundData): ComparisonRow[] {
 function sectorTable(a: FundData, b: FundData): ComparisonRow[] {
   const rows: ComparisonRow[] = []
   const add = (l: string, vA: number | null, vB: number | null) => {
-    if (nz(vA) > 0.005 || nz(vB) > 0.005)
+    if (Math.abs(nz(vA)) > 0.001 || Math.abs(nz(vB)) > 0.001)
       rows.push({ label: l, a: fPct(vA, 1), b: fPct(vB, 1), nA: vA, nB: vB, better: "none" })
   }
   add("Non-Agency RMBS", a.nonAgencyRmbs, b.nonAgencyRmbs)
