@@ -24,11 +24,16 @@ export function TickerInput({ label, value, onChange, options, placeholder = "Ty
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
 
-  const selectedOption = options.find((o) => o.ticker === value)
+  // Deduplicate options by ticker (keep first occurrence)
+  const uniqueOptions = Array.from(
+    new Map(options.map((o) => [o.ticker, o])).values()
+  )
+
+  const selectedOption = uniqueOptions.find((o) => o.ticker === value)
 
   const filtered = query.trim() === ""
-    ? options
-    : options.filter((o) => {
+    ? uniqueOptions
+    : uniqueOptions.filter((o) => {
         const q = query.toLowerCase()
         return o.ticker.toLowerCase().includes(q) || o.name.toLowerCase().includes(q)
       })
