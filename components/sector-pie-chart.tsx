@@ -2,8 +2,8 @@
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts"
 
-// Wide navy-to-sky spread for max differentiation
-const COLORS = ["#0a2e52", "#0f4c81", "#2874a6", "#3498db", "#5bb8f5", "#85c1e9", "#aed6f1", "#d4e6f1"]
+// Navy, blue, teal, steel-gray, sky -- clearly distinguishable, cohesive
+const COLORS = ["#0a2e52", "#1a6fa0", "#17a2b8", "#5c7a94", "#4fc3f7", "#80cbc4", "#a3c4d9", "#cfd8dc"]
 
 interface Props {
   data: { name: string; value: number }[]
@@ -20,7 +20,8 @@ export function SectorPieChart({ data, ticker, subtitle, mode = "internal" }: Pr
 
   // Check for negative values (leverage)
   const hasNegative = sorted.some(d => d.value < 0)
-  const showLeverageWarning = mode === "internal" ? hasNegative : sorted.some(d => d.value <= -10)
+  // Internal: always show warning if any negative. Advisor: only if -10% or more
+  const showLeverageWarning = mode === "internal" ? hasNegative : sorted.some(d => d.value <= -10.0)
 
   // For the chart, use absolute values (pie can't show negatives)
   const chartData = sorted.map(d => ({ ...d, value: Math.abs(d.value) }))

@@ -231,7 +231,7 @@ export default function Page() {
                   />
                 </div>
               </div>
-              {/* Risk: table with spark bars, each metric own scale */}
+              {/* Risk: clean comparison table */}
               <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
                 <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
                   <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>{'Risk & Structure'}</h4>
@@ -239,10 +239,10 @@ export default function Page() {
                 <div className="p-4">
                   <RiskTable
                     items={[
-                      { label: "Duration", a: result.keyStats.find(r => r.label === "Duration")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Duration")?.nB ?? 0, unit: " yrs" },
-                      { label: "Std Deviation", a: result.keyStats.find(r => r.label === "Std Deviation")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Std Deviation")?.nB ?? 0, unit: "" },
-                      { label: "Sharpe Ratio", a: result.keyStats.find(r => r.label === "Sharpe Ratio")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Sharpe Ratio")?.nB ?? 0, unit: "" },
-                      { label: "Expense Ratio", a: (result.keyStats.find(r => r.label === "Expense Ratio")?.nA ?? 0) * 100, b: (result.keyStats.find(r => r.label === "Expense Ratio")?.nB ?? 0) * 100, unit: "%" },
+                      { label: "Duration", a: result.keyStats.find(r => r.label === "Duration")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Duration")?.nB ?? 0, unit: " yrs", better: "low" },
+                      { label: "Std Deviation", a: result.keyStats.find(r => r.label === "Std Deviation")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Std Deviation")?.nB ?? 0, unit: "", better: "low" },
+                      { label: "Sharpe Ratio", a: result.keyStats.find(r => r.label === "Sharpe Ratio")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Sharpe Ratio")?.nB ?? 0, unit: "", better: "high" },
+                      { label: "Expense Ratio", a: (result.keyStats.find(r => r.label === "Expense Ratio")?.nA ?? 0) * 100, b: (result.keyStats.find(r => r.label === "Expense Ratio")?.nB ?? 0) * 100, unit: "%", better: "low" },
                     ].filter(x => x.a > 0 || x.b > 0)}
                     tickerA={result.tickerA} tickerB={result.tickerB}
                   />
@@ -269,17 +269,13 @@ export default function Page() {
           <div className="py-8 space-y-8">
             {/* Centered branded header like a fact sheet */}
             <div className="text-center">
-              <div className="mb-3 text-[11px] font-bold uppercase tracking-widest" style={{ color: "#94a3b8" }}>Fund Comparison</div>
-              <div className="flex items-center justify-center gap-6">
-                <div className="text-right">
-                  <p className="text-lg font-semibold" style={{ color: "#0f3d6b" }}>{result.nameA}</p>
-                  <p className="font-mono text-sm" style={{ color: "#64748b" }}>{result.tickerA}</p>
-                </div>
-                <span className="text-xl font-light italic" style={{ color: "#94a3b8" }}>vs.</span>
-                <div className="text-left">
-                  <p className="text-lg font-semibold" style={{ color: "#0f3d6b" }}>{result.nameB}</p>
-                  <p className="font-mono text-sm" style={{ color: "#64748b" }}>{result.tickerB}</p>
-                </div>
+              <div className="mb-4 text-[11px] font-bold uppercase tracking-widest" style={{ color: "#94a3b8" }}>Fund Comparison</div>
+              <div className="inline-grid items-center gap-x-5 gap-y-0" style={{ gridTemplateColumns: "1fr auto 1fr" }}>
+                <p className="text-right text-lg font-semibold leading-tight" style={{ color: "#0f3d6b" }}>{result.tickerA}</p>
+                <span className="row-span-2 text-2xl font-light italic" style={{ color: "#cbd5e1" }}>vs.</span>
+                <p className="text-left text-lg font-semibold leading-tight" style={{ color: "#0f3d6b" }}>{result.tickerB}</p>
+                <p className="text-right text-xs leading-snug" style={{ color: "#94a3b8" }}>{result.nameA}</p>
+                <p className="text-left text-xs leading-snug" style={{ color: "#94a3b8" }}>{result.nameB}</p>
               </div>
             </div>
 

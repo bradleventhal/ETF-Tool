@@ -19,55 +19,104 @@ function buildNarrative(a: FundData, b: FundData, tA: string, tB: string, mode: 
 
   // --- Takeaway (the key card) ---
   const tkLines: string[] = []
+  // Shared metrics
+  const hi = secBps > 0 ? tA : tB
+  const lo = secBps > 0 ? tB : tA
+  const absBps = Math.abs(Math.round(secBps))
+  const durComp = Math.abs(durA - durB) <= 0.5
+  const hiYield = absBps > 20
+  const perf3 = thrD > 1.5
+  const perfNeg = thrD < -1.5
+  const hiCred = iA > iB + 0.05 ? tA : (iB > iA + 0.05 ? tB : null)
+  const loDur = durA < durB - 0.15 ? tA : (durB < durA - 0.15 ? tB : null)
+  const avgCredA = avgCreditQuality(a), avgCredB = avgCreditQuality(b)
+  const relExpBps = Math.round((nz(a.expense) - nz(b.expense)) * 10000)
+  // Determine which yield label to reference
+  const secLabel = "30-Day SEC Yield"
+  const distBps = Math.round((nz(a.distributionYield) - nz(b.distributionYield)) * 10000)
+
   if (mode === "internal") {
-    const hi = secBps > 0 ? tA : tB
-    const lo = secBps > 0 ? tB : tA
-    const absBps = Math.abs(Math.round(secBps))
-    const durComp = Math.abs(durA - durB) <= 0.5
-    const credComp = Math.abs(iA - iB) <= 0.10
-    const hiYield = absBps > 20
-    const perf3 = thrD > 1.5
-    const perfNeg = thrD < -1.5
-
-    const hiCred = iA > iB + 0.05 ? tA : (iB > iA + 0.05 ? tB : null)
-    const loDur = durA < durB - 0.15 ? tA : (durB < durA - 0.15 ? tB : null)
-
-    if (hiYield && credComp && durComp && perf3 && hi === tA) {
-      tkLines.push(`${tA} delivers a ${fBps(absBps)} yield advantage over ${tB} with comparable credit quality (avg ${avgCreditQuality(a)}) and duration (${fNum(durA)} vs ${fNum(durB)}). 3Y outperformance of ${thrD.toFixed(1)}% confirms the income pickup translates to total return.`)
-    } else if (hiYield && hiCred === hi) {
-      tkLines.push(`${hi} offers a ${fBps(absBps)} yield pickup while maintaining higher credit quality (avg ${avgCreditQuality(hi === tA ? a : b)} vs ${avgCreditQuality(hi === tA ? b : a)}).${durComp ? ` Duration profiles are comparable (${fNum(durA)} vs ${fNum(durB)}).` : ""}`)
-      if (perf3) tkLines.push(`3Y performance supports: ${thrD > 0 ? tA : tB} ahead by ${Math.abs(thrD).toFixed(1)}%.`)
-    } else if (hiYield && loDur === hi) {
-      tkLines.push(`${hi} yields ${fBps(absBps)} more at shorter duration (${fNum(hi === tA ? durA : durB)} vs ${fNum(hi === tA ? durB : durA)}), implying comparable yield with less rate risk.`)
-      if (hiCred) tkLines.push(`${hiCred} also carries higher credit quality (avg ${avgCreditQuality(hiCred === tA ? a : b)}).`)
-    } else if (hiYield && durComp) {
-      tkLines.push(`${hi} offers a ${fBps(absBps)} yield pickup at similar duration.${Math.abs(sA - sB) > 0.15 ? ` Differential driven by ${hi}'s securitized overweight (${fPct(hi === tA ? sA : sB, 0)}) vs ${lo}'s corporate tilt.` : ""}`)
-      if (hiCred) tkLines.push(`${hiCred} maintains higher credit quality (avg ${avgCreditQuality(hiCred === tA ? a : b)} vs ${avgCreditQuality(hiCred === tA ? b : a)}).`)
-      if (perf3) tkLines.push(`3Y track record supports: ${thrD > 0 ? tA : tB} ahead by ${Math.abs(thrD).toFixed(1)}%.`)
-    } else if (hiYield) {
-      tkLines.push(`${hi} yields ${fBps(absBps)} more but runs ${durA > durB ? (hi === tA ? "longer" : "shorter") : (hi === tA ? "shorter" : "longer")} duration (${fNum(durA)} vs ${fNum(durB)}).`)
+    // ---- HEADLINE: Yield advantage with context ----
+    if (hiYield) {
+      tkLines.push(`${hi} delivers a ${fBps(absBps)} ${secLabel} advantage over ${lo} (${fPct(a.secYield)} vs ${fPct(b.secYield)}).`)
     } else {
-      tkLines.push(`Yields are comparable (${fPct(a.secYield)} vs ${fPct(b.secYield)}). Differentiation is in sector composition and risk profile.`)
+      tkLines.push(`SEC yields are comparable (${fPct(a.secYield)} vs ${fPct(b.secYield)}). Differentiation is in sector composition and risk profile.`)
     }
-    if (expBps > 10) tkLines.push(`Likely Pushbacks: ${Math.round(expBps)}bps expense premium \u2014 offset by net-of-fee returns showing ${thrD > 0 ? `${thrD.toFixed(1)}% 3Y outperformance` : "comparable performance"}.`)
-    if (perfNeg && hi === tA) tkLines.push(`Note: ${tB} has outperformed over 3Y despite the yield gap.`)
+
+    // ---- CREDIT QUALITY ----
+    if (hiCred) {
+      tkLines.push(`${hiCred} maintains higher average credit quality (${hiCred === tA ? avgCredA : avgCredB} vs ${hiCred === tA ? avgCredB : avgCredA}), with IG allocation of ${fPct(hiCred === tA ? iA : iB, 0)} vs ${fPct(hiCred === tA ? iB : iA, 0)}.${hiYield && hiCred === hi ? " Higher yield AND better credit quality is a strong positioning story." : ""}`)
+    } else {
+      tkLines.push(`Credit quality is comparable (avg ${avgCredA} vs ${avgCredB}).`)
+    }
+
+    // ---- DURATION ----
+    if (loDur && hiYield && loDur === hi) {
+      tkLines.push(`${hi} achieves this yield advantage at shorter duration (${fNum(hi === tA ? durA : durB)} vs ${fNum(hi === tA ? durB : durA)}), meaning similar income with less rate risk.`)
+    } else if (durComp) {
+      tkLines.push(`Duration profiles are aligned (${fNum(durA)} vs ${fNum(durB)}), making this a clean apples-to-apples income comparison.`)
+    } else {
+      const longer = durA > durB ? tA : tB
+      tkLines.push(`${longer} runs longer duration (${fNum(Math.max(durA, durB))} vs ${fNum(Math.min(durA, durB))}). Duration difference should be considered in rate risk context.`)
+    }
+
+    // ---- SECTOR DRIVER ----
+    if (Math.abs(sA - sB) > 0.15) {
+      tkLines.push(`Yield differential is driven by ${hi === tA ? tA : tB}'s securitized overweight (${fPct(hi === tA ? sA : sB, 0)} securitized) vs ${lo}'s corporate tilt (${fPct(lo === tA ? sA : sB, 0)} securitized).`)
+    }
+
+    // ---- PERFORMANCE ----
+    if (perf3) {
+      tkLines.push(`3Y total return confirms the income story: ${thrD > 0 ? tA : tB} has outperformed by ${Math.abs(thrD).toFixed(1)}%.`)
+    } else if (perfNeg) {
+      tkLines.push(`Note: ${tB} has outperformed over 3Y (${Math.abs(thrD).toFixed(1)}%) despite the yield gap. Be prepared to address this.`)
+    }
+
+    // ---- LEAD WITH / PUSHBACKS ----
+    const leads: string[] = []
+    if (hiYield && hi === tA) leads.push("yield advantage")
+    if (hiCred === tA) leads.push("higher credit quality")
+    if (loDur === tA) leads.push("shorter duration")
+    else if (durComp) leads.push("comparable duration")
+    if (leads.length > 0) tkLines.push(`Lead with: ${leads.join(", ")}.`)
+
+    if (relExpBps > 5) {
+      tkLines.push(`Likely Pushbacks: ${relExpBps}bps higher expense ratio (${fPct(a.expense)} vs ${fPct(b.expense)}) \u2014 counter with net-of-fee performance${perf3 ? ` showing ${Math.abs(thrD).toFixed(1)}% 3Y outperformance` : ""}.`)
+    }
+    if (perfNeg && hi === tA && !perf3) {
+      tkLines.push(`Likely Pushbacks: 3Y underperformance of ${Math.abs(thrD).toFixed(1)}% \u2014 address with recent trend improvement and yield carry.`)
+    }
   } else {
-    // Advisor mode -- cleaner, no sales language but still highlight advantages
-    const hi = secBps > 0 ? tA : tB
-    const hiCred = iA > iB + 0.05 ? tA : (iB > iA + 0.05 ? tB : null)
-    const loDur = durA < durB - 0.15 ? tA : (durB < durA - 0.15 ? tB : null)
-
-    if (Math.abs(secBps) > 20) {
-      let line = `${hi} provides a ${fBps(Math.abs(secBps))} yield advantage`
-      if (hiCred === hi) line += ` while maintaining higher average credit quality (${avgCreditQuality(hi === tA ? a : b)} vs ${avgCreditQuality(hi === tA ? b : a)})`
-      if (Math.abs(durA - durB) <= 0.5) line += ` at a comparable duration profile`
-      else if (loDur === hi) line += ` at shorter duration (${fNum(hi === tA ? durA : durB)} vs ${fNum(hi === tA ? durB : durA)})`
-      tkLines.push(line + ".")
-      if (hiCred && hiCred !== hi && Math.abs(iA - iB) > 0.05) tkLines.push(`${hiCred} maintains higher credit quality (avg ${avgCreditQuality(hiCred === tA ? a : b)}).`)
+    // ---- ADVISOR MODE: professional, factual, subtly makes the case ----
+    if (hiYield) {
+      tkLines.push(`${hi} provides a ${fBps(absBps)} ${secLabel} advantage (${fPct(a.secYield)} vs ${fPct(b.secYield)}).`)
     } else {
-      tkLines.push(`Both funds offer similar yield levels with differentiation in sector allocation and positioning.`)
+      tkLines.push(`Both funds offer similar yield levels (${fPct(a.secYield)} vs ${fPct(b.secYield)}) with differentiation in sector allocation and positioning.`)
     }
-    if (Math.abs(thrD) > 1.5) tkLines.push(`${thrD > 0 ? tA : tB} has outperformed by ${Math.abs(thrD).toFixed(1)}% over 3 years.`)
+
+    // Credit quality
+    if (hiCred) {
+      tkLines.push(`${hiCred} maintains higher average credit quality (${hiCred === tA ? avgCredA : avgCredB} vs ${hiCred === tA ? avgCredB : avgCredA}).${hiYield && hiCred === hi ? " The combination of higher yield and better credit quality is notable." : ""}`)
+    } else {
+      tkLines.push(`Credit quality is comparable across both funds (avg ${avgCredA} vs ${avgCredB}).`)
+    }
+
+    // Duration
+    if (loDur && hiYield && loDur === hi) {
+      tkLines.push(`${hi} achieves this at shorter duration (${fNum(hi === tA ? durA : durB)} vs ${fNum(hi === tA ? durB : durA)}), suggesting comparable income with reduced rate sensitivity.`)
+    } else if (durComp) {
+      tkLines.push(`Duration profiles are aligned (${fNum(durA)} vs ${fNum(durB)}).`)
+    }
+
+    // Sector
+    if (Math.abs(sA - sB) > 0.15) {
+      tkLines.push(`The income differential reflects ${hi === tA ? tA : tB}'s securitized positioning (${fPct(hi === tA ? sA : sB, 0)}) relative to ${lo}'s corporate allocation.`)
+    }
+
+    // Performance
+    if (Math.abs(thrD) > 1.5) {
+      tkLines.push(`3Y performance supports the income advantage: ${thrD > 0 ? tA : tB} ahead by ${Math.abs(thrD).toFixed(1)}%.`)
+    }
   }
   sections.push({ title: "Takeaway", lines: tkLines })
 
