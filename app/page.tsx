@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useMemo, useCallback, useEffect } from "react"
-import Image from "next/image"
 import { FileUpload } from "@/components/file-upload"
 import { TickerInput } from "@/components/ticker-input"
 import { ComparisonTable } from "@/components/comparison-table"
@@ -66,7 +65,7 @@ export default function Page() {
       <main className="flex min-h-screen flex-col items-center justify-center px-4" style={{ backgroundColor: "#f8fafc" }}>
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col items-center">
-            <Image src="/images/logo.png" alt="Angel Oak Capital Advisors" width={200} height={60} loading="eager" className="mb-4" style={{ height: "auto" }} />
+            <img src="/images/logo.png" alt="Angel Oak Capital Advisors" className="mb-4" style={{ width: 200, height: "auto" }} />
             <p className="text-sm" style={{ color: "#64748b" }}>Upload your fund data to get started</p>
           </div>
           <FileUpload onFileLoaded={handleFileLoaded} />
@@ -85,7 +84,7 @@ export default function Page() {
       <header style={{ backgroundColor: "#0f3d6b" }}>
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-4">
-            <Image src="/images/logo.png" alt="Angel Oak Capital Advisors" width={160} height={44} loading="eager" style={{ filter: "brightness(0) invert(1)", height: "auto" }} />
+            <img src="/images/logo.png" alt="Angel Oak Capital Advisors" style={{ width: 160, height: "auto", filter: "brightness(0) invert(1)" }} />
             <div style={{ width: 1, height: 24, backgroundColor: "rgba(255,255,255,0.2)" }} />
             <span className="text-sm font-semibold tracking-tight" style={{ color: "rgba(255,255,255,0.9)" }}>Fund Discovery</span>
             <span className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>{funds.length} funds{lastUpdated ? ` \u00b7 ${fmtDate(lastUpdated)}` : ""}</span>
@@ -288,7 +287,7 @@ export default function Page() {
 
             {/* Footer */}
             <div className="pt-4 text-center" style={{ borderTop: "1px solid #e2e8f0" }}>
-              <Image src="/images/logo.png" alt="Angel Oak Capital Advisors" width={120} height={36} className="mx-auto opacity-40" style={{ height: "auto" }} />
+              <img src="/images/logo.png" alt="Angel Oak Capital Advisors" className="mx-auto opacity-40" style={{ width: 120, height: "auto" }} />
               <p className="mt-2 text-[10px]" style={{ color: "#94a3b8" }}>For informational purposes only. Past performance is not indicative of future results.</p>
             </div>
           </div>
