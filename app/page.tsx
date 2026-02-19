@@ -166,7 +166,7 @@ export default function Page() {
 
         {/* ===== INTERNAL MODE ===== */}
         {result && mode === "internal" && (
-          <div className="py-6 space-y-6">
+          <div className="space-y-6 py-6">
             {/* Key Stats at the top */}
             <ComparisonTable title="Key Statistics" rows={result.keyStats} tickerA={result.tickerA} tickerB={result.tickerB} highlight />
 
