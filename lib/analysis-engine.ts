@@ -5,9 +5,8 @@ function fPct(v: number | null, d = 2): string { return v == null || isNaN(v) ||
 function fNum(v: number | null, d = 2): string { return v == null || isNaN(v) ? "\u2014" : v.toFixed(d) }
 function fBps(v: number): string { const a = Math.abs(Math.round(v)); return `${v >= 0 ? "+" : "\u2212"}${a}bps` }
 function secPct(d: FundData) {
-  // Use the sheet's pre-calculated Securitized total if available; otherwise sum sub-sectors
-  if (d.securitized != null && !isNaN(d.securitized)) return d.securitized
-  return nz(d.nonAgencyRmbs) + nz(d.agencyRmbs) + nz(d.abs) + nz(d.clo) + nz(d.cmbs)
+  // Securitized = Non-Agency RMBS + CLO + ABS (Agency RMBS and CMBS are NOT securitized)
+  return nz(d.nonAgencyRmbs) + nz(d.clo) + nz(d.abs)
 }
 function creditRank(label: string): number {
   const ranks: Record<string, number> = { "AAA": 1, "AA": 2, "A": 3, "BBB": 4, "BB": 5, "B": 6, "CCC": 7, "Below CCC": 8 }
