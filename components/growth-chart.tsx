@@ -43,15 +43,15 @@ export function GrowthChart({ tickerA, tickerB }: Props) {
   const [totalB, setTotalB] = useState<number | null>(null)
 
   const getRange = useCallback((): { start: string; end: string } => {
-    const end = new Date().toISOString().slice(0, 10)
-    if (useCustom && customStart && customEnd) {
-      return { start: customStart, end: customEnd }
+    const today = new Date().toISOString().slice(0, 10)
+    if (useCustom && customStart) {
+      return { start: customStart, end: customEnd || today }
     }
     switch (preset) {
-      case "1Y": return { start: dateMinusYears(1), end }
-      case "3Y": return { start: dateMinusYears(3), end }
-      case "5Y": return { start: dateMinusYears(5), end }
-      case "Max": return { start: "2000-01-01", end }
+      case "1Y": return { start: dateMinusYears(1), end: today }
+      case "3Y": return { start: dateMinusYears(3), end: today }
+      case "5Y": return { start: dateMinusYears(5), end: today }
+      case "Max": return { start: "2000-01-01", end: today }
     }
   }, [preset, useCustom, customStart, customEnd])
 
