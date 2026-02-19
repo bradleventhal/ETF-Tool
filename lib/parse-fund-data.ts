@@ -87,6 +87,8 @@ export function parseFile(buffer: ArrayBuffer, fileName: string): FundData[] {
   for (const row of jsonData) {
     const ticker = row["Ticker"]
     if (!ticker || typeof ticker !== "string" || ticker.trim() === "") continue
+    console.log("[v0] Row headers for", ticker, ":", Object.keys(row).filter(k => k.toLowerCase().includes("non") || k.toLowerCase().includes("agency") || k.toLowerCase().includes("rmbs")))
+    console.log("[v0] Non-Agency RMBS raw value:", row["Non-Agency RMBS"], "| nonAgencyRmbs parsed:", parseNumericValue(row["Non-Agency RMBS"]))
 
     const fund: FundData = {
       ticker: String(ticker).trim(),
