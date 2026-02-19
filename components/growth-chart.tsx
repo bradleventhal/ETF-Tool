@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend, ReferenceLine
+  LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, ReferenceLine
 } from "recharts"
 
 interface GrowthPoint { date: string; [ticker: string]: string | number }
@@ -21,11 +21,21 @@ function dateMinusYears(years: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+function todayStr(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
 function formatDateLabel(date: string): string {
   const d = new Date(date + "T00:00:00")
   const m = d.toLocaleString("en-US", { month: "short" })
   const y = d.getFullYear().toString().slice(2)
   return `${m} '${y}`
+}
+
+function formatInputDate(dateStr: string): string {
+  if (!dateStr) return ""
+  const d = new Date(dateStr + "T00:00:00")
+  return d.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })
 }
 
 export function GrowthChart({ tickerA, tickerB }: Props) {
@@ -34,7 +44,7 @@ export function GrowthChart({ tickerA, tickerB }: Props) {
 
   const [preset, setPreset] = useState<Preset>("3Y")
   const [customStart, setCustomStart] = useState("")
-  const [customEnd, setCustomEnd] = useState("")
+  const [customEnd, setCustomEnd] = useState(todayStr())
   const [useCustom, setUseCustom] = useState(false)
   const [data, setData] = useState<GrowthPoint[]>([])
   const [loading, setLoading] = useState(false)
@@ -43,9 +53,9 @@ export function GrowthChart({ tickerA, tickerB }: Props) {
   const [totalB, setTotalB] = useState<number | null>(null)
 
   const getRange = useCallback((): { start: string; end: string } => {
-    const today = new Date().toISOString().slice(0, 10)
-    if (useCustom && customStart) {
-      return { start: customStart, end: customEnd || today }
+    const today = todayStr()
+    if (useCustom) {
+      return { start: customStart || "2000-01-01", end: customEnd || today }
     }
     switch (preset) {
       case "1Y": return { start: dateMinusYears(1), end: today }
@@ -57,6 +67,7 @@ export function GrowthChart({ tickerA, tickerB }: Props) {
 
   useEffect(() => {
     const { start, end } = getRange()
+    if (!start) return
     setLoading(true)
     setError(null)
     fetch(`/api/growth?tickers=${tickerA},${tickerB}&start=${start}&end=${end}`)
@@ -66,16 +77,12 @@ export function GrowthChart({ tickerA, tickerB }: Props) {
         const fundA = json.funds?.[0]
         const fundB = json.funds?.[1]
         if (!fundA || !fundB) { setError("Missing fund data"); setData([]); return }
-
-        // Merge into single array keyed by date
         const merged: GrowthPoint[] = fundA.data.map((p: { date: string; growth: number }, i: number) => ({
           date: p.date,
           [tickerA]: parseFloat(p.growth.toFixed(2)),
           [tickerB]: fundB.data[i] ? parseFloat(fundB.data[i].growth.toFixed(2)) : 0,
         }))
         setData(merged)
-
-        // Total returns
         if (fundA.data.length > 0) setTotalA(parseFloat(fundA.data[fundA.data.length - 1].growth.toFixed(2)))
         if (fundB.data.length > 0) setTotalB(parseFloat(fundB.data[fundB.data.length - 1].growth.toFixed(2)))
       })
@@ -83,11 +90,39 @@ export function GrowthChart({ tickerA, tickerB }: Props) {
       .finally(() => setLoading(false))
   }, [tickerA, tickerB, getRange])
 
-  // Reduce tick density
   const tickInterval = data.length > 500 ? Math.floor(data.length / 6) : data.length > 200 ? Math.floor(data.length / 5) : Math.floor(data.length / 4)
+
+  // Editable date display component
+  function DateInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+    const inputRef = useRef<HTMLInputElement>(null)
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#94a3b8" }}>{label}</span>
+        <button
+          onClick={() => inputRef.current?.showPicker()}
+          className="flex items-center gap-1 rounded border px-2.5 py-1 font-mono text-xs transition-colors hover:border-[#94a3b8]"
+          style={{ borderColor: "#e2e8f0", color: "#334155", backgroundColor: "#fff" }}
+        >
+          {formatInputDate(value) || "Select date"}
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ marginLeft: 2, flexShrink: 0 }}>
+            <path d="M5 1v2M11 1v2M2 6h12M3 3h10a1 1 0 011 1v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="#94a3b8" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <input
+          ref={inputRef}
+          type="date"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          className="sr-only"
+          tabIndex={-1}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+      {/* Header with title + presets */}
       <div className="flex items-center justify-between border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f8fafc" }}>
         <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Growth Comparison</h4>
         <div className="flex items-center gap-1">
@@ -95,7 +130,7 @@ export function GrowthChart({ tickerA, tickerB }: Props) {
             <button
               key={p}
               onClick={() => { setPreset(p); setUseCustom(false) }}
-              className="rounded px-2 py-0.5 text-[11px] font-semibold transition-colors"
+              className="rounded px-2.5 py-1 text-[11px] font-semibold transition-colors"
               style={{
                 backgroundColor: !useCustom && preset === p ? navy : "transparent",
                 color: !useCustom && preset === p ? "#fff" : "#64748b",
@@ -105,8 +140,8 @@ export function GrowthChart({ tickerA, tickerB }: Props) {
             </button>
           ))}
           <button
-            onClick={() => setUseCustom(true)}
-            className="rounded px-2 py-0.5 text-[11px] font-semibold transition-colors"
+            onClick={() => { setUseCustom(true); if (!customStart) setCustomStart(dateMinusYears(1)) }}
+            className="rounded px-2.5 py-1 text-[11px] font-semibold transition-colors"
             style={{
               backgroundColor: useCustom ? navy : "transparent",
               color: useCustom ? "#fff" : "#64748b",
@@ -117,35 +152,35 @@ export function GrowthChart({ tickerA, tickerB }: Props) {
         </div>
       </div>
 
+      {/* Custom date row */}
       {useCustom && (
-        <div className="flex items-center gap-3 border-b px-4 py-2" style={{ borderColor: "#e2e8f0", backgroundColor: "#f8fafc" }}>
-          <label className="text-[11px] font-medium" style={{ color: "#64748b" }}>Start</label>
-          <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)}
-            className="rounded border px-2 py-1 font-mono text-xs" style={{ borderColor: "#cbd5e1", color: "#334155" }} />
-          <label className="text-[11px] font-medium" style={{ color: "#64748b" }}>End</label>
-          <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)}
-            className="rounded border px-2 py-1 font-mono text-xs" style={{ borderColor: "#cbd5e1", color: "#334155" }} />
+        <div className="flex items-center gap-5 border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#fafbfc" }}>
+          <DateInput label="Start" value={customStart} onChange={setCustomStart} />
+          <div className="h-px w-3" style={{ backgroundColor: "#cbd5e1" }} />
+          <DateInput label="End" value={customEnd} onChange={setCustomEnd} />
         </div>
       )}
 
+      {/* Legend with totals */}
       <div className="px-4 pt-3 pb-1">
         {totalA != null && totalB != null && (
-          <div className="mb-2 flex items-center gap-4 text-xs">
+          <div className="mb-2 flex items-center gap-5 text-xs">
             <span style={{ color: navy }}>
-              <span className="mr-1 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: navy }} />
+              <span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: navy }} />
               <span className="font-bold">{tickerA}</span>
-              <span className="ml-1 font-mono">{totalA >= 0 ? "+" : ""}{totalA.toFixed(2)}%</span>
+              <span className="ml-1.5 font-mono font-semibold">{totalA >= 0 ? "+" : ""}{totalA.toFixed(2)}%</span>
             </span>
             <span style={{ color: red }}>
-              <span className="mr-1 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: red }} />
+              <span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: red }} />
               <span className="font-bold">{tickerB}</span>
-              <span className="ml-1 font-mono">{totalB >= 0 ? "+" : ""}{totalB.toFixed(2)}%</span>
+              <span className="ml-1.5 font-mono font-semibold">{totalB >= 0 ? "+" : ""}{totalB.toFixed(2)}%</span>
             </span>
           </div>
         )}
       </div>
 
-      <div className="px-2 pb-4">
+      {/* Chart */}
+      <div className="px-2 pb-3">
         {loading && (
           <div className="flex h-[280px] items-center justify-center">
             <p className="text-sm" style={{ color: "#94a3b8" }}>Loading growth data...</p>
@@ -193,22 +228,8 @@ export function GrowthChart({ tickerA, tickerB }: Props) {
                 }}
                 labelStyle={{ color: "#64748b", fontSize: 11, fontWeight: 600, marginBottom: 4 }}
               />
-              <Line
-                type="monotone"
-                dataKey={tickerA}
-                stroke={navy}
-                dot={false}
-                strokeWidth={2}
-                activeDot={{ r: 4, fill: navy, stroke: "#fff", strokeWidth: 2 }}
-              />
-              <Line
-                type="monotone"
-                dataKey={tickerB}
-                stroke={red}
-                dot={false}
-                strokeWidth={2}
-                activeDot={{ r: 4, fill: red, stroke: "#fff", strokeWidth: 2 }}
-              />
+              <Line type="monotone" dataKey={tickerA} stroke={navy} dot={false} strokeWidth={2} activeDot={{ r: 4, fill: navy, stroke: "#fff", strokeWidth: 2 }} />
+              <Line type="monotone" dataKey={tickerB} stroke={red} dot={false} strokeWidth={2} activeDot={{ r: 4, fill: red, stroke: "#fff", strokeWidth: 2 }} />
             </LineChart>
           </ResponsiveContainer>
         )}
@@ -217,6 +238,11 @@ export function GrowthChart({ tickerA, tickerB }: Props) {
             <p className="text-sm" style={{ color: "#94a3b8" }}>No data available for selected range</p>
           </div>
         )}
+      </div>
+
+      {/* Source note */}
+      <div className="border-t px-4 py-1.5" style={{ borderColor: "#f1f5f9" }}>
+        <p className="text-[9px]" style={{ color: "#94a3b8" }}>Source: Yahoo Finance. Growth w/ dividends reinvested. May differ slightly from other providers due to reinvestment timing methodology.</p>
       </div>
     </div>
   )
