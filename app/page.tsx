@@ -1,12 +1,14 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { FileUpload } from "@/components/file-upload"
+import { TickerInput } from "@/components/ticker-input"
 import { NarrativeSection } from "@/components/narrative-section"
 import { ComparisonTable } from "@/components/comparison-table"
 import { PerformanceChart } from "@/components/performance-chart"
 import { parseFile } from "@/lib/parse-fund-data"
 import { runAnalysis } from "@/lib/analysis-engine"
+import { saveFunds, loadFunds } from "@/lib/fund-store"
 import type { FundData, AnalysisMode, AnalysisResult } from "@/lib/fund-types"
 import {
   Select,
@@ -16,23 +18,40 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { BarChart3, ArrowRight, RefreshCw } from "lucide-react"
+import { BarChart3, ArrowRight, RefreshCw, Loader2 } from "lucide-react"
 
 export default function Page() {
   const [funds, setFunds] = useState<FundData[]>([])
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
   const [tickerA, setTickerA] = useState("")
   const [tickerB, setTickerB] = useState("")
   const [mode, setMode] = useState<AnalysisMode>("advisor")
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // Load persisted funds on mount
+  useEffect(() => {
+    loadFunds()
+      .then(({ funds: stored, lastUpdated: lu }) => {
+        if (stored.length > 0) {
+          setFunds(stored)
+          setLastUpdated(lu)
+        }
+      })
+      .catch(() => {
+        // IndexedDB not available, no-op
+      })
+      .finally(() => setLoading(false))
+  }, [])
+
   const tickers = useMemo(() => funds.map((f) => ({ ticker: f.ticker, name: f.name })), [funds])
 
-  const handleFileLoaded = useCallback((buffer: ArrayBuffer, fileName: string) => {
+  const handleFileLoaded = useCallback(async (buffer: ArrayBuffer, fileName: string) => {
     try {
       const parsed = parseFile(buffer, fileName)
       if (parsed.length === 0) {
-        setError("No fund data found in the file. Make sure the file has a header row with 'Ticker' as the first column.")
+        setError("No fund data found. Make sure the file has a header row with 'Ticker' as the first column.")
         return
       }
       setFunds(parsed)
@@ -40,6 +59,10 @@ export default function Page() {
       setTickerB("")
       setResult(null)
       setError(null)
+
+      // Persist to IndexedDB
+      await saveFunds(parsed)
+      setLastUpdated(new Date().toISOString())
     } catch (err) {
       setError(`Failed to parse file: ${err instanceof Error ? err.message : "Unknown error"}`)
     }
@@ -71,6 +94,17 @@ export default function Page() {
     setError(null)
   }, [])
 
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading fund data...</p>
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main className="min-h-screen bg-background">
       {/* Header */}
@@ -95,25 +129,25 @@ export default function Page() {
         {!result && (
           <div className="mx-auto max-w-2xl">
             <div className="flex flex-col gap-6">
-              {/* Step 1: Upload */}
+              {/* Data status / upload */}
               <section className="flex flex-col gap-3">
                 <div className="flex items-center gap-2">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                     1
                   </span>
                   <h2 className="text-sm font-semibold text-foreground">
-                    Upload Raw Data
+                    Raw Data
                   </h2>
                 </div>
-                <FileUpload onFileLoaded={handleFileLoaded} />
-                {funds.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {funds.length} fund{funds.length !== 1 ? "s" : ""} loaded
-                  </p>
-                )}
+                <FileUpload
+                  onFileLoaded={handleFileLoaded}
+                  hasExistingData={funds.length > 0}
+                  fundCount={funds.length}
+                  lastUpdated={lastUpdated}
+                />
               </section>
 
-              {/* Step 2: Select funds */}
+              {/* Select funds */}
               {funds.length > 0 && (
                 <section className="flex flex-col gap-3">
                   <div className="flex items-center gap-2">
@@ -126,49 +160,24 @@ export default function Page() {
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-muted-foreground">
-                        Fund A
-                      </label>
-                      <Select value={tickerA} onValueChange={setTickerA}>
-                        <SelectTrigger className="bg-card">
-                          <SelectValue placeholder="Select fund..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {tickers.map((t) => (
-                            <SelectItem key={t.ticker} value={t.ticker}>
-                              <span className="font-mono font-semibold">{t.ticker}</span>
-                              <span className="ml-2 text-muted-foreground">{t.name}</span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-medium text-muted-foreground">
-                        Fund B
-                      </label>
-                      <Select value={tickerB} onValueChange={setTickerB}>
-                        <SelectTrigger className="bg-card">
-                          <SelectValue placeholder="Select fund..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {tickers.map((t) => (
-                            <SelectItem key={t.ticker} value={t.ticker}>
-                              <span className="font-mono font-semibold">{t.ticker}</span>
-                              <span className="ml-2 text-muted-foreground">{t.name}</span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <TickerInput
+                      label="Fund A"
+                      value={tickerA}
+                      onChange={setTickerA}
+                      options={tickers}
+                    />
+                    <TickerInput
+                      label="Fund B"
+                      value={tickerB}
+                      onChange={setTickerB}
+                      options={tickers}
+                    />
                   </div>
                 </section>
               )}
 
-              {/* Step 3: Mode + Compare */}
-              {tickerA && tickerB && (
+              {/* Mode + Compare */}
+              {funds.length > 0 && (
                 <section className="flex flex-col gap-3">
                   <div className="flex items-center gap-2">
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
@@ -198,7 +207,11 @@ export default function Page() {
                       </Select>
                     </div>
 
-                    <Button onClick={handleCompare} className="gap-2 sm:ml-auto">
+                    <Button
+                      onClick={handleCompare}
+                      className="gap-2 sm:ml-auto"
+                      disabled={!tickerA || !tickerB}
+                    >
                       Compare Funds
                       <ArrowRight className="h-4 w-4" />
                     </Button>
