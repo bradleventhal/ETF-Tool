@@ -1,6 +1,6 @@
 "use client"
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, LabelList } from "recharts"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, LabelList, Legend } from "recharts"
 
 interface IncomeItem { label: string; a: number; b: number }
 
@@ -28,6 +28,7 @@ export function IncomeBars({ items, tickerA, tickerB }: IncomeBarProps) {
           <XAxis type="number" tick={{ fontSize: 10, fill: "#94a3b8" }} tickFormatter={(v: number) => `${v.toFixed(1)}%`} axisLine={false} tickLine={false} />
           <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "#475569", fontWeight: 500 }} axisLine={false} tickLine={false} width={80} />
           <Tooltip formatter={(value: number) => [`${value.toFixed(2)}%`]} contentStyle={{ backgroundColor: "#fff", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: 12, padding: "6px 12px", color: "#1e293b", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }} cursor={{ fill: "rgba(0,0,0,0.02)" }} />
+          <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11, color: "#475569", paddingTop: 4 }} />
           <Bar dataKey={tickerA} fill="#0f3d6b" radius={[0, 3, 3, 0]} barSize={12}>
             <LabelList dataKey={tickerA} position="right" formatter={(v: number) => `${v.toFixed(2)}%`} style={{ fontSize: 9, fill: "#0f3d6b", fontWeight: 600 }} />
           </Bar>
