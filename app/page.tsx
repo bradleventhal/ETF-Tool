@@ -5,6 +5,7 @@ import { FileUpload } from "@/components/file-upload"
 import { TickerInput } from "@/components/ticker-input"
 import { ComparisonTable } from "@/components/comparison-table"
 import { PerformanceChart } from "@/components/performance-chart"
+import { GrowthChart } from "@/components/growth-chart"
 import { SectorPieChart } from "@/components/sector-pie-chart"
 import { IncomeBars, RiskTable } from "@/components/income-risk-bars"
 import { parseFile } from "@/lib/parse-fund-data"
@@ -243,8 +244,9 @@ export default function Page() {
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <PerformanceChart data={result.chartData} tickerA={result.tickerA} tickerB={result.tickerB} />
-              <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} highlight />
+              <GrowthChart tickerA={result.tickerA} tickerB={result.tickerB} />
             </div>
+            <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} highlight />
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
@@ -313,7 +315,7 @@ export default function Page() {
 
             <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} />
 
-            <PerformanceChart data={result.chartData} tickerA={result.tickerA} tickerB={result.tickerB} />
+            <GrowthChart tickerA={result.tickerA} tickerB={result.tickerB} />
 
             {takeaway && (
               <div className="rounded border p-6" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
