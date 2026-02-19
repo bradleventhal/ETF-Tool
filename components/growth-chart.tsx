@@ -94,28 +94,18 @@ export function GrowthChart({ tickerA, tickerB }: Props) {
 
   // Editable date display component
   function DateInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
-    const inputRef = useRef<HTMLInputElement>(null)
     return (
       <div className="flex items-center gap-1.5">
         <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "#94a3b8" }}>{label}</span>
-        <button
-          onClick={() => inputRef.current?.showPicker()}
-          className="flex items-center gap-1 rounded border px-2.5 py-1 font-mono text-xs transition-colors hover:border-[#94a3b8]"
-          style={{ borderColor: "#e2e8f0", color: "#334155", backgroundColor: "#fff" }}
-        >
-          {formatInputDate(value) || "Select date"}
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" style={{ marginLeft: 2, flexShrink: 0 }}>
-            <path d="M5 1v2M11 1v2M2 6h12M3 3h10a1 1 0 011 1v9a1 1 0 01-1 1H3a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="#94a3b8" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-        <input
-          ref={inputRef}
-          type="date"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          className="sr-only"
-          tabIndex={-1}
-        />
+        <div className="relative flex items-center gap-1 rounded border px-2.5 py-1 transition-colors hover:border-[#94a3b8]" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+          <input
+            type="date"
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            className="font-mono text-xs"
+            style={{ color: "#334155", border: "none", outline: "none", background: "transparent", width: "110px" }}
+          />
+        </div>
       </div>
     )
   }
