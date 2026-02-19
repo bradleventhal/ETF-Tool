@@ -44,9 +44,11 @@ function NegTable({ rows, tickerA, tickerB, label, viewMode }: {
         </tbody>
       </table>
       {showNote && (
-        <p className="px-4 py-2 text-[11px]" style={{ color: "#dc2626" }}>
-          * Negative allocation implies utilization of leverage in the portfolio.
-        </p>
+        <div className="px-4 py-2 text-right">
+          <span className="text-[11px] italic" style={{ color: "#dc2626" }}>
+            * Negative allocation implies utilization of leverage
+          </span>
+        </div>
       )}
     </div>
   )

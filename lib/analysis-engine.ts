@@ -10,6 +10,15 @@ function creditRank(label: string): number {
   return ranks[label] ?? 9
 }
 function igPct(d: FundData) { return nz(d.aaa) + nz(d.aa) + nz(d.a) + nz(d.bbb) }
+function topCreditBuckets(d: FundData): string {
+  const buckets = [
+    { label: "AAA/US Gov", v: nz(d.aaa) }, { label: "AA", v: nz(d.aa) }, { label: "A", v: nz(d.a) },
+    { label: "BBB", v: nz(d.bbb) }, { label: "BB", v: nz(d.bb) }, { label: "B", v: nz(d.b) },
+    { label: "CCC", v: nz(d.ccc) }, { label: "Below CCC", v: nz(d.belowCcc) },
+  ].filter(b => b.v > 0.01).sort((a, b) => b.v - a.v)
+  const top = buckets.slice(0, 3)
+  return top.map(b => `${b.label} (${(b.v * 100).toFixed(0)}%)`).join(", ")
+}
 
 function buildNarrative(a: FundData, b: FundData, tA: string, tB: string, mode: AnalysisMode): NarrativeSection[] {
   const sections: NarrativeSection[] = []
@@ -68,7 +77,11 @@ function buildNarrative(a: FundData, b: FundData, tA: string, tB: string, mode: 
     if (hiCred) {
       const credDiff = Math.abs(credRankA - credRankB)
       const emphasis = credDiff >= 2 ? "significantly " : ""
-      tkLines.push(`${hiCred} carries ${emphasis}higher average credit quality (${hiCred === tA ? avgCredA : avgCredB} vs ${hiCred === tA ? avgCredB : avgCredA}), with IG allocation of ${fPct(hiCred === tA ? iA : iB, 0)} vs ${fPct(hiCred === tA ? iB : iA, 0)}.${hiYield && hiCred === hi ? " Higher yield AND better credit quality is a strong positioning story." : ""}`)
+      const hiCredFund = hiCred === tA ? a : b
+      const loCredFund = hiCred === tA ? b : a
+      const topBucketHi = topCreditBuckets(hiCredFund)
+      const topBucketLo = topCreditBuckets(loCredFund)
+      tkLines.push(`${hiCred} carries ${emphasis}higher average credit quality (${hiCred === tA ? avgCredA : avgCredB} vs ${hiCred === tA ? avgCredB : avgCredA}). ${hiCred}'s portfolio is concentrated in ${topBucketHi} while ${hiCred === tA ? tB : tA} is weighted toward ${topBucketLo}.${hiYield && hiCred === hi ? " Higher yield AND better credit quality is a strong positioning story." : ""}`)
     } else {
       tkLines.push(`Credit quality is in line across both funds (avg ${avgCredA}).`)
     }
@@ -129,7 +142,9 @@ function buildNarrative(a: FundData, b: FundData, tA: string, tB: string, mode: 
     if (hiCred) {
       const credDiff = Math.abs(credRankA - credRankB)
       const emphasis = credDiff >= 2 ? "meaningfully " : ""
-      tkLines.push(`${hiCred} maintains ${emphasis}higher average credit quality (${hiCred === tA ? avgCredA : avgCredB} vs ${hiCred === tA ? avgCredB : avgCredA}).${hiYield && hiCred === hi ? " The combination of higher yield and better credit quality is notable." : ""}`)
+      const hiCredFund = hiCred === tA ? a : b
+      const topBucketHi = topCreditBuckets(hiCredFund)
+      tkLines.push(`${hiCred} maintains ${emphasis}higher average credit quality (${hiCred === tA ? avgCredA : avgCredB} vs ${hiCred === tA ? avgCredB : avgCredA}), with its portfolio concentrated in ${topBucketHi}.${hiYield && hiCred === hi ? " The combination of higher yield and better credit quality is notable." : ""}`)
     } else {
       tkLines.push(`Credit quality is in line across both funds (avg ${avgCredA}).`)
     }

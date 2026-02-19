@@ -49,7 +49,7 @@ export function SectorPieChart({ data, ticker, subtitle, mode = "internal" }: Pr
               const original = sorted[index]
               const display = original ? original.value : chartData[index].value
               return (
-                <text x={x} y={y} fill="#475569" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={10} fontWeight={600}>
+                <text x={x} y={y} fill="#334155" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={12} fontWeight={600}>
                   {`${display < 0 ? "" : ""}${display.toFixed(1)}%`}
                 </text>
               )
