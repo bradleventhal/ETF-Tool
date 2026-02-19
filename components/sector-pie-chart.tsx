@@ -7,14 +7,16 @@ const COLORS = ["#0f3d6b", "#1a6fb5", "#3498db", "#5dade2", "#85c1e9", "#2e86ab"
 interface Props {
   data: { name: string; value: number }[]
   ticker: string
+  subtitle?: string
 }
 
-export function SectorPieChart({ data, ticker }: Props) {
+export function SectorPieChart({ data, ticker, subtitle }: Props) {
   if (data.length === 0) return null
 
   return (
     <div className="flex flex-col items-center">
-      <p className="mb-2 text-center font-mono text-xs font-bold tracking-wider" style={{ color: "#0f3d6b" }}>{ticker}</p>
+      <p className="mb-0.5 text-center font-mono text-xs font-bold tracking-wider" style={{ color: "#0f3d6b" }}>{ticker}</p>
+      {subtitle && <p className="mb-2 text-center text-[10px] font-medium" style={{ color: "#64748b" }}>{subtitle}</p>}
       <ResponsiveContainer width="100%" height={200}>
         <PieChart>
           <Pie

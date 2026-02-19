@@ -30,18 +30,18 @@ function buildNarrative(a: FundData, b: FundData, tA: string, tB: string, mode: 
     const perfNeg = thrD < -1.5
 
     if (hiYield && credComp && durComp && perf3 && hi === tA) {
-      tkLines.push(`${tA} delivers a ${fBps(absBps)} yield advantage over ${tB} with higher credit quality and a comparable duration profile. Outperformance of ${thrD.toFixed(1)}pp over 3Y confirms the income pickup translates to total return.`)
+      tkLines.push(`${tA} delivers a ${fBps(absBps)} yield advantage over ${tB} with higher credit quality and a comparable duration profile. 3Y outperformance of ${thrD.toFixed(1)}% confirms the income pickup translates to total return.`)
     } else if (hiYield && durComp) {
       tkLines.push(`${hi} offers a ${fBps(absBps)} yield pickup at similar duration. ${Math.abs(sA - sB) > 0.15 ? `The differential is sector-driven \u2014 ${hi}'s securitized overweight vs ${lo}'s corporate tilt.` : ""}`)
       if (credComp) tkLines.push(`Credit quality is comparable, making this a clean income story.`)
       else if (iA > iB && tA === hi) tkLines.push(`${tA} also runs higher IG allocation (${fPct(iA, 0)} vs ${fPct(iB, 0)}).`)
-      if (perf3) tkLines.push(`3Y track record supports: ${thrD > 0 ? tA : tB} ahead by ${Math.abs(thrD).toFixed(1)}pp.`)
+      if (perf3) tkLines.push(`3Y track record supports: ${thrD > 0 ? tA : tB} ahead by ${Math.abs(thrD).toFixed(1)}%.`)
     } else if (hiYield) {
       tkLines.push(`${hi} yields ${fBps(absBps)} more but runs ${durA > durB ? (hi === tA ? "longer" : "shorter") : (hi === tA ? "shorter" : "longer")} duration (${fNum(durA)} vs ${fNum(durB)}).`)
     } else {
       tkLines.push(`Yields are comparable (${fPct(a.secYield)} vs ${fPct(b.secYield)}). Differentiation is in sector composition and risk profile.`)
     }
-    if (expBps > 10) tkLines.push(`Handle: ${Math.round(expBps)}bps expense premium \u2014 offset with net-of-fee returns.`)
+    if (expBps > 10) tkLines.push(`Likely Pushbacks: ${Math.round(expBps)}bps expense premium \u2014 offset with net-of-fee returns.`)
     if (perfNeg && hi === tA) tkLines.push(`Note: ${tB} has outperformed over 3Y despite the yield gap.`)
   } else {
     // Advisor mode -- cleaner, no sales language
@@ -52,7 +52,7 @@ function buildNarrative(a: FundData, b: FundData, tA: string, tB: string, mode: 
     } else {
       tkLines.push(`Both funds offer similar yield levels with differentiation in sector allocation and positioning.`)
     }
-    if (Math.abs(thrD) > 1.5) tkLines.push(`${thrD > 0 ? tA : tB} has outperformed by ${Math.abs(thrD).toFixed(1)} percentage points over 3 years.`)
+    if (Math.abs(thrD) > 1.5) tkLines.push(`${thrD > 0 ? tA : tB} has outperformed by ${Math.abs(thrD).toFixed(1)}% over 3 years.`)
   }
   sections.push({ title: "Takeaway", lines: tkLines })
 
@@ -149,6 +149,34 @@ function buildPieData(fund: FundData): { name: string; value: number }[] {
   return entries.filter(e => e.value > 0.005).map(e => ({ ...e, value: Math.round(e.value * 1000) / 10 }))
 }
 
+function buildCreditPieData(fund: FundData): { name: string; value: number }[] {
+  const entries = [
+    { name: "AAA / US Gov", value: nz(fund.aaa) },
+    { name: "AA", value: nz(fund.aa) },
+    { name: "A", value: nz(fund.a) },
+    { name: "BBB", value: nz(fund.bbb) },
+    { name: "BB", value: nz(fund.bb) },
+    { name: "B", value: nz(fund.b) },
+    { name: "CCC", value: nz(fund.ccc) },
+    { name: "Below CCC", value: nz(fund.belowCcc) },
+  ]
+  return entries.filter(e => e.value > 0.005).map(e => ({ ...e, value: Math.round(e.value * 1000) / 10 }))
+}
+
+function avgCreditQuality(fund: FundData): string {
+  // Weighted average: AAA=1, AA=2, A=3, BBB=4, BB=5, B=6, CCC=7, <CCC=8
+  const buckets = [
+    { w: 1, v: nz(fund.aaa) }, { w: 2, v: nz(fund.aa) }, { w: 3, v: nz(fund.a) },
+    { w: 4, v: nz(fund.bbb) }, { w: 5, v: nz(fund.bb) }, { w: 6, v: nz(fund.b) },
+    { w: 7, v: nz(fund.ccc) }, { w: 8, v: nz(fund.belowCcc) },
+  ]
+  const total = buckets.reduce((s, b) => s + b.v, 0)
+  if (total < 0.01) return "\u2014"
+  const avg = buckets.reduce((s, b) => s + b.w * b.v, 0) / total
+  const labels = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC", "Below CCC"]
+  return labels[Math.max(0, Math.min(7, Math.round(avg) - 1))]
+}
+
 export function runAnalysis(dataA: FundData, dataB: FundData, mode: AnalysisMode): AnalysisResult {
   return {
     tickerA: dataA.ticker, tickerB: dataB.ticker, nameA: dataA.name, nameB: dataB.name, mode,
@@ -159,11 +187,15 @@ export function runAnalysis(dataA: FundData, dataB: FundData, mode: AnalysisMode
     creditQuality: creditTable(dataA, dataB),
     pieDataA: buildPieData(dataA),
     pieDataB: buildPieData(dataB),
+    creditPieA: buildCreditPieData(dataA),
+    creditPieB: buildCreditPieData(dataB),
+    avgCreditA: avgCreditQuality(dataA),
+    avgCreditB: avgCreditQuality(dataB),
     chartData: [
       { period: "YTD", fundA: nz(dataA.ytd) * 100, fundB: nz(dataB.ytd) * 100 },
       { period: "1Y", fundA: nz(dataA.oneYear) * 100, fundB: nz(dataB.oneYear) * 100 },
-      ...(nz(dataA.threeYear) !== 0 || nz(dataB.threeYear) !== 0 ? [{ period: "3Y", fundA: nz(dataA.threeYear) * 100, fundB: nz(dataB.threeYear) * 100 }] : []),
       ...(nz(dataA.commonInception) !== 0 || nz(dataB.commonInception) !== 0 ? [{ period: "Inception", fundA: nz(dataA.commonInception) * 100, fundB: nz(dataB.commonInception) * 100 }] : []),
+      ...(nz(dataA.threeYear) !== 0 || nz(dataB.threeYear) !== 0 ? [{ period: "3Y", fundA: nz(dataA.threeYear) * 100, fundB: nz(dataB.threeYear) * 100 }] : []),
     ],
   }
 }

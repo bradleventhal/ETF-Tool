@@ -63,5 +63,9 @@ export interface AnalysisResult {
   creditQuality: ComparisonRow[]
   pieDataA: { name: string; value: number }[]
   pieDataB: { name: string; value: number }[]
+  creditPieA: { name: string; value: number }[]
+  creditPieB: { name: string; value: number }[]
+  avgCreditA: string
+  avgCreditB: string
   chartData: { period: string; fundA: number; fundB: number }[]
 }

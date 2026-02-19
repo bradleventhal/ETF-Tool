@@ -15,7 +15,7 @@ export function PerformanceChart({ data, tickerA, tickerB }: Props) {
   return (
     <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
       <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f8fafc" }}>
-        <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Total Return Comparison</h4>
+        <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Performance</h4>
       </div>
       <div className="px-4 py-6">
         <ResponsiveContainer width="100%" height={280}>

@@ -6,6 +6,7 @@ import { TickerInput } from "@/components/ticker-input"
 import { ComparisonTable } from "@/components/comparison-table"
 import { PerformanceChart } from "@/components/performance-chart"
 import { SectorPieChart } from "@/components/sector-pie-chart"
+import { IncomeRiskBars } from "@/components/income-risk-bars"
 import { parseFile } from "@/lib/parse-fund-data"
 import { runAnalysis } from "@/lib/analysis-engine"
 import { saveFunds, loadFunds } from "@/lib/fund-store"
@@ -84,15 +85,17 @@ export default function Page() {
       <header style={{ backgroundColor: "#0f3d6b" }}>
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-4">
-            <img src="/images/logo.png" alt="Angel Oak Capital Advisors" style={{ width: 160, height: "auto", filter: "brightness(0) invert(1)" }} />
+            <img src="/images/logo.png" alt="Angel Oak Capital Advisors" style={{ width: 160, height: "auto" }} />
             <div style={{ width: 1, height: 24, backgroundColor: "rgba(255,255,255,0.2)" }} />
             <span className="text-sm font-semibold tracking-tight" style={{ color: "rgba(255,255,255,0.9)" }}>Fund Discovery</span>
-            <span className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>{funds.length} funds{lastUpdated ? ` \u00b7 ${fmtDate(lastUpdated)}` : ""}</span>
           </div>
-          <button onClick={() => setShowUpload(!showUpload)} className="flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors" style={{ color: "rgba(255,255,255,0.7)" }}>
-            {showUpload ? <X className="h-3.5 w-3.5" /> : <Upload className="h-3.5 w-3.5" />}
-            {showUpload ? "Close" : "Update Data"}
-          </button>
+          <div className="flex flex-col items-end gap-0.5">
+            <button onClick={() => setShowUpload(!showUpload)} className="flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors" style={{ color: "rgba(255,255,255,0.7)" }}>
+              {showUpload ? <X className="h-3.5 w-3.5" /> : <Upload className="h-3.5 w-3.5" />}
+              {showUpload ? "Close" : "Update Data"}
+            </button>
+            <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>{funds.length} funds{lastUpdated ? ` \u00b7 Updated ${fmtDate(lastUpdated)}` : ""}</span>
+          </div>
         </div>
       </header>
 
@@ -174,8 +177,40 @@ export default function Page() {
               </div>
             </div>
 
-            {/* Credit Quality */}
-            <ComparisonTable title="Credit Quality" rows={result.creditQuality} tickerA={result.tickerA} tickerB={result.tickerB} />
+            {/* Credit Quality: pie charts + table */}
+            <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+              <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
+                <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Credit Quality</h4>
+              </div>
+              <div className="grid grid-cols-1 gap-0 md:grid-cols-2">
+                <div className="border-b p-4 md:border-b-0 md:border-r" style={{ borderColor: "#f1f5f9" }}>
+                  <SectorPieChart data={result.creditPieA} ticker={result.tickerA} subtitle={`Avg Credit Quality: ${result.avgCreditA}`} />
+                </div>
+                <div className="p-4">
+                  <SectorPieChart data={result.creditPieB} ticker={result.tickerB} subtitle={`Avg Credit Quality: ${result.avgCreditB}`} />
+                </div>
+              </div>
+              <div className="border-t" style={{ borderColor: "#f1f5f9" }}>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ backgroundColor: "#f8fafc" }}>
+                      <th className="px-4 py-2 text-left text-[11px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>Rating</th>
+                      <th className="px-4 py-2 text-right font-mono text-[11px] font-bold" style={{ color: "#0f3d6b" }}>{result.tickerA}</th>
+                      <th className="px-4 py-2 text-right font-mono text-[11px] font-bold" style={{ color: "#64748b" }}>{result.tickerB}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.creditQuality.map((r, i) => (
+                      <tr key={r.label} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: i < result.creditQuality.length - 1 ? "1px solid #f1f5f9" : undefined }}>
+                        <td className="px-4 py-1.5 text-[13px]" style={{ color: "#64748b" }}>{r.label}</td>
+                        <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: "#334155" }}>{r.a}</td>
+                        <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: "#334155" }}>{r.b}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
             {/* Performance chart + table side by side */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -183,24 +218,61 @@ export default function Page() {
               <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} highlight />
             </div>
 
-            {/* Narrative insights: Income + Risk side by side */}
+            {/* Income + Risk side by side with bar visuals */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              {otherNarrative.map((section) => (
-                <div key={section.title} className="rounded border p-5" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-                  <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: "#0f3d6b" }}>{section.title}</h3>
-                  <div className="space-y-1.5">
-                    {section.lines.map((line, i) => (
-                      <p key={i} className="text-[13px] leading-relaxed" style={{ color: "#475569" }}>{line}</p>
-                    ))}
-                  </div>
+              {/* Income comparison bars */}
+              <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+                <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Income</h4>
                 </div>
-              ))}
+                <div className="p-4">
+                  <IncomeRiskBars
+                    items={[
+                      { label: "SEC Yield", a: result.keyStats.find(r => r.label === "30-Day SEC Yield")?.nA ?? 0, b: result.keyStats.find(r => r.label === "30-Day SEC Yield")?.nB ?? 0 },
+                      { label: "Distribution", a: result.keyStats.find(r => r.label === "Distribution Yield")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Distribution Yield")?.nB ?? 0 },
+                      { label: "YTW/YTM", a: result.keyStats.find(r => r.label === "YTW / YTM")?.nA ?? 0, b: result.keyStats.find(r => r.label === "YTW / YTM")?.nB ?? 0 },
+                    ].filter(x => (x.a ?? 0) > 0 || (x.b ?? 0) > 0)}
+                    tickerA={result.tickerA} tickerB={result.tickerB}
+                  />
+                  {otherNarrative.find(s => s.title === "Income") && (
+                    <div className="mt-4 space-y-1 border-t pt-3" style={{ borderColor: "#f1f5f9" }}>
+                      {otherNarrative.find(s => s.title === "Income")!.lines.map((l, i) => (
+                        <p key={i} className="text-[12px] leading-relaxed" style={{ color: "#64748b" }}>{l}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              {/* Risk comparison bars */}
+              <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+                <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>{'Risk & Structure'}</h4>
+                </div>
+                <div className="p-4">
+                  <IncomeRiskBars
+                    items={[
+                      { label: "Duration", a: result.keyStats.find(r => r.label === "Duration")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Duration")?.nB ?? 0 },
+                      { label: "Std Dev", a: result.keyStats.find(r => r.label === "Std Deviation")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Std Deviation")?.nB ?? 0 },
+                      { label: "Sharpe", a: result.keyStats.find(r => r.label === "Sharpe Ratio")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Sharpe Ratio")?.nB ?? 0 },
+                      { label: "Expense", a: result.keyStats.find(r => r.label === "Expense Ratio")?.nA ?? 0, b: result.keyStats.find(r => r.label === "Expense Ratio")?.nB ?? 0 },
+                    ].filter(x => (x.a ?? 0) > 0 || (x.b ?? 0) > 0)}
+                    tickerA={result.tickerA} tickerB={result.tickerB}
+                  />
+                  {otherNarrative.find(s => s.title === "Risk & Structure") && (
+                    <div className="mt-4 space-y-1 border-t pt-3" style={{ borderColor: "#f1f5f9" }}>
+                      {otherNarrative.find(s => s.title === "Risk & Structure")!.lines.map((l, i) => (
+                        <p key={i} className="text-[12px] leading-relaxed" style={{ color: "#64748b" }}>{l}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Takeaway at the bottom */}
             {takeaway && (
               <div className="rounded border-l-4 p-5" style={{ borderColor: "#0f3d6b", backgroundColor: "#f0f7ff" }}>
-                <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: "#0f3d6b" }}>Takeaway</h3>
+                <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: "#0f3d6b" }}>Key Takeaway</h3>
                 <div className="space-y-2">
                   {takeaway.lines.map((line, i) => (
                     <p key={i} className="text-sm leading-relaxed" style={{ color: "#1e293b" }}>{line}</p>
@@ -219,7 +291,7 @@ export default function Page() {
               <div className="mb-1 text-[11px] font-bold uppercase tracking-widest" style={{ color: "#94a3b8" }}>Fund Comparison</div>
               <h2 className="text-2xl font-semibold" style={{ color: "#0f3d6b" }}>
                 {result.nameA}
-                <span className="mx-3 text-base font-normal" style={{ color: "#cbd5e1" }}>vs</span>
+                <span className="mx-4 text-xl font-light italic" style={{ color: "#94a3b8" }}>vs.</span>
                 {result.nameB}
               </h2>
               <p className="mt-1 font-mono text-sm" style={{ color: "#64748b" }}>{result.tickerA} / {result.tickerB}</p>
@@ -265,18 +337,51 @@ export default function Page() {
               </div>
             </div>
 
-            {/* Credit Quality + Performance table */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <ComparisonTable title="Credit Quality" rows={result.creditQuality} tickerA={result.tickerA} tickerB={result.tickerB} />
-              <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} />
+            {/* Credit Quality: pie charts + table */}
+            <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+              <div className="border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
+                <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Credit Quality</h4>
+              </div>
+              <div className="grid grid-cols-1 gap-0 md:grid-cols-2">
+                <div className="border-b p-4 md:border-b-0 md:border-r" style={{ borderColor: "#f1f5f9" }}>
+                  <SectorPieChart data={result.creditPieA} ticker={result.tickerA} subtitle={`Avg Credit Quality: ${result.avgCreditA}`} />
+                </div>
+                <div className="p-4">
+                  <SectorPieChart data={result.creditPieB} ticker={result.tickerB} subtitle={`Avg Credit Quality: ${result.avgCreditB}`} />
+                </div>
+              </div>
+              <div className="border-t" style={{ borderColor: "#f1f5f9" }}>
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ backgroundColor: "#f8fafc" }}>
+                      <th className="px-4 py-2 text-left text-[11px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>Rating</th>
+                      <th className="px-4 py-2 text-right font-mono text-[11px] font-bold" style={{ color: "#0f3d6b" }}>{result.tickerA}</th>
+                      <th className="px-4 py-2 text-right font-mono text-[11px] font-bold" style={{ color: "#64748b" }}>{result.tickerB}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.creditQuality.map((r, i) => (
+                      <tr key={r.label} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: i < result.creditQuality.length - 1 ? "1px solid #f1f5f9" : undefined }}>
+                        <td className="px-4 py-1.5 text-[13px]" style={{ color: "#64748b" }}>{r.label}</td>
+                        <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: "#334155" }}>{r.a}</td>
+                        <td className="px-4 py-1.5 text-right font-mono text-[13px]" style={{ color: "#334155" }}>{r.b}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
+
+            {/* Performance table */}
+            <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} />
 
             {/* Chart full width */}
             <PerformanceChart data={result.chartData} tickerA={result.tickerA} tickerB={result.tickerB} />
 
-            {/* Summary at bottom -- advisor appropriate */}
+            {/* Investment Considerations at bottom -- advisor appropriate */}
             {takeaway && (
-              <div className="rounded border p-6 text-center" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+              <div className="rounded border p-6" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+                <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: "#0f3d6b" }}>Investment Considerations</h3>
                 <div className="space-y-2">
                   {takeaway.lines.map((line, i) => (
                     <p key={i} className="text-sm leading-relaxed" style={{ color: "#475569" }}>{line}</p>
