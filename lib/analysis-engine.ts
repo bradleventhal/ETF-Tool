@@ -316,9 +316,19 @@ function avgCreditQuality(fund: FundData): string {
 }
 
 export function runAnalysis(dataA: FundData, dataB: FundData, mode: AnalysisMode): AnalysisResult {
+  // Generate reverse pitch: run the engine as if competitor (B) is pitching against us (A)
+  let reversePitch: NarrativeSection | null = null
+  if (mode === "internal") {
+    const flippedNarrative = buildNarrative(dataB, dataA, dataB.ticker, dataA.ticker, "internal")
+    const flippedTakeaway = flippedNarrative.find(s => s.title === "Takeaway")
+    if (flippedTakeaway) {
+      reversePitch = { title: "Competitor\u2019s Pitch", lines: flippedTakeaway.lines }
+    }
+  }
   return {
     tickerA: dataA.ticker, tickerB: dataB.ticker, nameA: dataA.name, nameB: dataB.name, mode,
     narrative: buildNarrative(dataA, dataB, dataA.ticker, dataB.ticker, mode),
+    reversePitch,
     keyStats: keyStats(dataA, dataB, mode),
     performance: perfTable(dataA, dataB),
     sectorAllocation: sectorTable(dataA, dataB),

@@ -68,4 +68,5 @@ export interface AnalysisResult {
   avgCreditA: string
   avgCreditB: string
   chartData: { period: string; fundA: number; fundB: number }[]
+  reversePitch: NarrativeSection | null
 }

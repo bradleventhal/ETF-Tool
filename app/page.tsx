@@ -12,7 +12,49 @@ import { parseFile } from "@/lib/parse-fund-data"
 import { runAnalysis } from "@/lib/analysis-engine"
 import { saveFunds, loadFunds } from "@/lib/fund-store"
 import type { FundData, AnalysisMode, AnalysisResult } from "@/lib/fund-types"
-import { Upload, X, Loader2, ArrowRightLeft } from "lucide-react"
+import { Upload, X, Loader2, ArrowRightLeft, ChevronDown, ChevronRight, Shield } from "lucide-react"
+import type { NarrativeSection } from "@/lib/fund-types"
+
+function ReversePitchSection({ section, competitorTicker }: { section: NarrativeSection; competitorTicker: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="rounded border" style={{ borderColor: open ? "#fca5a5" : "#e2e8f0", backgroundColor: open ? "#fef2f2" : "#fafafa", transition: "all 0.2s" }}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-red-50/50"
+      >
+        <Shield size={16} style={{ color: "#dc2626", flexShrink: 0 }} />
+        <div className="flex-1">
+          <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#dc2626" }}>
+            How {competitorTicker} Would Pitch Against You
+          </span>
+          <span className="ml-2 text-[10px] font-medium" style={{ color: "#94a3b8" }}>
+            {open ? "" : "Click to expand"}
+          </span>
+        </div>
+        {open
+          ? <ChevronDown size={14} style={{ color: "#94a3b8", flexShrink: 0 }} />
+          : <ChevronRight size={14} style={{ color: "#94a3b8", flexShrink: 0 }} />
+        }
+      </button>
+      {open && (
+        <div className="border-t px-5 pb-5 pt-4" style={{ borderColor: "#fca5a5" }}>
+          <p className="mb-3 text-[11px] italic" style={{ color: "#94a3b8" }}>
+            This is the analysis flipped -- as if {competitorTicker}&apos;s sales team is pitching their fund against yours. Use this to anticipate their arguments.
+          </p>
+          <ul className="space-y-2">
+            {section.lines.map((line, i) => (
+              <li key={i} className="flex gap-2.5 text-sm leading-relaxed" style={{ color: "#991b1b" }}>
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: "#dc2626" }} />
+                {line}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function NegTable({ rows, tickerA, tickerB, label, viewMode }: {
   rows: { label: string; a: string; b: string; nA: number | null; nB: number | null }[]
@@ -280,6 +322,8 @@ export default function Page() {
                 </ul>
               </div>
             )}
+
+            {result.reversePitch && <ReversePitchSection section={result.reversePitch} competitorTicker={result.tickerB} />}
           </div>
         )}
 
