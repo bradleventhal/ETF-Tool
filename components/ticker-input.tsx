@@ -173,7 +173,7 @@ export function TickerInput({ label, value, onChange, options, placeholder = "Ty
             ) : (
               filtered.map((opt, i) => (
                 <li
-                  key={opt.ticker}
+                  key={`${opt.ticker}-${i}`}
                   role="option"
                   aria-selected={i === highlightIndex}
                   onMouseDown={(e) => {
