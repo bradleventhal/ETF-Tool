@@ -42,7 +42,7 @@ function NegTable({ rows, tickerA, tickerB, label }: {
   )
 }
 
-function PieSection({ title, dataA, dataB, tickerA, tickerB, subtitleA, subtitleB, rows, rowLabel, viewMode }: {
+function PieWithTable({ title, dataA, dataB, tickerA, tickerB, subtitleA, subtitleB, rows, rowLabel, viewMode }: {
   title: string
   dataA: { name: string; value: number }[]
   dataB: { name: string; value: number }[]
@@ -219,11 +219,11 @@ export default function Page() {
           <div className="space-y-6 py-6">
             <ComparisonTable title="Key Statistics" rows={result.keyStats} tickerA={result.tickerA} tickerB={result.tickerB} highlight />
 
-            <PieSection title="Sector Allocation" dataA={result.pieDataA} dataB={result.pieDataB}
+            <PieWithTable title="Sector Allocation" dataA={result.pieDataA} dataB={result.pieDataB}
               tickerA={result.tickerA} tickerB={result.tickerB}
               rows={result.sectorAllocation} rowLabel="Sector" viewMode="internal" />
 
-            <PieSection title="Credit Quality" dataA={result.creditPieA} dataB={result.creditPieB}
+            <PieWithTable title="Credit Quality" dataA={result.creditPieA} dataB={result.creditPieB}
               tickerA={result.tickerA} tickerB={result.tickerB}
               subtitleA={"Avg Credit Quality: " + result.avgCreditA} subtitleB={"Avg Credit Quality: " + result.avgCreditB}
               rows={result.creditQuality} rowLabel="Rating" viewMode="internal" />
@@ -282,11 +282,11 @@ export default function Page() {
 
             <ComparisonTable title="Key Statistics" rows={result.keyStats} tickerA={result.tickerA} tickerB={result.tickerB} />
 
-            <PieSection title="Sector Allocation" dataA={result.pieDataA} dataB={result.pieDataB}
+            <PieWithTable title="Sector Allocation" dataA={result.pieDataA} dataB={result.pieDataB}
               tickerA={result.tickerA} tickerB={result.tickerB}
               rows={result.sectorAllocation} rowLabel="Sector" viewMode="advisor" />
 
-            <PieSection title="Credit Quality" dataA={result.creditPieA} dataB={result.creditPieB}
+            <PieWithTable title="Credit Quality" dataA={result.creditPieA} dataB={result.creditPieB}
               tickerA={result.tickerA} tickerB={result.tickerB}
               subtitleA={"Avg Credit Quality: " + result.avgCreditA} subtitleB={"Avg Credit Quality: " + result.avgCreditB}
               rows={result.creditQuality} rowLabel="Rating" viewMode="advisor" />
