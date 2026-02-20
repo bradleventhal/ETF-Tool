@@ -1,18 +1,15 @@
 "use client"
 
 import { useState, useMemo, useCallback, useEffect } from "react"
-import { FileUpload } from "@/components/file-upload"
 import { TickerInput } from "@/components/ticker-input"
 import { ComparisonTable } from "@/components/comparison-table"
 import { PerformanceChart } from "@/components/performance-chart"
 import { GrowthChart } from "@/components/growth-chart"
 import { SectorPieChart } from "@/components/sector-pie-chart"
 import { IncomeBars, RiskTable } from "@/components/income-risk-bars"
-import { parseFile } from "@/lib/parse-fund-data"
 import { runAnalysis } from "@/lib/analysis-engine"
-import { saveFunds, loadFunds } from "@/lib/fund-store"
 import type { FundData, AnalysisMode, AnalysisResult } from "@/lib/fund-types"
-import { Upload, X, Loader2, ArrowRightLeft, ChevronDown, ChevronRight, Shield } from "lucide-react"
+import { Loader2, ArrowRightLeft, ChevronDown, ChevronRight, Shield } from "lucide-react"
 import type { NarrativeSection } from "@/lib/fund-types"
 
 function ReversePitchSection({ section, competitorTicker }: { section: NarrativeSection; competitorTicker: string }) {
@@ -130,36 +127,24 @@ function PieWithTable({ title, dataA, dataB, tickerA, tickerB, subtitleA, subtit
 
 export default function Page() {
   const [funds, setFunds] = useState<FundData[]>([])
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [tickerA, setTickerA] = useState("")
   const [tickerB, setTickerB] = useState("")
   const [mode, setMode] = useState<AnalysisMode>("internal")
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [showUpload, setShowUpload] = useState(false)
 
   useEffect(() => {
-    loadFunds()
-      .then(({ funds: stored, lastUpdated: lu }) => {
-        if (stored.length > 0) { setFunds(stored); setLastUpdated(lu) }
+    fetch("/api/funds")
+      .then(res => res.json())
+      .then(data => {
+        if (data.funds && data.funds.length > 0) setFunds(data.funds)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
   const tickers = useMemo(() => funds.map((f) => ({ ticker: f.ticker, name: f.name })), [funds])
-
-  const handleFileLoaded = useCallback(async (buffer: ArrayBuffer, fileName: string) => {
-    try {
-      const parsed = parseFile(buffer, fileName)
-      if (parsed.length === 0) { setError("No fund data found."); return }
-      setFunds(parsed); setTickerA(""); setTickerB(""); setResult(null); setError(null); setShowUpload(false)
-      await saveFunds(parsed); setLastUpdated(new Date().toISOString())
-    } catch (err) {
-      setError("Parse error: " + (err instanceof Error ? err.message : "Unknown"))
-    }
-  }, [])
 
   useEffect(() => {
     if (tickerA && tickerB && tickerA !== tickerB) {
@@ -170,10 +155,6 @@ export default function Page() {
   }, [tickerA, tickerB, mode, funds])
 
   const swapTickers = () => { setTickerA(tickerB); setTickerB(tickerA) }
-  const fmtDate = (iso: string) => {
-    const d = new Date(iso)
-    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + " " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
-  }
 
   if (loading) {
     return (
@@ -186,13 +167,12 @@ export default function Page() {
   if (funds.length === 0) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center px-4" style={{ backgroundColor: "#f8fafc" }}>
-        <div className="w-full max-w-sm">
-          <div className="mb-8 flex flex-col items-center">
-            <img src="/images/logo.png" alt="Angel Oak Capital Advisors" className="mb-4" style={{ width: 200, height: "auto" }} />
-            <p className="text-sm" style={{ color: "#64748b" }}>Upload your fund data to get started</p>
-          </div>
-          <FileUpload onFileLoaded={handleFileLoaded} />
-          {error && <p className="mt-3 text-center text-sm" style={{ color: "#dc2626" }}>{error}</p>}
+        <div className="w-full max-w-sm text-center">
+          <img src="/images/logo.png" alt="Angel Oak Capital Advisors" className="mx-auto mb-4" style={{ width: 200, height: "auto" }} />
+          <p className="text-sm" style={{ color: "#64748b" }}>No fund data available yet.</p>
+          <a href="/admin" className="mt-4 inline-block rounded-md px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90" style={{ backgroundColor: "#0f3d6b" }}>
+            Upload Data
+          </a>
         </div>
       </main>
     )
@@ -222,25 +202,11 @@ export default function Page() {
             <div style={{ width: 1, height: 24, backgroundColor: "rgba(255,255,255,0.2)" }} />
             <span className="text-sm font-semibold tracking-tight" style={{ color: "rgba(255,255,255,0.9)" }}>Fund Discovery</span>
           </div>
-          <div className="flex flex-col items-end gap-0.5">
-            <button onClick={() => setShowUpload(!showUpload)} className="flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors" style={{ color: "rgba(255,255,255,0.7)" }}>
-              {showUpload ? <X className="h-3.5 w-3.5" /> : <Upload className="h-3.5 w-3.5" />}
-              {showUpload ? "Close" : "Update Data"}
-            </button>
-            <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>
-              {funds.length} funds{lastUpdated ? " \u00b7 Updated " + fmtDate(lastUpdated) : ""}
-            </span>
-          </div>
+          <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+            {funds.length} funds loaded
+          </span>
         </div>
       </header>
-
-      {showUpload && (
-        <div className="border-b px-6 py-5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
-          <div className="mx-auto max-w-sm">
-            <FileUpload onFileLoaded={handleFileLoaded} compact />
-          </div>
-        </div>
-      )}
 
       <div className="mx-auto max-w-6xl px-6">
         <div className="flex flex-col gap-3 border-b py-5 sm:flex-row sm:items-end sm:gap-4" style={{ borderColor: "#e2e8f0" }}>

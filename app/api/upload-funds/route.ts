@@ -1,0 +1,66 @@
+import { createClient } from "@/lib/supabase/server"
+import { NextRequest, NextResponse } from "next/server"
+
+export async function POST(req: NextRequest) {
+  try {
+    const { funds } = await req.json()
+    if (!Array.isArray(funds) || funds.length === 0) {
+      return NextResponse.json({ error: "No fund data provided" }, { status: 400 })
+    }
+
+    const supabase = await createClient()
+
+    // Map FundData fields to snake_case DB columns
+    const rows = funds.map((f: Record<string, unknown>) => ({
+      ticker: f.ticker,
+      name: f.name,
+      as_of_date: f.asOfDate ?? null,
+      duration: f.duration ?? null,
+      ytw_ytm: f.ytwYtm ?? null,
+      distribution_yield: f.distributionYield ?? null,
+      sec_yield: f.secYield ?? null,
+      expense: f.expense ?? null,
+      correlation: f.correlation ?? null,
+      std_dev: f.stdDev ?? null,
+      sharpe: f.sharpe ?? null,
+      ytd: f.ytd ?? null,
+      one_year: f.oneYear ?? null,
+      common_inception: f.commonInception ?? null,
+      three_year: f.threeYear ?? null,
+      non_agency_rmbs: f.nonAgencyRmbs ?? null,
+      agency_rmbs: f.agencyRmbs ?? null,
+      abs: f.abs ?? null,
+      clo: f.clo ?? null,
+      cmbs: f.cmbs ?? null,
+      securitized: f.securitized ?? null,
+      corporate_credit: f.corporateCredit ?? null,
+      government_cash: f.governmentCash ?? null,
+      other: f.other ?? null,
+      aaa: f.aaa ?? null,
+      aa: f.aa ?? null,
+      a: f.a ?? null,
+      bbb: f.bbb ?? null,
+      bb: f.bb ?? null,
+      b: f.b ?? null,
+      ccc: f.ccc ?? null,
+      below_ccc: f.belowCcc ?? null,
+      credit_other: f.creditOther ?? null,
+      updated_at: new Date().toISOString(),
+    }))
+
+    // Upsert by ticker -- if ticker exists, update all fields
+    const { error } = await supabase
+      .from("funds")
+      .upsert(rows, { onConflict: "ticker" })
+
+    if (error) {
+      console.error("[v0] Supabase upsert error:", error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, count: rows.length })
+  } catch (err) {
+    console.error("[v0] Upload error:", err)
+    return NextResponse.json({ error: "Failed to process upload" }, { status: 500 })
+  }
+}
