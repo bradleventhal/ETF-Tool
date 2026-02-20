@@ -1,13 +1,14 @@
-import { consumeStream, convertToModelMessages, streamText, UIMessage } from "ai"
+import { convertToModelMessages, streamText, type UIMessage } from "ai"
 
 export const maxDuration = 30
 
 export async function POST(req: Request) {
-  const body = await req.json()
-  const messages: UIMessage[] = body.messages
-  const fundContext: string = body.fundContext || ""
+  try {
+    const body = await req.json()
+    const messages: UIMessage[] = body.messages || []
+    const fundContext: string = body.fundContext || ""
 
-  const systemPrompt = `You are a high-precision analytical copilot for a senior external wholesaler covering sophisticated IBD/RIA channels.
+    const systemPrompt = `You are a high-precision analytical copilot for a senior external wholesaler covering sophisticated IBD/RIA channels.
 
 Core Rules:
 - Be technically accurate.
@@ -45,14 +46,18 @@ Increase analytical clarity and strengthen sales positioning through disciplined
 
 ${fundContext ? "\nCURRENT FUND COMPARISON DATA:\n" + fundContext : ""}`
 
-  const result = streamText({
-    model: "openai/gpt-4o",
-    system: systemPrompt,
-    messages: await convertToModelMessages(messages),
-    abortSignal: req.signal,
-  })
+    const result = streamText({
+      model: "openai/gpt-4o",
+      system: systemPrompt,
+      messages: await convertToModelMessages(messages),
+    })
 
-  return result.toUIMessageStreamResponse({
-    consumeSseStream: consumeStream,
-  })
+    return result.toUIMessageStreamResponse()
+  } catch (err: unknown) {
+    console.error("[v0] Chat API error:", err)
+    return new Response(
+      JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    )
+  }
 }
