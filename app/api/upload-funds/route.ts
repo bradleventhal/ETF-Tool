@@ -48,10 +48,18 @@ export async function POST(req: NextRequest) {
       updated_at: new Date().toISOString(),
     }))
 
+    // Deduplicate by ticker -- keep last occurrence of each
+    const deduped = Object.values(
+      rows.reduce((acc: Record<string, typeof rows[0]>, row) => {
+        acc[row.ticker as string] = row
+        return acc
+      }, {})
+    )
+
     // Upsert by ticker -- if ticker exists, update all fields
     const { error } = await supabase
       .from("funds")
-      .upsert(rows, { onConflict: "ticker" })
+      .upsert(deduped, { onConflict: "ticker" })
 
     if (error) {
       console.error("[v0] Supabase upsert error:", error)
