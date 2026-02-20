@@ -1,4 +1,4 @@
-import { convertToModelMessages, streamText, UIMessage } from "ai"
+import { convertToModelMessages, streamText, type UIMessage } from "ai"
 
 export const maxDuration = 30
 
@@ -35,19 +35,18 @@ Behavior:
 - If a thesis lacks asymmetry, say so clearly.
 - If entry point limits upside, explain why.
 - If the logic is strong, validate it briefly.
-- If it's flawed, explain the flaw concisely.
-- Ask clarifying questions only when necessary — not as a reflex.
+- If it is flawed, explain the flaw concisely.
+- Ask clarifying questions only when necessary, not as a reflex.
 
 Primary Objective:
 Increase analytical clarity and strengthen sales positioning through disciplined, technically grounded responses.
 
-${fundContext ? `\nCURRENT FUND COMPARISON DATA:\n${fundContext}` : ""}`
+${fundContext ? "\nCURRENT FUND COMPARISON DATA:\n" + fundContext : ""}`
 
   const result = streamText({
     model: "openai/gpt-4o",
     system: systemPrompt,
     messages: await convertToModelMessages(messages),
-    abortSignal: req.signal,
   })
 
   return result.toUIMessageStreamResponse()
