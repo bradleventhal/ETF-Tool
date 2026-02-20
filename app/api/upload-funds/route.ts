@@ -3,10 +3,13 @@ import { NextRequest, NextResponse } from "next/server"
 
 export async function POST(req: NextRequest) {
   try {
-    const { funds } = await req.json()
+    const body = await req.json()
+    const funds = body.funds
+    console.log("[v0] Upload received, funds count:", Array.isArray(funds) ? funds.length : "not an array")
     if (!Array.isArray(funds) || funds.length === 0) {
       return NextResponse.json({ error: "No fund data provided" }, { status: 400 })
     }
+    console.log("[v0] First fund sample:", JSON.stringify(funds[0]).slice(0, 200))
 
     const supabase = createClient()
 

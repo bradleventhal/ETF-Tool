@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { Upload, CheckCircle2, AlertCircle, Loader2 } from "lucide-react"
-import * as XLSX from "xlsx"
 import { parseFundData } from "@/lib/parse-fund-data"
 
 export default function AdminUploadPage() {

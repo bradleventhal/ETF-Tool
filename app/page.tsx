@@ -170,9 +170,14 @@ export default function Page() {
             <div style={{ width: 1, height: 24, backgroundColor: "rgba(255,255,255,0.2)" }} />
             <span className="text-sm font-semibold tracking-tight" style={{ color: "rgba(255,255,255,0.9)" }}>Fund Discovery</span>
           </div>
-          <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>
-            {funds.length} funds loaded
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+              {funds.length} funds loaded
+            </span>
+            <a href="/admin" className="rounded px-2 py-1 text-[10px] font-medium transition-colors hover:bg-white/10" style={{ color: "rgba(255,255,255,0.5)" }}>
+              Admin
+            </a>
+          </div>
         </div>
       </header>
 
