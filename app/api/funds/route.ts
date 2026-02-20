@@ -3,8 +3,14 @@ import { NextResponse } from "next/server"
 
 export async function GET() {
   try {
+    console.log("[v0] Funds API called, creating client...")
+    console.log("[v0] SUPABASE_URL exists:", !!process.env.NEXT_PUBLIC_SUPABASE_URL)
+    console.log("[v0] ANON_KEY exists:", !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
     const supabase = createClient()
+    console.log("[v0] Client created, querying funds...")
     const { data, error } = await supabase.from("funds").select("*").order("ticker")
+
+    console.log("[v0] Query result - error:", error, "rows:", data?.length)
 
     if (error) {
       console.error("[v0] Supabase select error:", error)

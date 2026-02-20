@@ -99,11 +99,20 @@ export default function Page() {
 
   useEffect(() => {
     fetch("/api/funds")
-      .then(res => res.json())
-      .then(data => {
-        if (data.funds && data.funds.length > 0) setFunds(data.funds)
+      .then(res => {
+        console.log("[v0] /api/funds status:", res.status)
+        return res.json()
       })
-      .catch(() => {})
+      .then(data => {
+        console.log("[v0] /api/funds response:", JSON.stringify(data).slice(0, 200))
+        if (data.funds && data.funds.length > 0) {
+          console.log("[v0] Loaded", data.funds.length, "funds")
+          setFunds(data.funds)
+        } else {
+          console.log("[v0] No funds in response, data keys:", Object.keys(data))
+        }
+      })
+      .catch(err => { console.error("[v0] /api/funds fetch error:", err) })
       .finally(() => setLoading(false))
   }, [])
 
