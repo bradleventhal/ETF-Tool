@@ -1,14 +1,12 @@
-import { streamText } from "ai"
+import { generateText } from "ai"
 
-export const maxDuration = 30
+export const maxDuration = 60
 
 export async function POST(req: Request) {
   try {
     const body = await req.json()
     const userMessages: { role: string; content: string }[] = body.messages || []
     const fundContext: string = body.fundContext || ""
-
-    console.log("[v0] Chat API called. Messages:", userMessages.length, "Context length:", fundContext.length)
 
     const systemPrompt = `You are a high-precision analytical copilot for a senior external wholesaler covering sophisticated IBD/RIA channels.
 
@@ -41,7 +39,7 @@ Increase analytical clarity and strengthen sales positioning through disciplined
 
 ${fundContext ? "\nCURRENT FUND COMPARISON DATA:\n" + fundContext : ""}`
 
-    const result = streamText({
+    const { text } = await generateText({
       model: "openai/gpt-4o",
       system: systemPrompt,
       messages: userMessages.map(m => ({
@@ -50,12 +48,12 @@ ${fundContext ? "\nCURRENT FUND COMPARISON DATA:\n" + fundContext : ""}`
       })),
     })
 
-    return result.toTextStreamResponse()
+    return Response.json({ content: text })
   } catch (err: unknown) {
     console.error("[v0] Chat API error:", err)
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+    return Response.json(
+      { error: err instanceof Error ? err.message : "Unknown error" },
+      { status: 500 }
     )
   }
 }
