@@ -25,7 +25,7 @@ export default function AdminUploadPage() {
       }
 
       setStatus("uploading")
-      setMessage(`Uploading ${funds.length} funds to database...`)
+      setMessage("Uploading " + funds.length + " funds to database...")
 
       const res = await fetch("/api/upload-funds", {
         method: "POST",
@@ -43,7 +43,7 @@ export default function AdminUploadPage() {
 
       setFundCount(result.count)
       setStatus("success")
-      setMessage(`Successfully uploaded ${result.count} funds`)
+      setMessage("Successfully uploaded " + result.count + " funds")
     } catch (err) {
       setStatus("error")
       setMessage(err instanceof Error ? err.message : "Failed to process file")
