@@ -1,14 +1,13 @@
 "use client"
 
-import { useState, useRef, useEffect, useMemo } from "react"
-import { useChat } from "@ai-sdk/react"
-import { DefaultChatTransport } from "ai"
+import { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import type { AnalysisResult } from "@/lib/fund-types"
-import { MessageSquare, Send, X, ChevronDown } from "lucide-react"
+import { MessageSquare, Send, ChevronDown } from "lucide-react"
 
-function getUIMessageText(msg: { parts?: { type: string; text?: string }[] }): string {
-  if (!msg.parts || !Array.isArray(msg.parts)) return ""
-  return msg.parts.filter((p): p is { type: "text"; text: string } => p.type === "text").map(p => p.text).join("")
+interface ChatMessage {
+  id: string
+  role: "user" | "assistant"
+  content: string
 }
 
 function buildFundContext(result: AnalysisResult): string {
@@ -93,40 +92,96 @@ interface FundChatProps {
 export function FundChat({ result }: FundChatProps) {
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState("")
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [streaming, setStreaming] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   const fundContext = useMemo(() => buildFundContext(result), [result])
   const anticipatedQuestions = useMemo(() => generateAnticipatedQuestions(result), [result])
-  const chatId = `${result.tickerA}-${result.tickerB}`
 
-  const { messages, sendMessage, status, setMessages } = useChat({
-    chatId,
-    transport: new DefaultChatTransport({
-      api: "/api/chat",
-      prepareSendMessagesRequest: ({ id, messages: msgs }) => ({
-        body: { messages: msgs, id, fundContext },
-      }),
-    }),
-  })
-
-  const isLoading = status === "streaming" || status === "submitted"
+  // Reset when comparison changes
+  useEffect(() => {
+    setMessages([])
+    setStreaming(false)
+    setInput("")
+  }, [result.tickerA, result.tickerB])
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [messages])
+  }, [messages, streaming])
 
-  // Reset chat when comparison changes
-  useEffect(() => {
-    setMessages([])
-  }, [result.tickerA, result.tickerB, setMessages])
+  const sendMessage = useCallback(async (text: string) => {
+    if (!text.trim() || streaming) return
 
-  const handleSend = (text: string) => {
-    if (!text.trim() || isLoading) return
-    sendMessage({ text })
+    const userMsg: ChatMessage = { id: Date.now().toString(), role: "user", content: text }
+    const assistantMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: "assistant", content: "" }
+
+    setMessages(prev => [...prev, userMsg, assistantMsg])
     setInput("")
-  }
+    setStreaming(true)
+
+    const history = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }))
+
+    try {
+      abortRef.current = new AbortController()
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: history, fundContext }),
+        signal: abortRef.current.signal,
+      })
+
+      if (!res.ok) {
+        const errText = await res.text()
+        setMessages(prev => {
+          const updated = [...prev]
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content: `Error: ${res.status} - ${errText}` }
+          return updated
+        })
+        setStreaming(false)
+        return
+      }
+
+      const reader = res.body?.getReader()
+      if (!reader) {
+        setMessages(prev => {
+          const updated = [...prev]
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content: "Error: No response stream" }
+          return updated
+        })
+        setStreaming(false)
+        return
+      }
+
+      const decoder = new TextDecoder()
+      let fullText = ""
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        const chunk = decoder.decode(value, { stream: true })
+        fullText += chunk
+        const captured = fullText
+        setMessages(prev => {
+          const updated = [...prev]
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content: captured }
+          return updated
+        })
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return
+      setMessages(prev => {
+        const updated = [...prev]
+        updated[updated.length - 1] = { ...updated[updated.length - 1], content: `Error: ${err instanceof Error ? err.message : "Unknown"}` }
+        return updated
+      })
+    } finally {
+      setStreaming(false)
+    }
+  }, [messages, streaming, fundContext])
 
   if (!open) {
     return (
@@ -143,7 +198,6 @@ export function FundChat({ result }: FundChatProps) {
 
   return (
     <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-      {/* Header */}
       <div className="flex items-center justify-between border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
         <div className="flex items-center gap-2">
           <MessageSquare size={14} style={{ color: "#0f3d6b" }} />
@@ -154,9 +208,8 @@ export function FundChat({ result }: FundChatProps) {
         </button>
       </div>
 
-      {/* Messages */}
       <div ref={scrollRef} className="max-h-[400px] overflow-y-auto px-4 py-3" style={{ minHeight: 120 }}>
-        {messages.length === 0 && (
+        {messages.length === 0 && !streaming && (
           <div>
             <p className="mb-3 text-xs" style={{ color: "#94a3b8" }}>
               Context-aware analysis for {result.tickerA} vs {result.tickerB}. All fund data is loaded.
@@ -165,7 +218,7 @@ export function FundChat({ result }: FundChatProps) {
               {anticipatedQuestions.map((q, i) => (
                 <button
                   key={i}
-                  onClick={() => handleSend(q)}
+                  onClick={() => sendMessage(q)}
                   className="block w-full rounded border px-3 py-2 text-left text-xs transition-colors hover:bg-blue-50/50"
                   style={{ borderColor: "#e2e8f0", color: "#334155" }}
                 >
@@ -177,8 +230,20 @@ export function FundChat({ result }: FundChatProps) {
         )}
 
         {messages.map((msg) => {
-          const text = getUIMessageText(msg)
-          if (!text) return null
+          if (!msg.content && msg.role === "assistant" && streaming) {
+            return (
+              <div key={msg.id} className="mb-3">
+                <div className="inline-block rounded-lg border px-3.5 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f8fafc" }}>
+                  <div className="flex gap-1">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ backgroundColor: "#94a3b8" }} />
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ backgroundColor: "#94a3b8", animationDelay: "0.2s" }} />
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ backgroundColor: "#94a3b8", animationDelay: "0.4s" }} />
+                  </div>
+                </div>
+              </div>
+            )
+          }
+          if (!msg.content) return null
           const isUser = msg.role === "user"
           return (
             <div key={msg.id} className={`mb-3 ${isUser ? "text-right" : ""}`}>
@@ -190,28 +255,15 @@ export function FundChat({ result }: FundChatProps) {
                   border: isUser ? "none" : "1px solid #e2e8f0",
                 }}
               >
-                <div className="whitespace-pre-wrap">{text}</div>
+                <div className="whitespace-pre-wrap">{msg.content}</div>
               </div>
             </div>
           )
         })}
-
-        {isLoading && messages.length > 0 && !getUIMessageText(messages[messages.length - 1]) && (
-          <div className="mb-3">
-            <div className="inline-block rounded-lg border px-3.5 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f8fafc" }}>
-              <div className="flex gap-1">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ backgroundColor: "#94a3b8" }} />
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ backgroundColor: "#94a3b8", animationDelay: "0.2s" }} />
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ backgroundColor: "#94a3b8", animationDelay: "0.4s" }} />
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Input */}
       <form
-        onSubmit={(e) => { e.preventDefault(); handleSend(input) }}
+        onSubmit={(e) => { e.preventDefault(); sendMessage(input) }}
         className="flex items-center gap-2 border-t px-3 py-2.5"
         style={{ borderColor: "#e2e8f0" }}
       >
@@ -219,13 +271,13 @@ export function FundChat({ result }: FundChatProps) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask about this comparison..."
-          disabled={isLoading}
+          disabled={streaming}
           className="min-w-0 flex-1 rounded border px-3 py-2 text-sm outline-none transition-colors focus:border-[#0f3d6b]"
           style={{ borderColor: "#e2e8f0", color: "#1e293b", fontSize: 16 }}
         />
         <button
           type="submit"
-          disabled={!input.trim() || isLoading}
+          disabled={!input.trim() || streaming}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded transition-colors disabled:opacity-30"
           style={{ backgroundColor: "#0f3d6b", color: "#fff" }}
         >

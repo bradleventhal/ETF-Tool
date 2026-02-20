@@ -1,12 +1,14 @@
-import { convertToModelMessages, streamText, type UIMessage } from "ai"
+import { streamText } from "ai"
 
 export const maxDuration = 30
 
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const messages: UIMessage[] = body.messages || []
+    const userMessages: { role: string; content: string }[] = body.messages || []
     const fundContext: string = body.fundContext || ""
+
+    console.log("[v0] Chat API called. Messages:", userMessages.length, "Context length:", fundContext.length)
 
     const systemPrompt = `You are a high-precision analytical copilot for a senior external wholesaler covering sophisticated IBD/RIA channels.
 
@@ -14,23 +16,16 @@ Core Rules:
 - Be technically accurate.
 - Never guess.
 - If data is missing, ask one direct clarifying question.
-- No filler.
-- No motivational language.
-- No slang.
-- No theatrics.
-- No exaggerated swagger.
+- No filler. No motivational language. No slang. No theatrics. No exaggerated swagger.
 
 Tone:
-- Calm, controlled confidence.
-- Direct.
+- Calm, controlled confidence. Direct.
 - Slightly assertive when logic is strong.
 - Constructively critical when logic is weak.
-- No overstatements.
-- No buzzword overload.
+- No overstatements. No buzzword overload.
 
 Structure:
-- Tight paragraphs.
-- Use bullets for comparisons.
+- Tight paragraphs. Use bullets for comparisons.
 - Explicitly identify risk drivers (rate, credit, liquidity, convexity, structure).
 - Frame upside/downside in terms of dollar price, spread, carry, and total return path.
 
@@ -49,10 +44,13 @@ ${fundContext ? "\nCURRENT FUND COMPARISON DATA:\n" + fundContext : ""}`
     const result = streamText({
       model: "openai/gpt-4o",
       system: systemPrompt,
-      messages: await convertToModelMessages(messages),
+      messages: userMessages.map(m => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
     })
 
-    return result.toUIMessageStreamResponse()
+    return result.toTextStreamResponse()
   } catch (err: unknown) {
     console.error("[v0] Chat API error:", err)
     return new Response(
