@@ -20,7 +20,7 @@ export default function AdminUploadPage() {
 
       if (funds.length === 0) {
         setStatus("error")
-        setMessage("No fund data found in the sheet. Make sure the sheet has a 'Ticker' column.")
+        setMessage("No fund data found in the sheet. Make sure the sheet has a Ticker column.")
         return
       }
 
@@ -67,7 +67,9 @@ export default function AdminUploadPage() {
       <div className="w-full max-w-lg">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold tracking-tight" style={{ color: "#0f3d6b" }}>Fund Data Admin</h1>
-          <p className="mt-2 text-sm" style={{ color: "#64748b" }}>Upload your Excel file to update the fund database. All users will see the latest data.</p>
+          <p className="mt-2 text-sm" style={{ color: "#64748b" }}>
+            Upload your Excel file to update the fund database. All users will see the latest data.
+          </p>
         </div>
 
         <div
@@ -83,9 +85,14 @@ export default function AdminUploadPage() {
           {status === "idle" && (
             <>
               <Upload size={40} style={{ color: "#94a3b8" }} />
-              <p className="mt-4 text-sm font-medium" style={{ color: "#334155" }}>Drag and drop your Excel file here</p>
+              <p className="mt-4 text-sm font-medium" style={{ color: "#334155" }}>
+                Drag and drop your Excel file here
+              </p>
               <p className="mt-1 text-xs" style={{ color: "#94a3b8" }}>or</p>
-              <label className="mt-3 cursor-pointer rounded-md px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90" style={{ backgroundColor: "#0f3d6b" }}>
+              <label
+                className="mt-3 cursor-pointer rounded-md px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
+                style={{ backgroundColor: "#0f3d6b" }}
+              >
                 Browse Files
                 <input type="file" accept=".xlsx,.xls" onChange={handleFileInput} className="hidden" />
               </label>
@@ -103,7 +110,9 @@ export default function AdminUploadPage() {
             <div className="flex flex-col items-center gap-3">
               <CheckCircle2 size={40} style={{ color: "#16a34a" }} />
               <p className="text-sm font-medium" style={{ color: "#16a34a" }}>{message}</p>
-              <p className="text-xs" style={{ color: "#64748b" }}>{fundCount} funds are now live for all users</p>
+              <p className="text-xs" style={{ color: "#64748b" }}>
+                {fundCount} funds are now live for all users
+              </p>
               <button
                 onClick={() => { setStatus("idle"); setMessage("") }}
                 className="mt-2 rounded-md px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
