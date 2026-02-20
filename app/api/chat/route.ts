@@ -3,7 +3,10 @@ import { convertToModelMessages, streamText, type UIMessage } from "ai"
 export const maxDuration = 30
 
 export async function POST(req: Request) {
-  const { messages, fundContext }: { messages: UIMessage[]; fundContext?: string } = await req.json()
+  const body = await req.json()
+  console.log("[v0] Chat API body keys:", Object.keys(body))
+  console.log("[v0] Messages count:", body.messages?.length, "fundContext length:", body.fundContext?.length)
+  const { messages, fundContext }: { messages: UIMessage[]; fundContext?: string } = body
 
   const systemPrompt = `You are a high-precision analytical copilot for a senior external wholesaler covering sophisticated IBD/RIA channels.
 
