@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { TickerInput } from "@/components/ticker-input"
 import { ComparisonTable } from "@/components/comparison-table"
 import { PerformanceChart } from "@/components/performance-chart"
@@ -11,9 +11,7 @@ import { FileUpload } from "@/components/file-upload"
 import { parseFile } from "@/lib/parse-fund-data"
 import { saveFunds, loadFunds } from "@/lib/fund-store"
 import { runAnalysis } from "@/lib/analysis-engine"
-import { buildWarRoom } from "@/lib/competitor-pitch"
-import { CompetitorWarRoom } from "@/components/competitor-war-room"
-import type { FundData, AnalysisMode, AnalysisResult, WarRoom } from "@/lib/fund-types"
+import type { FundData, AnalysisMode, AnalysisResult } from "@/lib/fund-types"
 import { Upload, X, Loader2, ArrowRightLeft, ChevronDown, ChevronRight } from "lucide-react"
 
 
@@ -98,7 +96,6 @@ export default function Page() {
   const [tickerB, setTickerB] = useState("")
   const [mode, setMode] = useState<AnalysisMode>("internal")
   const [result, setResult] = useState<AnalysisResult | null>(null)
-  const [warRoom, setWarRoom] = useState<WarRoom | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showUpload, setShowUpload] = useState(false)
 
@@ -131,10 +128,8 @@ export default function Page() {
       if (fA && fB) {
         setError(null)
         setResult(runAnalysis(fA, fB, mode))
-        if (mode === "internal") setWarRoom(buildWarRoom(fA, fB))
-        else setWarRoom(null)
       }
-    } else { setResult(null); setWarRoom(null) }
+    } else { setResult(null) }
   }, [tickerA, tickerB, mode, funds])
 
   const swapTickers = () => { setTickerA(tickerB); setTickerB(tickerA) }
@@ -291,8 +286,20 @@ export default function Page() {
               </div>
             )}
 
-            {warRoom && (
-              <CompetitorWarRoom warRoom={warRoom} competitorTicker={result.tickerB} ourTicker={result.tickerA} />
+            {result.reversePitch && (
+              <div className="rounded border px-5 py-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#fafafa" }}>
+                <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#dc2626" }}>
+                  How {result.tickerB} Would Pitch Against You
+                </span>
+                <ul className="mt-3 space-y-2">
+                  {result.reversePitch.lines.map((line, i) => (
+                    <li key={i} className="flex gap-2.5 text-sm leading-relaxed" style={{ color: "#991b1b" }}>
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: "#dc2626" }} />
+                      {line}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
         )}

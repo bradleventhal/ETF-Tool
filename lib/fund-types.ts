@@ -69,7 +69,6 @@ export interface AnalysisResult {
   avgCreditB: string
   chartData: { period: string; fundA: number; fundB: number }[]
   reversePitch: NarrativeSection | null
-  warRoom: WarRoom | null
 }
 
 export type DifficultyTier = "Very Easy" | "Easy" | "Moderate" | "Difficult" | "Very Difficult"
