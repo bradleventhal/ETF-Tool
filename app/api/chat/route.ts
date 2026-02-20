@@ -1,12 +1,11 @@
-import { convertToModelMessages, streamText, type UIMessage } from "ai"
+import { consumeStream, convertToModelMessages, streamText, UIMessage } from "ai"
 
 export const maxDuration = 30
 
 export async function POST(req: Request) {
   const body = await req.json()
-  console.log("[v0] Chat API body keys:", Object.keys(body))
-  console.log("[v0] Messages count:", body.messages?.length, "fundContext length:", body.fundContext?.length)
-  const { messages, fundContext }: { messages: UIMessage[]; fundContext?: string } = body
+  const messages: UIMessage[] = body.messages
+  const fundContext: string = body.fundContext || ""
 
   const systemPrompt = `You are a high-precision analytical copilot for a senior external wholesaler covering sophisticated IBD/RIA channels.
 
@@ -50,7 +49,10 @@ ${fundContext ? "\nCURRENT FUND COMPARISON DATA:\n" + fundContext : ""}`
     model: "openai/gpt-4o",
     system: systemPrompt,
     messages: await convertToModelMessages(messages),
+    abortSignal: req.signal,
   })
 
-  return result.toUIMessageStreamResponse()
+  return result.toUIMessageStreamResponse({
+    consumeSseStream: consumeStream,
+  })
 }

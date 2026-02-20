@@ -97,20 +97,16 @@ export function FundChat({ result }: FundChatProps) {
 
   const fundContext = useMemo(() => buildFundContext(result), [result])
   const anticipatedQuestions = useMemo(() => generateAnticipatedQuestions(result), [result])
-  const fundContextRef = useRef(fundContext)
-  fundContextRef.current = fundContext
-
-  const transportRef = useRef(
-    new DefaultChatTransport({
-      api: "/api/chat",
-      prepareSendMessagesRequest: ({ id, messages: msgs }) => ({
-        body: { messages: msgs, id, fundContext: fundContextRef.current },
-      }),
-    })
-  )
+  const chatId = `${result.tickerA}-${result.tickerB}`
 
   const { messages, sendMessage, status, setMessages } = useChat({
-    transport: transportRef.current,
+    chatId,
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      prepareSendMessagesRequest: ({ id, messages: msgs }) => ({
+        body: { messages: msgs, id, fundContext },
+      }),
+    }),
   })
 
   const isLoading = status === "streaming" || status === "submitted"
