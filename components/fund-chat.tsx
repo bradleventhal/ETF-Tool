@@ -127,6 +127,8 @@ export function FundChat({ result }: FundChatProps) {
 
     try {
       abortRef.current = new AbortController()
+      console.log("[v0] Sending chat request...")
+      abortRef.current = new AbortController()
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -134,11 +136,15 @@ export function FundChat({ result }: FundChatProps) {
         signal: abortRef.current.signal,
       })
 
+      console.log("[v0] Chat response status:", res.status, res.statusText)
+
       if (!res.ok) {
         const errText = await res.text()
+        console.log("[v0] Chat error response:", errText)
+        const errorContent = `Error ${res.status}: ${errText.slice(0, 200)}`
         setMessages(prev => {
           const updated = [...prev]
-          updated[updated.length - 1] = { ...updated[updated.length - 1], content: `Error: ${res.status} - ${errText}` }
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content: errorContent }
           return updated
         })
         setStreaming(false)
@@ -147,9 +153,10 @@ export function FundChat({ result }: FundChatProps) {
 
       const reader = res.body?.getReader()
       if (!reader) {
+        console.log("[v0] No reader on response body")
         setMessages(prev => {
           const updated = [...prev]
-          updated[updated.length - 1] = { ...updated[updated.length - 1], content: "Error: No response stream" }
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content: "Error: No response stream available" }
           return updated
         })
         setStreaming(false)
@@ -158,12 +165,15 @@ export function FundChat({ result }: FundChatProps) {
 
       const decoder = new TextDecoder()
       let fullText = ""
+      let chunkCount = 0
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
         const chunk = decoder.decode(value, { stream: true })
         fullText += chunk
+        chunkCount++
+        if (chunkCount <= 3) console.log("[v0] Chunk", chunkCount, ":", JSON.stringify(chunk.slice(0, 100)))
         const captured = fullText
         setMessages(prev => {
           const updated = [...prev]
@@ -171,11 +181,14 @@ export function FundChat({ result }: FundChatProps) {
           return updated
         })
       }
+      console.log("[v0] Stream done. Total chunks:", chunkCount, "Total text length:", fullText.length)
     } catch (err) {
+      console.error("[v0] Chat fetch error:", err)
       if (err instanceof Error && err.name === "AbortError") return
+      const errorContent = `Error: ${err instanceof Error ? err.message : "Unknown error"}`
       setMessages(prev => {
         const updated = [...prev]
-        updated[updated.length - 1] = { ...updated[updated.length - 1], content: `Error: ${err instanceof Error ? err.message : "Unknown"}` }
+        updated[updated.length - 1] = { ...updated[updated.length - 1], content: errorContent }
         return updated
       })
     } finally {
