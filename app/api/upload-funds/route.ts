@@ -54,22 +54,29 @@ export async function POST(req: NextRequest) {
     // Deduplicate by ticker -- keep last occurrence of each
     const deduped = Object.values(
       rows.reduce((acc: Record<string, typeof rows[0]>, row) => {
-        acc[row.ticker as string] = row
+        if (row.ticker) acc[row.ticker as string] = row
         return acc
       }, {})
     )
 
-    // Upsert by ticker -- if ticker exists, update all fields
-    const { error } = await supabase
-      .from("funds")
-      .upsert(deduped, { onConflict: "ticker" })
+    console.log("[v0] Deduped count:", deduped.length)
 
-    if (error) {
-      console.error("[v0] Supabase upsert error:", error)
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    // Upsert in batches of 20 to avoid payload limits
+    const BATCH = 20
+    for (let i = 0; i < deduped.length; i += BATCH) {
+      const batch = deduped.slice(i, i + BATCH)
+      console.log("[v0] Upserting batch", i / BATCH + 1, "of", Math.ceil(deduped.length / BATCH))
+      const { error } = await supabase
+        .from("funds")
+        .upsert(batch, { onConflict: "ticker" })
+
+      if (error) {
+        console.error("[v0] Supabase upsert error on batch:", error)
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
     }
 
-    return NextResponse.json({ success: true, count: rows.length })
+    return NextResponse.json({ success: true, count: deduped.length })
   } catch (err) {
     console.error("[v0] Upload error:", err)
     return NextResponse.json({ error: "Failed to process upload" }, { status: 500 })
