@@ -69,4 +69,36 @@ export interface AnalysisResult {
   avgCreditB: string
   chartData: { period: string; fundA: number; fundB: number }[]
   reversePitch: NarrativeSection | null
+  warRoom: WarRoom | null
+}
+
+export type DifficultyTier = "Very Easy" | "Easy" | "Moderate" | "Difficult" | "Very Difficult"
+export type ConfidenceTag = "Airtight" | "Strong" | "Use With Caution"
+
+export interface CompetitorArgument {
+  id: string
+  metric: string
+  difficulty: DifficultyTier
+  argument: string
+  theirValue: string
+  ourValue: string
+  deltaBps?: number
+}
+
+export interface Rebuttal {
+  argumentId: string
+  metric: string
+  opener: string
+  bullets: string[]
+  confidence: ConfidenceTag
+}
+
+export interface WarRoom {
+  overallDifficulty: DifficultyTier
+  difficultySummary: string
+  isLayup: boolean
+  layupMessage: string | null
+  marketContext: string
+  competitorArguments: CompetitorArgument[]
+  rebuttals: Rebuttal[]
 }
