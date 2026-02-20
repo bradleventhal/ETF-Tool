@@ -1,4 +1,4 @@
-import { consumeStream, convertToModelMessages, streamText, UIMessage } from "ai"
+import { convertToModelMessages, streamText, UIMessage } from "ai"
 
 export const maxDuration = 30
 
@@ -50,8 +50,5 @@ ${fundContext ? `\nCURRENT FUND COMPARISON DATA:\n${fundContext}` : ""}`
     abortSignal: req.signal,
   })
 
-  return result.toUIMessageStreamResponse({
-    originalMessages: messages,
-    consumeSseStream: consumeStream,
-  })
+  return result.toUIMessageStreamResponse()
 }
