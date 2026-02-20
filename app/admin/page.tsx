@@ -2,8 +2,7 @@
 
 import { useState, useCallback } from "react"
 import { Upload, CheckCircle2, AlertCircle, Loader2 } from "lucide-react"
-import * as XLSX from "xlsx"
-import { parseFundData } from "@/lib/parse-fund-data"
+import { parseFile } from "@/lib/parse-fund-data"
 
 export default function AdminUploadPage() {
   const [status, setStatus] = useState<"idle" | "parsing" | "uploading" | "success" | "error">("idle")
@@ -17,11 +16,7 @@ export default function AdminUploadPage() {
 
     try {
       const buffer = await file.arrayBuffer()
-      const workbook = XLSX.read(buffer, { type: "array" })
-      const sheetName = workbook.SheetNames.find(n => n.toLowerCase().includes("raw")) || workbook.SheetNames[0]
-      const sheet = workbook.Sheets[sheetName]
-      const rows = XLSX.utils.sheet_to_json(sheet)
-      const funds = parseFundData(rows)
+      const funds = parseFile(buffer, file.name)
 
       if (funds.length === 0) {
         setStatus("error")
