@@ -26,17 +26,63 @@ export default function AdminUploadPage() {
       setStatus("uploading")
       setMessage(`Uploading ${funds.length} funds...`)
 
+      // Serialize funds to flat DB rows
+      const rows = funds.map(f => ({
+        ticker: f.ticker,
+        name: f.name,
+        as_of_date: f.asOfDate || null,
+        duration: f.duration,
+        ytw_ytm: f.ytwYtm,
+        distribution_yield: f.distributionYield,
+        sec_yield: f.secYield,
+        expense: f.expense,
+        correlation: f.correlation,
+        std_dev: f.stdDev,
+        sharpe: f.sharpe,
+        ytd: f.ytd,
+        one_year: f.oneYear,
+        common_inception: f.commonInception,
+        three_year: f.threeYear,
+        non_agency_rmbs: f.nonAgencyRmbs,
+        agency_rmbs: f.agencyRmbs,
+        abs: f.abs,
+        clo: f.clo,
+        cmbs: f.cmbs,
+        securitized: f.securitized,
+        corporate_credit: f.corporateCredit,
+        government_cash: f.governmentCash,
+        other: f.other,
+        aaa: f.aaa,
+        aa: f.aa,
+        a: f.a,
+        bbb: f.bbb,
+        bb: f.bb,
+        b: f.b,
+        ccc: f.ccc,
+        below_ccc: f.belowCcc,
+        credit_other: f.creditOther,
+      }))
+
+      console.log("[v0] Sending", rows.length, "rows to API")
+
       const res = await fetch("/api/upload-funds", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ funds }),
+        body: JSON.stringify({ funds: rows }),
       })
 
-      const data = await res.json()
+      let data
+      try {
+        data = await res.json()
+      } catch {
+        setStatus("error")
+        setMessage("Server error: " + res.status + " " + res.statusText)
+        return
+      }
 
       if (!res.ok) {
         setStatus("error")
-        setMessage(data.error || "Upload failed")
+        setMessage(data.error || "Upload failed: " + res.status)
         return
       }
 
