@@ -130,3 +130,6 @@ export function parseFile(buffer: ArrayBuffer, fileName: string): FundData[] {
 
   return funds
 }
+
+// Alias for backwards compatibility
+export const parseFundData = parseFile

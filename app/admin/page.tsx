@@ -1,31 +1,31 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState } from "react"
 import { Upload, CheckCircle2, AlertCircle, Loader2 } from "lucide-react"
-import { parseFile } from "@/lib/parse-fund-data"
+import * as XLSX from "xlsx"
+import { parseFundData } from "@/lib/parse-fund-data"
 
 export default function AdminUploadPage() {
   const [status, setStatus] = useState<"idle" | "parsing" | "uploading" | "success" | "error">("idle")
   const [message, setMessage] = useState("")
   const [fundCount, setFundCount] = useState(0)
-  const [dragOver, setDragOver] = useState(false)
 
-  const processFile = useCallback(async (file: File) => {
-    setStatus("parsing")
-    setMessage("Parsing Excel file...")
-
+  async function handleFile(file: File) {
     try {
+      setStatus("parsing")
+      setMessage("Parsing file...")
+
       const buffer = await file.arrayBuffer()
-      const funds = parseFile(buffer, file.name)
+      const funds = parseFundData(buffer, file.name)
 
       if (funds.length === 0) {
         setStatus("error")
-        setMessage("No fund data found in the sheet. Make sure the sheet has a Ticker column.")
+        setMessage("No fund data found in file")
         return
       }
 
       setStatus("uploading")
-      setMessage("Uploading " + funds.length + " funds to database...")
+      setMessage(`Uploading ${funds.length} funds...`)
 
       const res = await fetch("/api/upload-funds", {
         method: "POST",
@@ -33,89 +33,78 @@ export default function AdminUploadPage() {
         body: JSON.stringify({ funds }),
       })
 
-      const result = await res.json()
+      const data = await res.json()
 
       if (!res.ok) {
         setStatus("error")
-        setMessage(result.error || "Upload failed")
+        setMessage(data.error || "Upload failed")
         return
       }
 
-      setFundCount(result.count)
+      setFundCount(data.count)
       setStatus("success")
-      setMessage("Successfully uploaded " + result.count + " funds")
+      setMessage(`Successfully uploaded ${data.count} funds`)
     } catch (err) {
       setStatus("error")
-      setMessage(err instanceof Error ? err.message : "Failed to process file")
+      setMessage(err instanceof Error ? err.message : "Unknown error")
     }
-  }, [])
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setDragOver(false)
-    const file = e.dataTransfer.files[0]
-    if (file) processFile(file)
-  }, [processFile])
-
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) processFile(file)
-  }, [processFile])
+  }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-6" style={{ backgroundColor: "#f8fafc" }}>
-      <div className="w-full max-w-lg">
+    <main className="flex min-h-screen flex-col items-center justify-center px-4" style={{ backgroundColor: "#f8fafc" }}>
+      <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: "#0f3d6b" }}>Fund Data Admin</h1>
+          <h1 className="text-2xl font-bold" style={{ color: "#0f3d6b" }}>Fund Data Admin</h1>
           <p className="mt-2 text-sm" style={{ color: "#64748b" }}>
             Upload your Excel file to update the fund database. All users will see the latest data.
           </p>
         </div>
 
         <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 transition-colors"
-          style={{
-            borderColor: dragOver ? "#0f3d6b" : "#cbd5e1",
-            backgroundColor: dragOver ? "#f0f7ff" : "#fff",
+          className="relative rounded-lg border-2 border-dashed p-10 text-center transition-colors"
+          style={{ borderColor: status === "error" ? "#fca5a5" : status === "success" ? "#86efac" : "#cbd5e1", backgroundColor: "#fff" }}
+          onDragOver={e => { e.preventDefault(); e.stopPropagation() }}
+          onDrop={e => {
+            e.preventDefault()
+            e.stopPropagation()
+            const file = e.dataTransfer.files?.[0]
+            if (file) handleFile(file)
           }}
         >
           {status === "idle" && (
             <>
-              <Upload size={40} style={{ color: "#94a3b8" }} />
-              <p className="mt-4 text-sm font-medium" style={{ color: "#334155" }}>
+              <Upload className="mx-auto mb-3 h-10 w-10" style={{ color: "#94a3b8" }} />
+              <p className="mb-1 text-sm font-medium" style={{ color: "#334155" }}>
                 Drag and drop your Excel file here
               </p>
-              <p className="mt-1 text-xs" style={{ color: "#94a3b8" }}>or</p>
-              <label
-                className="mt-3 cursor-pointer rounded-md px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
-                style={{ backgroundColor: "#0f3d6b" }}
-              >
-                Browse Files
-                <input type="file" accept=".xlsx,.xls" onChange={handleFileInput} className="hidden" />
-              </label>
+              <p className="mb-4 text-xs" style={{ color: "#94a3b8" }}>or click to browse</p>
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="absolute inset-0 cursor-pointer opacity-0"
+                onChange={e => {
+                  const file = e.target.files?.[0]
+                  if (file) handleFile(file)
+                }}
+              />
             </>
           )}
 
           {(status === "parsing" || status === "uploading") && (
             <div className="flex flex-col items-center gap-3">
-              <Loader2 size={32} className="animate-spin" style={{ color: "#0f3d6b" }} />
+              <Loader2 className="h-10 w-10 animate-spin" style={{ color: "#0f3d6b" }} />
               <p className="text-sm font-medium" style={{ color: "#334155" }}>{message}</p>
             </div>
           )}
 
           {status === "success" && (
             <div className="flex flex-col items-center gap-3">
-              <CheckCircle2 size={40} style={{ color: "#16a34a" }} />
-              <p className="text-sm font-medium" style={{ color: "#16a34a" }}>{message}</p>
-              <p className="text-xs" style={{ color: "#64748b" }}>
-                {fundCount} funds are now live for all users
-              </p>
+              <CheckCircle2 className="h-10 w-10" style={{ color: "#16a34a" }} />
+              <p className="text-sm font-semibold" style={{ color: "#16a34a" }}>{message}</p>
+              <p className="text-xs" style={{ color: "#64748b" }}>{fundCount} funds are now live for all users</p>
               <button
                 onClick={() => { setStatus("idle"); setMessage("") }}
-                className="mt-2 rounded-md px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
+                className="mt-2 rounded-md px-4 py-2 text-sm font-medium text-white"
                 style={{ backgroundColor: "#0f3d6b" }}
               >
                 Upload Again
@@ -125,11 +114,11 @@ export default function AdminUploadPage() {
 
           {status === "error" && (
             <div className="flex flex-col items-center gap-3">
-              <AlertCircle size={40} style={{ color: "#dc2626" }} />
-              <p className="text-sm font-medium" style={{ color: "#dc2626" }}>{message}</p>
+              <AlertCircle className="h-10 w-10" style={{ color: "#dc2626" }} />
+              <p className="text-sm font-semibold" style={{ color: "#dc2626" }}>{message}</p>
               <button
                 onClick={() => { setStatus("idle"); setMessage("") }}
-                className="mt-2 rounded-md px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
+                className="mt-2 rounded-md px-4 py-2 text-sm font-medium text-white"
                 style={{ backgroundColor: "#0f3d6b" }}
               >
                 Try Again
@@ -137,7 +126,13 @@ export default function AdminUploadPage() {
             </div>
           )}
         </div>
+
+        <div className="mt-6 text-center">
+          <a href="/" className="text-sm font-medium transition-colors hover:underline" style={{ color: "#0f3d6b" }}>
+            Back to main site
+          </a>
+        </div>
       </div>
-    </div>
+    </main>
   )
 }
