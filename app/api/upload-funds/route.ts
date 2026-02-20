@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No fund data provided" }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const supabase = createClient()
 
     // Map FundData fields to snake_case DB columns
     const rows = funds.map((f: Record<string, unknown>) => ({

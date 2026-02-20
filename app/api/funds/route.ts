@@ -3,7 +3,7 @@ import { NextResponse } from "next/server"
 
 export async function GET() {
   try {
-    const supabase = await createClient()
+    const supabase = createClient()
     const { data, error } = await supabase.from("funds").select("*").order("ticker")
 
     if (error) {
