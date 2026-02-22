@@ -3,8 +3,6 @@ import OpenAI from "openai"
 export const runtime = "nodejs"
 export const maxDuration = 60
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
 // Rate limit: 25/day per user, but ADMIN_IPS get unlimited
 const DAILY_LIMIT = 25
 const ADMIN_IPS = (process.env.ADMIN_IPS || "").split(",").map(s => s.trim()).filter(Boolean)
@@ -57,6 +55,10 @@ Increase analytical clarity and strengthen sales positioning through disciplined
 
 export async function POST(req: Request) {
   try {
+    if (!process.env.OPENAI_API_KEY) {
+      return Response.json({ error: "OPENAI_API_KEY is not configured" }, { status: 500 })
+    }
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"
     const { allowed, remaining } = checkRateLimit(ip)
     if (!allowed) {
