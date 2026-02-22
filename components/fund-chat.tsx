@@ -126,15 +126,27 @@ export function FundChat({ result }: FundChatProps) {
     const history = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }))
 
     try {
-      abortRef.current = new AbortController()
+      const controller = new AbortController()
+      abortRef.current = controller
+      console.log("[v0] Sending to /api/chat, messages:", history.length)
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: history, fundContext }),
-        signal: abortRef.current.signal,
+        signal: controller.signal,
       })
 
-      const data = await res.json()
+      console.log("[v0] Response status:", res.status)
+      const text = await res.text()
+      console.log("[v0] Raw response:", text.slice(0, 200))
+
+      let data: { content?: string; error?: string }
+      try {
+        data = JSON.parse(text)
+      } catch {
+        data = { error: "Failed to parse response: " + text.slice(0, 100) }
+      }
 
       if (!res.ok || data.error) {
         setMessages(prev => {
@@ -142,16 +154,17 @@ export function FundChat({ result }: FundChatProps) {
           updated[updated.length - 1] = { ...updated[updated.length - 1], content: `Error: ${data.error || res.statusText}` }
           return updated
         })
-        setStreaming(false)
         return
       }
 
       setMessages(prev => {
         const updated = [...prev]
-        updated[updated.length - 1] = { ...updated[updated.length - 1], content: data.content || "No response" }
+        updated[updated.length - 1] = { ...updated[updated.length - 1], content: data.content || "No response received" }
         return updated
       })
+      console.log("[v0] Message updated with content length:", data.content?.length)
     } catch (err) {
+      console.error("[v0] Fetch error:", err)
       if (err instanceof Error && err.name === "AbortError") return
       const errorMsg = err instanceof Error ? err.message : "Unknown error"
       setMessages(prev => {
