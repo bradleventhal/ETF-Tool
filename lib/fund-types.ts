@@ -71,6 +71,22 @@ export interface AnalysisResult {
   reversePitch: NarrativeSection | null
 }
 
+export interface YahooAnalytics {
+  commonInceptionDate: string
+  lastDate: string
+  drawdown2022A: number | null
+  drawdown2022B: number | null
+  recovery2022A: string | null
+  recovery2022B: string | null
+  trough2022A: string | null
+  trough2022B: string | null
+  returnsA: Record<string, number | null>
+  returnsB: Record<string, number | null>
+  bestPeriodLabel: string
+  bestPeriodSpread: number
+  bestPeriodStartDate: string
+}
+
 export type DifficultyTier = "Very Easy" | "Easy" | "Moderate" | "Difficult" | "Very Difficult"
 export type ConfidenceTag = "Airtight" | "Strong" | "Use With Caution"
 

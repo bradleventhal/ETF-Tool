@@ -13,7 +13,7 @@ interface Props {
   mode?: "internal" | "advisor"
 }
 
-const PRESETS = ["YTD", "1Y", "3Y", "5Y", "Max"] as const
+const PRESETS = ["YTD", "1Y", "3Y", "5Y", "Max", "CI"] as const
 type Preset = typeof PRESETS[number]
 
 function ytdStart(): string { return `${new Date().getFullYear()}-01-01` }
@@ -114,12 +114,13 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
   const [totalA, setTotalA] = useState<number | null>(null)
   const [totalB, setTotalB] = useState<number | null>(null)
 
-  // Recommendation
+  // Recommendation + Common Inception
   const [recDate, setRecDate] = useState<string | null>(null)
   const [recLoading, setRecLoading] = useState(false)
+  const [ciDate, setCiDate] = useState<string | null>(null)
   const recFetched = useRef(false)
 
-  // Fetch recommendation on mount (once)
+  // Fetch recommendation on mount (once) -- also gets common inception date
   useEffect(() => {
     if (recFetched.current) return
     recFetched.current = true
@@ -127,17 +128,20 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
     fetch(`/api/growth/recommend?tickerA=${tickerA}&tickerB=${tickerB}`)
       .then(r => r.json())
       .then(json => {
+        if (json.commonInceptionDate) setCiDate(json.commonInceptionDate)
         if (json.recommended) {
           setRecDate(json.recommended)
-          // Auto-apply: set custom start to recommended date
-          setCustomStart(json.recommended)
-          setCustomEnd(todayStr())
-          setUseCustom(true)
+          if (mode === "advisor") {
+            // Auto-apply best timeframe in advisor mode
+            setCustomStart(json.recommended)
+            setCustomEnd(todayStr())
+            setUseCustom(true)
+          }
         }
       })
       .catch(() => { /* silently fail, just use default preset */ })
       .finally(() => setRecLoading(false))
-  }, [tickerA, tickerB])
+  }, [tickerA, tickerB, mode])
 
   const getRange = useCallback((): { start: string; end: string } => {
     const today = todayStr()
@@ -150,8 +154,9 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
       case "3Y": return { start: dateMinusYears(3), end: today }
       case "5Y": return { start: dateMinusYears(5), end: today }
       case "Max": return { start: "2000-01-01", end: today }
+      case "CI": return { start: ciDate || "2000-01-01", end: today }
     }
-  }, [preset, useCustom, customStart, customEnd])
+  }, [preset, useCustom, customStart, customEnd, ciDate])
 
   useEffect(() => {
     const { start, end } = getRange()
@@ -189,19 +194,27 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
       <div className="flex items-center justify-between border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f8fafc" }}>
         <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Growth Comparison</h4>
         <div className="flex items-center gap-1">
-          {PRESETS.map(p => (
-            <button
-              key={p}
-              onClick={() => { setPreset(p); setUseCustom(false) }}
-              className="rounded px-2.5 py-1 text-[11px] font-semibold transition-colors"
-              style={{
-                backgroundColor: !useCustom && preset === p ? navy : "transparent",
-                color: !useCustom && preset === p ? "#fff" : "#64748b",
-              }}
-            >
-              {p}
-            </button>
-          ))}
+          {PRESETS.map(p => {
+            const isCIDisabled = p === "CI" && !ciDate
+            const ciLabel = p === "CI" && ciDate
+              ? `CI (${new Date(ciDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "2-digit" })})`
+              : p
+            return (
+              <button
+                key={p}
+                onClick={() => { if (!isCIDisabled) { setPreset(p); setUseCustom(false) } }}
+                disabled={isCIDisabled}
+                className="rounded px-2.5 py-1 text-[11px] font-semibold transition-colors"
+                style={{
+                  backgroundColor: !useCustom && preset === p ? navy : "transparent",
+                  color: isCIDisabled ? "#cbd5e1" : !useCustom && preset === p ? "#fff" : "#64748b",
+                  cursor: isCIDisabled ? "not-allowed" : "pointer",
+                }}
+              >
+                {ciLabel}
+              </button>
+            )
+          })}
           <button
             onClick={() => { setUseCustom(true); if (!customStart) setCustomStart(dateMinusYears(1)) }}
             className="rounded px-2.5 py-1 text-[11px] font-semibold transition-colors"

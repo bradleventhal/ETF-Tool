@@ -68,17 +68,33 @@ export async function GET(req: NextRequest) {
       return ((shares * lastClose - basePrice) / basePrice) * 100
     }
 
-    // Try every Jan 1 from the earliest year of data to current year
+    // Common inception date (first date both funds have data)
+    const commonInceptionDate = commonDates[0]
+
+    // Build candidate start dates: every Jan 1 + common inception + YTD/1Y/3Y
     const firstYear = parseInt(commonDates[0].slice(0, 4))
     const currentYear = new Date().getFullYear()
+    const now = new Date()
+
+    const candidates: { date: string; label: string }[] = [
+      { date: commonInceptionDate, label: "Common Inception" },
+    ]
+    for (let year = firstYear; year <= currentYear; year++) {
+      candidates.push({ date: `${year}-01-01`, label: `Jan ${year}` })
+    }
+    // Add YTD, 1Y, 3Y as candidates
+    candidates.push({ date: `${now.getFullYear()}-01-01`, label: "YTD" })
+    const y1 = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString().slice(0, 10)
+    candidates.push({ date: y1, label: "1Y" })
+    const y3 = new Date(now.getFullYear() - 3, now.getMonth(), now.getDate()).toISOString().slice(0, 10)
+    candidates.push({ date: y3, label: "3Y" })
 
     let bestDate: string | null = null
     let bestSpread = -Infinity
+    let bestLabel = ""
 
-    for (let year = firstYear; year <= currentYear; year++) {
-      const jan1 = `${year}-01-01`
-      // Find the first common date on or after Jan 1
-      const startIdx = commonDates.findIndex(d => d >= jan1)
+    for (const candidate of candidates) {
+      const startIdx = commonDates.findIndex(d => d >= candidate.date)
       if (startIdx === -1 || commonDates.length - startIdx < 20) continue
 
       const datesFromStart = commonDates.slice(startIdx)
@@ -88,13 +104,16 @@ export async function GET(req: NextRequest) {
 
       if (spread > bestSpread) {
         bestSpread = spread
-        bestDate = jan1
+        bestDate = candidate.date
+        bestLabel = candidate.label
       }
     }
 
     return NextResponse.json({
       recommended: bestDate,
-      spread: bestSpread != null ? parseFloat(bestSpread.toFixed(2)) : null,
+      spread: bestSpread !== -Infinity ? parseFloat(bestSpread.toFixed(2)) : null,
+      label: bestLabel,
+      commonInceptionDate,
     })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error"

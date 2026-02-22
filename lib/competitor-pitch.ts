@@ -1,4 +1,4 @@
-import type { FundData, WarRoom, CompetitorArgument, Rebuttal, DifficultyTier, ConfidenceTag } from "./fund-types"
+import type { FundData, WarRoom, CompetitorArgument, Rebuttal, DifficultyTier, ConfidenceTag, YahooAnalytics } from "./fund-types"
 
 // ========================================================================
 // HELPERS
@@ -36,7 +36,7 @@ interface RawAdvantage {
   category: "yield" | "expense" | "performance" | "risk" | "credit" | "spread_history"
 }
 
-function findCompetitorAdvantages(us: FundData, them: FundData): RawAdvantage[] {
+function findCompetitorAdvantages(us: FundData, them: FundData, yahoo?: YahooAnalytics): RawAdvantage[] {
   const advantages: RawAdvantage[] = []
   const tUs = us.ticker, tThem = them.ticker
 
@@ -94,13 +94,28 @@ function findCompetitorAdvantages(us: FundData, them: FundData): RawAdvantage[] 
     advantages.push({ id: "duration", metric: "Duration", magnitude: Math.min(durDelta * 12, 100), theirValue: nz(them.duration).toFixed(2) + " yrs", ourValue: nz(us.duration).toFixed(2) + " yrs", deltaBps: 0, category: "risk" })
   }
 
-  // Historical spread stress: if our fund has >15% securitized, competitor can cite 2022/2020
-  // BUT only if the fund actually existed in 2022 (must have 3Y data as proxy)
-  const fundHas3YData = us.threeYear != null && us.threeYear !== 0
-  if (fundHas3YData && secPct(us) > 0.15 && secPct(them) < secPct(us) - 0.10) {
-    // Difficulty scales with duration — short duration = easier to counter
-    const durFactor = nz(us.duration) < 1 ? 0.4 : nz(us.duration) < 2 ? 0.7 : 1.0
-    advantages.push({ id: "2022_stress", metric: "2022 Securitized Drawdown", magnitude: Math.min(55 * durFactor, 100), theirValue: "Corporate-heavy, less impacted", ourValue: (secPct(us) * 100).toFixed(0) + "% securitized", deltaBps: 0, category: "spread_history" })
+  // Historical spread stress: use real Yahoo drawdown data if available
+  const has2022Data = yahoo && yahoo.drawdown2022A != null && yahoo.drawdown2022B != null
+  if (has2022Data) {
+    // Only show if our drawdown was worse than theirs by >1%
+    const ddA = Math.abs(yahoo.drawdown2022A!)
+    const ddB = Math.abs(yahoo.drawdown2022B!)
+    if (ddA > ddB + 1 && secPct(us) > 0.10) {
+      const durFactor = nz(us.duration) < 1 ? 0.4 : nz(us.duration) < 2 ? 0.7 : 1.0
+      advantages.push({
+        id: "2022_stress", metric: "2022 Securitized Drawdown", magnitude: Math.min(55 * durFactor, 100),
+        theirValue: `-${ddB.toFixed(1)}% max drawdown`,
+        ourValue: `-${ddA.toFixed(1)}% max drawdown`,
+        deltaBps: 0, category: "spread_history"
+      })
+    }
+  } else if (secPct(us) > 0.15 && secPct(them) < secPct(us) - 0.10) {
+    // Fallback: only if fund has 3Y data (existed in 2022)
+    const fundHas3YData = us.threeYear != null && us.threeYear !== 0
+    if (fundHas3YData) {
+      const durFactor = nz(us.duration) < 1 ? 0.4 : nz(us.duration) < 2 ? 0.7 : 1.0
+      advantages.push({ id: "2022_stress", metric: "2022 Securitized Drawdown", magnitude: Math.min(55 * durFactor, 100), theirValue: "Corporate-heavy, less impacted", ourValue: (secPct(us) * 100).toFixed(0) + "% securitized", deltaBps: 0, category: "spread_history" })
+    }
   }
 
   return advantages
@@ -417,7 +432,7 @@ const REBUTTAL_OPENERS: Record<string, string[]> = {
   ],
 }
 
-function generateRebuttal(adv: RawAdvantage & { tier?: DifficultyTier }, us: FundData, them: FundData): Rebuttal {
+function generateRebuttal(adv: RawAdvantage & { tier?: DifficultyTier }, us: FundData, them: FundData, yahoo?: YahooAnalytics): Rebuttal {
   const openers = REBUTTAL_OPENERS[adv.id] || REBUTTAL_OPENERS[adv.category] || ["Let me address that directly."]
   const opener = pickTemplate(openers, us.ticker, them.ticker, adv.id + "_reb")
 
@@ -445,26 +460,45 @@ function generateRebuttal(adv: RawAdvantage & { tier?: DifficultyTier }, us: Fun
       break
     }
     case "3y_perf": {
-      // Only reference 2022 if the fund has data spanning that period
+      // Use real Yahoo 3Y return data if available
+      if (yahoo && yahoo.returnsA["3y"] != null && yahoo.returnsB["3y"] != null) {
+        const retA3 = yahoo.returnsA["3y"]!
+        const retB3 = yahoo.returnsB["3y"]!
+        bullets.push(`3Y total return: us ${retA3.toFixed(2)}% vs them ${retB3.toFixed(2)}%. The gap is ${Math.abs(retA3 - retB3).toFixed(2)}%.`)
+      }
       const has3YHistory = us.threeYear != null && us.threeYear !== 0
       if (has3YHistory) {
-        bullets.push("The 3Y period includes 2022's rate shock — a once-in-a-cycle event that hit securitized credit hardest. 2023-2024 recovery followed.")
+        bullets.push("The 3Y period includes 2022's rate shock — a once-in-a-cycle event. 2023-2024 recovery followed.")
       } else {
         bullets.push("Shorter track record reflects a different market entry point — not a performance deficit.")
       }
-      if (secPct(us) > 0.15) bullets.push(`Current securitized spreads are wide vs IG corporates — attractive relative value vs the corporate-heavy alternative.`)
-      if (durShort) bullets.push(`At ${nz(us.duration).toFixed(2)} years duration, rate-driven drawdowns are structurally limited.`)
+      // Inject best period if we outperform
+      if (yahoo && yahoo.bestPeriodSpread > 0) {
+        bullets.push(`${yahoo.bestPeriodLabel}: we outperform by ${yahoo.bestPeriodSpread.toFixed(2)}%.`)
+      }
+      if (secPct(us) > 0.15) bullets.push(`Current securitized spreads wide vs IG corporates — attractive relative value.`)
+      if (durShort) bullets.push(`At ${nz(us.duration).toFixed(2)} years duration, rate-driven drawdowns structurally limited.`)
       else {
         const secYieldAdv = (nz(us.secYield) - nz(them.secYield)) * 10000
-        if (secYieldAdv > 0) bullets.push(`Current yield advantage of ${Math.round(secYieldAdv)}bps supports a stronger forward income trajectory.`)
+        if (secYieldAdv > 0) bullets.push(`Current yield advantage of ${Math.round(secYieldAdv)}bps supports stronger forward income.`)
       }
       break
     }
     case "1y_perf": {
-      if ((nz(us.threeYear) - nz(them.threeYear)) * 100 > 0) bullets.push(`Over 3 years, we've outperformed — the longer time horizon favors our approach.`)
+      // Use real Yahoo 1Y/3Y data if available
+      if (yahoo && yahoo.returnsA["3y"] != null && yahoo.returnsB["3y"] != null) {
+        const spread3 = yahoo.returnsA["3y"]! - yahoo.returnsB["3y"]!
+        if (spread3 > 0) bullets.push(`Over 3 years (Yahoo data), we outperform by ${spread3.toFixed(2)}% — the longer horizon favors our approach.`)
+      } else if ((nz(us.threeYear) - nz(them.threeYear)) * 100 > 0) {
+        bullets.push(`Over 3 years, we've outperformed — the longer time horizon favors our approach.`)
+      }
       const secYieldAdv = (nz(us.secYield) - nz(them.secYield)) * 10000
-      if (secYieldAdv > 10) bullets.push(`Current SEC yield advantage of ${Math.round(secYieldAdv)}bps supports a stronger forward income trajectory.`)
-      bullets.push("Current portfolio positioning and sector allocation suggest improving relative performance going forward.")
+      if (secYieldAdv > 10) bullets.push(`Current SEC yield advantage of ${Math.round(secYieldAdv)}bps supports stronger forward income.`)
+      if (yahoo && yahoo.bestPeriodSpread > 0) {
+        bullets.push(`${yahoo.bestPeriodLabel}: we outperform by ${yahoo.bestPeriodSpread.toFixed(2)}%.`)
+      } else {
+        bullets.push("Current portfolio positioning and sector allocation suggest improving relative performance.")
+      }
       break
     }
     case "std_dev": {
@@ -495,11 +529,29 @@ function generateRebuttal(adv: RawAdvantage & { tier?: DifficultyTier }, us: Fun
       break
     }
     case "2022_stress": {
-      // Never defend 2022 directly
-      bullets.push("2022 was a rate-driven event (Fed hiked 425bps), not a credit deterioration event — fundamentals held and recovery followed in 2023-2024.")
-      bullets.push("Securitized credit was among the top performers in 2023-2024 as spreads compressed — the recovery more than rewarded staying invested.")
-      if (durShort) bullets.push(`At ${nz(us.duration).toFixed(2)} years duration, the impact of rate-driven sell-offs is structurally limited — short duration cushions the blow.`)
-      else bullets.push("Current securitized spreads remain wide vs IG corporates — the sell-off created a historically attractive entry point that still persists.")
+      // Use real Yahoo drawdown/recovery data if available
+      if (yahoo && yahoo.drawdown2022A != null) {
+        const ddA = Math.abs(yahoo.drawdown2022A)
+        const ddB = yahoo.drawdown2022B != null ? Math.abs(yahoo.drawdown2022B) : null
+        bullets.push(`2022 was a rate-driven event (Fed hiked 425bps), not credit deterioration. Our max drawdown was -${ddA.toFixed(1)}%${ddB != null ? ` vs their -${ddB.toFixed(1)}%` : ""}.`)
+        if (yahoo.recovery2022A) {
+          const recoveryDate = new Date(yahoo.recovery2022A + "T00:00:00")
+          const troughDate = yahoo.trough2022A ? new Date(yahoo.trough2022A + "T00:00:00") : null
+          const months = troughDate ? Math.round((recoveryDate.getTime() - troughDate.getTime()) / (30 * 24 * 60 * 60 * 1000)) : null
+          bullets.push(`Full recovery achieved by ${recoveryDate.toLocaleDateString("en-US", { month: "short", year: "numeric" })}${months ? ` — ${months} months from trough` : ""}. Staying invested was rewarded.`)
+        }
+        // Add since-CI return if available
+        if (yahoo.returnsA.ci != null && yahoo.returnsB.ci != null) {
+          const spread = (yahoo.returnsA.ci - yahoo.returnsB.ci).toFixed(2)
+          const ciDate = new Date(yahoo.commonInceptionDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" })
+          if (parseFloat(spread) > 0) bullets.push(`Since common inception (${ciDate}), we've outperformed by ${spread}% total return — the full cycle favors us.`)
+        }
+      } else {
+        bullets.push("2022 was a rate-driven event (Fed hiked 425bps), not credit deterioration — fundamentals held and recovery followed in 2023-2024.")
+        bullets.push("Securitized credit was among the top performers in 2023-2024 as spreads compressed — the recovery more than rewarded staying invested.")
+      }
+      if (durShort) bullets.push(`At ${nz(us.duration).toFixed(2)} years duration, rate-driven sell-offs are structurally limited.`)
+      else bullets.push("Current securitized spreads remain wide vs IG corporates — the sell-off created the entry point we're capturing now.")
       break
     }
   }
@@ -532,8 +584,8 @@ function generateRebuttal(adv: RawAdvantage & { tier?: DifficultyTier }, us: Fun
 // ========================================================================
 // MAIN EXPORT
 // ========================================================================
-export function buildWarRoom(us: FundData, them: FundData): WarRoom {
-  const rawAdvantages = findCompetitorAdvantages(us, them)
+export function buildWarRoom(us: FundData, them: FundData, yahoo?: YahooAnalytics): WarRoom {
+  const rawAdvantages = findCompetitorAdvantages(us, them, yahoo)
 
   // Layup check
   if (rawAdvantages.length === 0) {
@@ -588,7 +640,7 @@ export function buildWarRoom(us: FundData, them: FundData): WarRoom {
     deltaBps: adv.deltaBps,
   }))
 
-  const rebuttals: Rebuttal[] = ranked.map(adv => generateRebuttal(adv as any, us, them))
+  const rebuttals: Rebuttal[] = ranked.map(adv => generateRebuttal(adv as any, us, them, yahoo))
 
   return {
     overallDifficulty: tightBand ? "Easy" : overall,

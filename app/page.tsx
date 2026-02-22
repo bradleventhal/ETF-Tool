@@ -14,7 +14,7 @@ import { runAnalysis } from "@/lib/analysis-engine"
 import { buildWarRoom } from "@/lib/competitor-pitch"
 import { CompetitorWarRoom } from "@/components/competitor-war-room"
 import { FundChat } from "@/components/fund-chat"
-import type { FundData, AnalysisMode, AnalysisResult, WarRoom } from "@/lib/fund-types"
+import type { FundData, AnalysisMode, AnalysisResult, WarRoom, YahooAnalytics } from "@/lib/fund-types"
 import { Upload, X, Loader2, ArrowRightLeft, ChevronDown, ChevronRight } from "lucide-react"
 
 
@@ -132,7 +132,21 @@ export default function Page() {
       if (fA && fB) {
         setError(null)
         setResult(runAnalysis(fA, fB, mode))
-        setWarRoom(mode === "internal" ? buildWarRoom(fA, fB) : null)
+        // Fetch Yahoo analytics for war room
+        if (mode === "internal") {
+          fetch(`/api/growth/analytics?tickerA=${tickerA}&tickerB=${tickerB}`)
+            .then(r => r.json())
+            .then((yahoo: YahooAnalytics) => {
+              if (!yahoo.commonInceptionDate) {
+                setWarRoom(buildWarRoom(fA, fB))
+              } else {
+                setWarRoom(buildWarRoom(fA, fB, yahoo))
+              }
+            })
+            .catch(() => setWarRoom(buildWarRoom(fA, fB)))
+        } else {
+          setWarRoom(null)
+        }
       }
     } else { setResult(null); setWarRoom(null) }
   }, [tickerA, tickerB, mode, funds])
