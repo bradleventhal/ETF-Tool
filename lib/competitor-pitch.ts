@@ -94,12 +94,11 @@ function findCompetitorAdvantages(us: FundData, them: FundData, yahoo?: YahooAna
     advantages.push({ id: "duration", metric: "Duration", magnitude: Math.min(durDelta * 12, 100), theirValue: nz(them.duration).toFixed(2) + " yrs", ourValue: nz(us.duration).toFixed(2) + " yrs", deltaBps: 0, category: "risk" })
   }
 
-  // Historical spread stress: use real Yahoo drawdown data if available
-  const has2022Data = yahoo && yahoo.drawdown2022A != null && yahoo.drawdown2022B != null
-  if (has2022Data) {
-    // Only show if our drawdown was worse than theirs by >1%
-    const ddA = Math.abs(yahoo.drawdown2022A!)
-    const ddB = Math.abs(yahoo.drawdown2022B!)
+  // Historical spread stress: ONLY show 2022 argument if Yahoo confirms both funds existed in 2022
+  // No fallback -- if we don't have real drawdown data, we don't make the claim
+  if (yahoo && yahoo.drawdown2022A != null && yahoo.drawdown2022B != null) {
+    const ddA = Math.abs(yahoo.drawdown2022A)
+    const ddB = Math.abs(yahoo.drawdown2022B)
     if (ddA > ddB + 1 && secPct(us) > 0.10) {
       const durFactor = nz(us.duration) < 1 ? 0.4 : nz(us.duration) < 2 ? 0.7 : 1.0
       advantages.push({
@@ -108,13 +107,6 @@ function findCompetitorAdvantages(us: FundData, them: FundData, yahoo?: YahooAna
         ourValue: `-${ddA.toFixed(1)}% max drawdown`,
         deltaBps: 0, category: "spread_history"
       })
-    }
-  } else if (secPct(us) > 0.15 && secPct(them) < secPct(us) - 0.10) {
-    // Fallback: only if fund has 3Y data (existed in 2022)
-    const fundHas3YData = us.threeYear != null && us.threeYear !== 0
-    if (fundHas3YData) {
-      const durFactor = nz(us.duration) < 1 ? 0.4 : nz(us.duration) < 2 ? 0.7 : 1.0
-      advantages.push({ id: "2022_stress", metric: "2022 Securitized Drawdown", magnitude: Math.min(55 * durFactor, 100), theirValue: "Corporate-heavy, less impacted", ourValue: (secPct(us) * 100).toFixed(0) + "% securitized", deltaBps: 0, category: "spread_history" })
     }
   }
 
@@ -168,130 +160,84 @@ function overallDifficulty(ranked: (RawAdvantage & { tier?: DifficultyTier })[])
 // ========================================================================
 const ARG_TEMPLATES: Record<string, string[]> = {
   sec_yield: [
-    "We're delivering {delta}bps more yield right now at {their}. That's not a rounding error — that's real income your clients are missing.",
-    "Your clients could be earning {their} in SEC yield instead of {our}. That's {delta}bps more income hitting their account every month.",
-    "Look at the yield differential — {their} vs {our}. That {delta}bps gap adds up fast when you're compounding monthly.",
-    "From a pure income standpoint, we're putting up {their} vs their {our}. Why would you accept less income?",
-    "The SEC yield tells the story — {delta}bps of additional income on the table at {their}. That's meaningful for any income-oriented client.",
-    "{delta}bps is {delta}bps. We're at {their}, they're at {our}. For income clients, that difference compounds into real money over time.",
-    "If income is the priority, and it usually is, we're ahead by {delta}bps on SEC yield. {their} vs {our} — the numbers speak.",
-    "That {delta}bps yield gap at {their} doesn't just show up on paper — it flows through to your client's distributions every single month.",
-    "We're giving your client {delta}bps more income at {their} without stretching further down the credit spectrum to get it.",
-    "Simple math: {their} vs {our} in SEC yield. {delta}bps more income. Ask your client if they'd rather have more or less.",
-    "When you strip out the noise, yield is what pays the bills. We're at {their}, they're at {our}. {delta}bps matters.",
-    "Your income clients aren't getting paid in Sharpe ratios. They want yield. We're {delta}bps higher at {their}.",
+    "SEC yield: {their} vs {our}. {delta}bps more income. For income-oriented accounts, that gap compounds.",
+    "{delta}bps higher SEC yield at {their}. That's real income your clients are leaving on the table.",
+    "SEC yield comparison: {their} vs {our}. The {delta}bps gap flows through to monthly distributions.",
+    "Income clients care about yield. {their} vs {our} — {delta}bps advantage.",
+    "{their} SEC yield vs {our}. {delta}bps of additional income without stretching credit quality.",
+    "Yield differential: {delta}bps. {their} vs {our}. Income is the metric that matters here.",
   ],
   dist_yield: [
-    "Our distribution yield is {their} vs their {our}. That's {delta}bps more cash flow for clients who need income now, not later.",
-    "Distribution yield of {their} vs {our} — that's a {delta}bps cash flow advantage your clients can feel every month.",
-    "We're putting {delta}bps more distribution into client accounts at {their}. That's the number retirees care about.",
-    "When the client opens their statement, they see distributions. Ours: {their}. Theirs: {our}. That {delta}bps gap matters.",
-    "For income-focused accounts, {their} distribution yield vs {our} is the headline number. {delta}bps of real cash flow difference.",
-    "Distribution yield is what clients live on. We're at {their}, they're stuck at {our}. That's a {delta}bps gap the client feels.",
-    "If your clients need reliable income, the distribution yield says it all — {their} vs {our}, a {delta}bps advantage.",
-    "We're distributing {delta}bps more than they are. {their} vs {our}. For income portfolios, that's the number that matters most.",
-    "The distribution yield gap of {delta}bps ({their} vs {our}) translates directly into more income hitting client accounts.",
-    "Retirees don't care about total return decomposition. They care about what lands in their account. We're {delta}bps higher.",
+    "Distribution yield: {their} vs {our}. {delta}bps more cash flow hitting client accounts monthly.",
+    "{delta}bps higher distribution at {their}. The number clients see on their statement.",
+    "Distribution yield gap: {their} vs {our}. {delta}bps of real cash flow difference for income accounts.",
+    "{their} distribution vs {our}. {delta}bps more income — the metric retirees live on.",
+    "Cash flow comparison: {their} vs {our} distribution yield. {delta}bps advantage.",
+    "Distribution is what clients feel. {their} vs {our} — {delta}bps gap.",
   ],
   expense: [
-    "We're {delta}bps cheaper at {their}. Over 10 years that fee drag compounds — your clients keep more of what they earn.",
-    "Expense ratio: {their} vs {our}. That {delta}bps difference is the easiest money your client will ever save.",
-    "Before either fund earns a single basis point, your clients are already behind {delta}bps with the more expensive option.",
-    "At {their} vs {our}, we're saving your clients {delta}bps a year in fees. That compounds over every year they hold it.",
-    "Fee conversation is simple: {their} vs {our}. {delta}bps less fee drag. Same style, lower cost.",
-    "Every basis point in fees is a basis point your client doesn't earn. We're {delta}bps lighter at {their}.",
-    "We do the same job for {delta}bps less. {their} vs {our}. In a low-return environment, fees matter more than ever.",
-    "That {delta}bps fee gap ({their} vs {our}) is one of the few variables you can actually control for your client.",
-    "Think about it this way — {delta}bps in fees every year for 10 years. We're at {their}, they're at {our}. That adds up.",
-    "Lower fees aren't glamorous, but {delta}bps less drag at {their} vs {our} gives your client a structural edge from day one.",
-    "In fixed income where returns are tighter, {delta}bps in fees ({their} vs {our}) makes an outsized difference.",
-    "Your client is paying {delta}bps more for essentially the same exposure. We charge {their}. They charge {our}.",
+    "Expense ratio: {their} vs {our}. {delta}bps less drag. Same category, lower cost.",
+    "{delta}bps cheaper at {their}. Fee drag compounds — your clients keep more.",
+    "Fees are a controllable variable. {their} vs {our}. {delta}bps saved annually.",
+    "{their} vs {our} expense. {delta}bps gap compounds against higher-cost funds over every holding period.",
+    "In fixed income where returns are tight, {delta}bps in fees ({their} vs {our}) moves the needle.",
+    "Expense ratio: {their} vs {our}. {delta}bps structural advantage from day one.",
   ],
   "3y_perf": [
-    "Over 3 years, we've outperformed by {delta_pct}%. That's not noise — that's a real performance gap at {their} vs {our}.",
-    "3-year total return: {their} vs {our}. That {delta_pct}% gap is telling you something about portfolio construction.",
-    "Past performance aside, 3 years is a meaningful time horizon. We're ahead by {delta_pct}% at {their} total return.",
-    "The 3-year number is hard to argue with — {their} vs {our}. That's {delta_pct}% of outperformance through a full cycle.",
-    "If your client had been with us 3 years ago, they'd have an extra {delta_pct}% in their pocket. {their} vs {our}.",
-    "Three-year track record: {their} vs {our}. A {delta_pct}% gap over that time horizon reflects a real difference in execution.",
-    "We've delivered {delta_pct}% more over 3 years. {their} vs {our}. At some point, performance has to matter.",
-    "The 3Y comparison favors us by {delta_pct}% ({their} vs {our}). That's through rate hikes, volatility, everything.",
-    "Performance over 3 years — {their} vs {our}. {delta_pct}% better outcome. Full stop.",
-    "Your client's 3-year return would have been {delta_pct}% higher with us. {their} vs {our}. The track record is clear.",
+    "3Y total return: {their} vs {our}. {delta_pct}% outperformance through a full cycle.",
+    "3-year track record: {their} vs {our}. {delta_pct}% gap reflects portfolio construction.",
+    "{delta_pct}% ahead over 3 years ({their} vs {our}). Through rate hikes and volatility.",
+    "3Y performance: {their} vs {our}. A {delta_pct}% spread over a meaningful time horizon.",
+    "Three-year return comparison: {their} vs {our}. {delta_pct}% better outcome.",
+    "{delta_pct}% of 3Y outperformance. {their} vs {our}. The track record is the data.",
   ],
   "1y_perf": [
-    "Trailing 1-year: {their} vs {our}. We've delivered {delta_pct}% more in the most recent period.",
-    "The 1-year number is fresh — {their} vs {our}. That {delta_pct}% gap is current and relevant.",
-    "Over the last 12 months, we've outperformed by {delta_pct}%. {their} vs {our} in total return.",
-    "Recent performance matters. 1-year: {their} vs {our}. {delta_pct}% better for clients who were with us.",
-    "Trailing year performance: {delta_pct}% ahead ({their} vs {our}). That's the most recent data speaking.",
-    "Looking at the last 12 months, we've put up {their} vs their {our}. {delta_pct}% spread in our favor.",
-    "The 1Y return is {their} for us vs {our} for them — {delta_pct}% of outperformance in the most recent window.",
-    "In the most recent 1-year window, we're ahead by {delta_pct}% ({their} vs {our}). Momentum is on our side.",
-    "What's happening now matters. 1Y: {their} vs {our}. We've delivered {delta_pct}% more.",
-    "The last year's track record: {delta_pct}% better outcome with us. {their} vs {our}.",
+    "Trailing 1Y: {their} vs {our}. {delta_pct}% outperformance in the most recent period.",
+    "1-year return: {their} vs {our}. {delta_pct}% spread. Current and relevant.",
+    "Last 12 months: {their} vs {our}. {delta_pct}% ahead.",
+    "1Y performance: {delta_pct}% advantage ({their} vs {our}). Most recent window.",
+    "Trailing year: {their} vs {our}. {delta_pct}% better outcome in the current environment.",
+    "1Y total return: {delta_pct}% ahead. {their} vs {our}.",
   ],
   std_dev: [
-    "Our standard deviation is {their} vs their {our}. We're delivering a smoother ride for clients who don't want surprises.",
-    "Volatility matters for client retention. We're at {their} std dev vs {our} — less stomach-churning for the client.",
-    "Lower vol, better sleep. {their} vs {our} in standard deviation. Clients stay invested when the ride is smooth.",
-    "We run with less volatility — {their} vs {our}. For conservative clients, that matters as much as return.",
-    "Standard deviation of {their} vs {our}. We're giving your client the same income with less drama.",
-    "Volatility: {their} vs {our}. In fixed income, the whole point is stability. We deliver that better.",
-    "Your risk-averse clients will notice that {their} vs {our} vol difference. Smoother path to the same destination.",
-    "We keep vol lower at {their} vs their {our}. That means fewer uncomfortable conversations with your clients.",
-    "For clients who care about risk-adjusted returns, our {their} vol vs their {our} is a clear differentiator.",
-    "The volatility gap ({their} vs {our}) means your client's portfolio won't whipsaw as hard in drawdowns.",
+    "Standard deviation: {their} vs {our}. Lower volatility, smoother path.",
+    "Vol comparison: {their} vs {our}. Less drawdown risk for conservative allocations.",
+    "{their} std dev vs {our}. Stability matters in fixed income — we deliver it.",
+    "Volatility: {their} vs {our}. The risk-averse allocation favors lower vol.",
+    "Standard deviation gap: {their} vs {our}. Less portfolio whipsaw in drawdowns.",
+    "{their} vol vs {our}. For clients who prioritize stability, the data is clear.",
   ],
   sharpe: [
-    "Our Sharpe ratio is {their} vs {our}. We're generating more return per unit of risk — better risk-adjusted performance.",
-    "Sharpe of {their} vs {our}. That's not just performance, that's performance efficiency. More return for the risk taken.",
-    "Risk-adjusted returns tell the real story. {their} Sharpe vs {our}. We're doing more with less risk.",
-    "If you care about how efficiently a fund earns its return, the Sharpe ratio is {their} vs {our}. We win.",
-    "Our {their} Sharpe says we're generating better returns per unit of risk than their {our}. That's smart money management.",
-    "Sharpe ratio: {their} vs {our}. We're not just performing, we're performing efficiently.",
-    "Better Sharpe ({their} vs {our}) means your client is getting paid more for each unit of risk they're taking.",
-    "The Sharpe differential ({their} vs {our}) shows we're taking smarter risks, not more risks.",
-    "For a risk-adjusted comparison, our {their} Sharpe vs their {our} is the cleanest metric there is.",
-    "When you adjust for risk, the picture gets clearer: {their} Sharpe vs {our}. We're delivering more per unit of vol.",
+    "Sharpe ratio: {their} vs {our}. More return per unit of risk.",
+    "{their} Sharpe vs {our}. Risk-adjusted performance favors us.",
+    "Sharpe differential: {their} vs {our}. Better returns for the risk taken.",
+    "Risk-adjusted comparison: {their} Sharpe vs {our}. Cleaner risk-reward.",
+    "Sharpe: {their} vs {our}. Generating more return per unit of vol.",
+    "{their} vs {our} Sharpe. Smarter risk, not more risk.",
   ],
   credit: [
-    "We're {their} investment grade vs their {our}. Higher quality portfolio with {delta_pct}% more IG exposure.",
-    "Credit quality: {their} vs {our}. We're not reaching into lower quality paper to generate returns.",
-    "Our IG allocation of {their} vs their {our} means less credit risk for your conservative clients.",
-    "We maintain {their} IG exposure compared to their {our}. That's a cleaner credit profile for risk-averse allocations.",
-    "For clients who care about credit quality, {their} IG vs {our} IG tells the story. We're higher quality.",
-    "The credit profile favors us — {their} IG vs {our}. Less credit risk, more sleep-at-night factor.",
-    "We're running a tighter credit book at {their} IG vs their {our}. For conservative allocators, that matters.",
-    "Investment grade allocation: {their} vs {our}. We're taking less credit risk to deliver our returns.",
-    "Higher IG allocation ({their} vs {our}) means our fund is better positioned for a credit downturn.",
-    "When spreads widen, credit quality matters. We're sitting at {their} IG vs their {our}. We're better protected.",
+    "Credit quality: {their} IG vs {our}. Higher quality portfolio, less credit risk.",
+    "{their} IG allocation vs {our}. Tighter credit book, better positioned for a widening.",
+    "IG exposure: {their} vs {our}. Less credit risk without sacrificing the income objective.",
+    "Credit profile: {their} IG vs {our}. Cleaner risk profile for conservative allocations.",
+    "{their} vs {our} in investment grade. When spreads widen, credit quality matters.",
+    "Higher IG at {their} vs {our}. Less downside exposure in a credit downturn.",
   ],
   duration: [
-    "We're shorter at {their} vs their {our}. Less rate sensitivity, quicker recovery if rates move against you.",
-    "Duration of {their} vs {our}. In a rate-volatile environment, shorter duration is your client's friend.",
-    "We manage at {their} duration vs their {our}. Less interest rate risk baked into every basis point of yield.",
-    "Shorter duration ({their} vs {our}) means our fund re-prices faster when rates move. More nimble positioning.",
-    "For clients worried about rates, {their} duration vs {our} is a significant difference in rate exposure.",
-    "Rate risk comparison: {their} vs {our} years. We're carrying less exposure to the direction of rates.",
-    "Every year of duration is rate sensitivity. We're at {their}, they're at {our}. Less rate risk with us.",
-    "If rates move higher from here, shorter duration at {their} vs their {our} protects your client better.",
-    "Duration: {their} vs {our}. We're lighter on rate risk, which matters in an uncertain rate environment.",
-    "We run {their} duration vs their {our}. That's meaningfully less rate exposure with comparable income.",
+    "Duration: {their} vs {our} years. Less rate sensitivity, quicker re-pricing.",
+    "{their} duration vs {our}. Less interest rate risk per basis point of yield.",
+    "Shorter duration at {their} vs {our}. Re-prices faster when rates move.",
+    "Rate risk: {their} vs {our} years of duration. Significant difference in exposure.",
+    "Duration comparison: {their} vs {our}. Less rate exposure with comparable income.",
+    "{their} vs {our} duration. In a rate-volatile environment, shorter wins.",
   ],
   "2022_stress": [
-    "Let's talk about 2022. With {our} in securitized, your fund took a meaningful hit when the Fed hiked 425bps. Our clients didn't have that drawdown.",
-    "2022 was brutal for securitized credit. Your fund, heavy at {our} securitized, felt the full force. We were largely insulated with our corporate positioning.",
-    "The 2022 stress test showed exactly what happens to securitized-heavy portfolios. At {our} securitized, your fund was exposed. We weren't.",
-    "When the Fed hiked 425bps in 2022, securitized credit got hammered. Your fund at {our} securitized carried that exposure. Our clients avoided the worst of it.",
-    "2022 proved that securitized concentration is a real risk. At {our} securitized exposure, your fund clients lived through that. Ours didn't.",
-    "History matters. 2022 showed that securitized-heavy funds at {our} got hit hard. Our corporate-focused approach provided a smoother path.",
-    "Ask your clients how 2022 felt with {our} in securitized. That kind of drawdown erodes trust. We offered stability.",
-    "When rates spiked 425bps, securitized credit at {our} of the portfolio was a liability. We had less exposure to that sell-off.",
-    "The 2022 rate shock hit securitized credit the hardest. A portfolio with {our} securitized carried that pain. Our clients saw less damage.",
-    "We don't have to go far back — 2022 showed exactly what securitized concentration risk ({our}) means in a hiking cycle.",
-    "2022 was the stress test nobody asked for. Securitized-heavy at {our}? That was a tough year. Our approach held up better.",
-    "If securitized is the driver at {our} of the portfolio, 2022 is the counterargument. 425bps of hikes hit that sector hardest.",
+    "2022 max drawdown: {our} vs our {their}. Fed hiked 425bps — securitized-heavy portfolios took the hit.",
+    "The 2022 rate shock: your fund drew down {our}, ours drew down {their}. Securitized concentration was the driver.",
+    "425bps of hikes in 2022 hit securitized credit hardest. Your drawdown: {our}. Ours: {their}.",
+    "2022 drawdown data — {our} vs {their}. Securitized concentration at those levels is measurable rate risk.",
+    "2022 stress test: securitized-heavy portfolio at {our} vs our {their} drawdown. The gap is meaningful.",
+    "Rate shock exposure in 2022: {our} drawdown on securitized concentration vs {their} for our corporate-focused approach.",
   ],
 }
 

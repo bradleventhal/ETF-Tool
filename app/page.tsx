@@ -137,13 +137,17 @@ export default function Page() {
           fetch(`/api/growth/analytics?tickerA=${tickerA}&tickerB=${tickerB}`)
             .then(r => r.json())
             .then((yahoo: YahooAnalytics) => {
+              console.log("[v0] Yahoo analytics:", JSON.stringify({ ci: yahoo.commonInceptionDate, dd2022A: yahoo.drawdown2022A, dd2022B: yahoo.drawdown2022B, bestPeriod: yahoo.bestPeriodLabel, bestSpread: yahoo.bestPeriodSpread }))
               if (!yahoo.commonInceptionDate) {
                 setWarRoom(buildWarRoom(fA, fB))
               } else {
                 setWarRoom(buildWarRoom(fA, fB, yahoo))
               }
             })
-            .catch(() => setWarRoom(buildWarRoom(fA, fB)))
+            .catch((err) => {
+              console.log("[v0] Yahoo analytics fetch failed:", err)
+              setWarRoom(buildWarRoom(fA, fB))
+            })
         } else {
           setWarRoom(null)
         }
