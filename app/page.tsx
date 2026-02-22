@@ -13,7 +13,6 @@ import { saveFunds, loadFunds } from "@/lib/fund-store"
 import { runAnalysis } from "@/lib/analysis-engine"
 import { buildWarRoom } from "@/lib/competitor-pitch"
 import { CompetitorWarRoom } from "@/components/competitor-war-room"
-import { FundChat } from "@/components/fund-chat"
 import type { FundData, AnalysisMode, AnalysisResult, WarRoom } from "@/lib/fund-types"
 import { Upload, X, Loader2, ArrowRightLeft, ChevronDown, ChevronRight } from "lucide-react"
 
@@ -293,7 +292,6 @@ export default function Page() {
 
             {warRoom && <CompetitorWarRoom warRoom={warRoom} competitorTicker={result.tickerB} ourTicker={result.tickerA} />}
 
-            <FundChat result={result} />
           </div>
         )}
 
