@@ -151,6 +151,14 @@ export function FundChat({ result }: FundChatProps) {
         updated[updated.length - 1] = { ...updated[updated.length - 1], content: data.content || "No response" }
         return updated
       })
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return
+      const errorMsg = err instanceof Error ? err.message : "Unknown error"
+      setMessages(prev => {
+        const updated = [...prev]
+        updated[updated.length - 1] = { ...updated[updated.length - 1], content: `Error: ${errorMsg}` }
+        return updated
+      })
     } finally {
       setStreaming(false)
     }

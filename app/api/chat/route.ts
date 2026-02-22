@@ -74,6 +74,8 @@ export async function POST(req: Request) {
       ? SYSTEM_PROMPT + "\n\nCURRENT FUND COMPARISON DATA:\n" + fundContext
       : SYSTEM_PROMPT
 
+    console.log("[v0] Calling OpenAI with", userMessages.length, "messages, key starts with:", process.env.OPENAI_API_KEY?.slice(0, 7) || "MISSING")
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -88,13 +90,14 @@ export async function POST(req: Request) {
     })
 
     const text = completion.choices[0]?.message?.content || "No response generated."
+    console.log("[v0] OpenAI response length:", text.length)
 
     return Response.json({ content: text }, {
       headers: { "X-RateLimit-Remaining": String(remaining) },
     })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error"
-    console.error("Chat API error:", message)
+    console.error("[v0] Chat API error:", message)
     return Response.json({ error: message }, { status: 500 })
   }
 }
