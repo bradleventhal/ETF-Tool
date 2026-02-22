@@ -128,8 +128,6 @@ export function FundChat({ result }: FundChatProps) {
     try {
       const controller = new AbortController()
       abortRef.current = controller
-      console.log("[v0] Sending to /api/chat, messages:", history.length)
-
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -137,9 +135,7 @@ export function FundChat({ result }: FundChatProps) {
         signal: controller.signal,
       })
 
-      console.log("[v0] Response status:", res.status)
       const text = await res.text()
-      console.log("[v0] Raw response:", text.slice(0, 200))
 
       let data: { content?: string; error?: string }
       try {
@@ -162,9 +158,7 @@ export function FundChat({ result }: FundChatProps) {
         updated[updated.length - 1] = { ...updated[updated.length - 1], content: data.content || "No response received" }
         return updated
       })
-      console.log("[v0] Message updated with content length:", data.content?.length)
     } catch (err) {
-      console.error("[v0] Fetch error:", err)
       if (err instanceof Error && err.name === "AbortError") return
       const errorMsg = err instanceof Error ? err.message : "Unknown error"
       setMessages(prev => {
