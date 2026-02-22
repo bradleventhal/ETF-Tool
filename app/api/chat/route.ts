@@ -1,11 +1,18 @@
-import { generateText } from "ai"
+import OpenAI from "openai"
 
+export const runtime = "nodejs"
 export const maxDuration = 60
 
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+// Rate limit: 25/day per user, but ADMIN_IPS get unlimited
 const DAILY_LIMIT = 25
+const ADMIN_IPS = (process.env.ADMIN_IPS || "").split(",").map(s => s.trim()).filter(Boolean)
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>()
 
 function checkRateLimit(ip: string): { allowed: boolean; remaining: number } {
+  if (ADMIN_IPS.includes(ip)) return { allowed: true, remaining: 999 }
+
   const now = Date.now()
   const entry = rateLimitMap.get(ip)
   if (!entry || now > entry.resetAt) {
@@ -19,22 +26,7 @@ function checkRateLimit(ip: string): { allowed: boolean; remaining: number } {
   return { allowed: true, remaining: DAILY_LIMIT - entry.count }
 }
 
-export async function POST(req: Request) {
-  try {
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"
-    const { allowed, remaining } = checkRateLimit(ip)
-    if (!allowed) {
-      return Response.json(
-        { error: `Daily limit reached (${DAILY_LIMIT} messages). Resets in 24 hours.` },
-        { status: 429 }
-      )
-    }
-
-    const body = await req.json()
-    const userMessages: { role: string; content: string }[] = body.messages || []
-    const fundContext: string = body.fundContext || ""
-
-    const systemPrompt = `You are a high-precision analytical copilot for a senior external wholesaler covering sophisticated IBD/RIA channels.
+const SYSTEM_PROMPT = `You are a high-precision analytical copilot for a senior external wholesaler covering sophisticated IBD/RIA channels.
 
 Core Rules:
 - Be technically accurate.
@@ -61,26 +53,48 @@ Behavior:
 - Ask clarifying questions only when necessary, not as a reflex.
 
 Primary Objective:
-Increase analytical clarity and strengthen sales positioning through disciplined, technically grounded responses.
+Increase analytical clarity and strengthen sales positioning through disciplined, technically grounded responses.`
 
-${fundContext ? "\nCURRENT FUND COMPARISON DATA:\n" + fundContext : ""}`
+export async function POST(req: Request) {
+  try {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"
+    const { allowed, remaining } = checkRateLimit(ip)
+    if (!allowed) {
+      return Response.json(
+        { error: `Daily limit reached (${DAILY_LIMIT} messages). Resets in 24 hours.` },
+        { status: 429 }
+      )
+    }
 
-    const { text } = await generateText({
-      model: "openai/gpt-4o-mini",
-      system: systemPrompt,
-      messages: userMessages.map(m => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
+    const body = await req.json()
+    const userMessages: { role: string; content: string }[] = body.messages || []
+    const fundContext: string = body.fundContext || ""
+
+    const systemContent = fundContext
+      ? SYSTEM_PROMPT + "\n\nCURRENT FUND COMPARISON DATA:\n" + fundContext
+      : SYSTEM_PROMPT
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemContent },
+        ...userMessages.map(m => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
+      ],
+      temperature: 0.4,
+      max_tokens: 1000,
     })
+
+    const text = completion.choices[0]?.message?.content || "No response generated."
 
     return Response.json({ content: text }, {
       headers: { "X-RateLimit-Remaining": String(remaining) },
     })
   } catch (err: unknown) {
-    return Response.json(
-      { error: err instanceof Error ? err.message : "Unknown error" },
-      { status: 500 }
-    )
+    const message = err instanceof Error ? err.message : "Unknown error"
+    console.error("Chat API error:", message)
+    return Response.json({ error: message }, { status: 500 })
   }
 }
