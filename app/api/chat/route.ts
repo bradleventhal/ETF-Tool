@@ -61,6 +61,7 @@ Increase analytical clarity and strengthen sales positioning through disciplined
 
 export async function POST(req: Request) {
   try {
+    console.log("[v0] Chat OPENAI_API_KEY check:", process.env.OPENAI_API_KEY ? "SET (length: " + process.env.OPENAI_API_KEY.length + ")" : "NOT SET")
     if (!process.env.OPENAI_API_KEY) {
       return Response.json({ error: "OPENAI_API_KEY is not configured" }, { status: 500 })
     }

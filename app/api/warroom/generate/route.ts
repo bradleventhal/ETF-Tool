@@ -156,6 +156,8 @@ IMPORTANT: Return ONLY the JSON object. No markdown, no code fences, no explanat
 
 export async function POST(req: Request) {
   try {
+    console.log("[v0] OPENAI_API_KEY check:", process.env.OPENAI_API_KEY ? "SET (length: " + process.env.OPENAI_API_KEY.length + ")" : "NOT SET")
+    console.log("[v0] All env keys:", Object.keys(process.env).filter(k => k.includes("OPEN") || k.includes("API")).join(", "))
     if (!process.env.OPENAI_API_KEY) {
       return Response.json({ error: "OPENAI_API_KEY is not configured" }, { status: 500 })
     }
