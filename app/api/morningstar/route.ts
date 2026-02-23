@@ -27,13 +27,45 @@ export async function GET(req: NextRequest) {
     const rating = ratingMatch ? parseInt(ratingMatch[1]) : null
     const validRating = rating && rating >= 1 && rating <= 5 ? rating : null
 
-    // Also try to extract category
+    // Also try to extract category from Morningstar HTML
     const catMatch = html.match(/"categoryName"\s*:\s*"([^"]+)"/i)
-    const category = catMatch ? catMatch[1] : null
+    let category = catMatch ? catMatch[1] : null
 
+    // If Morningstar didn't give us a category, try Yahoo Finance quoteSummary
+    if (!category) {
+      try {
+        const yahooUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=fundProfile`
+        const yahooRes = await fetch(yahooUrl, {
+          headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" },
+        })
+        if (yahooRes.ok) {
+          const yahooJson = await yahooRes.json()
+          const yahooCat = yahooJson?.quoteSummary?.result?.[0]?.fundProfile?.categoryName
+          if (yahooCat) category = yahooCat
+        }
+      } catch {
+        // Yahoo fallback failed, that's fine
+      }
+    }
+
+    console.log("[v0] Morningstar result:", ticker, "rating:", validRating, "category:", category)
     return NextResponse.json({ ticker, morningstarRating: validRating, category })
   } catch (err) {
     console.error("[v0] Morningstar fetch error:", err)
+    // Even if Morningstar fails entirely, try Yahoo for category
+    try {
+      const yahooUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=fundProfile`
+      const yahooRes = await fetch(yahooUrl, {
+        headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" },
+      })
+      if (yahooRes.ok) {
+        const yahooJson = await yahooRes.json()
+        const yahooCat = yahooJson?.quoteSummary?.result?.[0]?.fundProfile?.categoryName
+        if (yahooCat) {
+          return NextResponse.json({ ticker, morningstarRating: null, category: yahooCat })
+        }
+      }
+    } catch { /* ignore */ }
     return NextResponse.json({ ticker, morningstarRating: null, category: null })
   }
 }

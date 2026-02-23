@@ -114,20 +114,24 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
   const [mstarRating, setMstarRating] = useState<number | null>(null)
+  const [mstarCategory, setMstarCategory] = useState<string | null>(null)
   const [compareTicker, setCompareTicker] = useState("")
   const [compareSearch, setCompareSearch] = useState("")
 
-  // Fetch Morningstar rating
+  // Fetch Morningstar rating + category
   useEffect(() => {
     setMstarRating(null)
+    setMstarCategory(null)
     fetch(`/api/morningstar?ticker=${fund.ticker}`)
       .then(async r => {
         const text = await r.text()
-        console.log("[v0] morningstar response:", text.slice(0, 300))
         try { return JSON.parse(text) } catch { return null }
       })
-      .then(data => { if (data?.morningstarRating) setMstarRating(data.morningstarRating) })
-      .catch((err) => { console.log("[v0] morningstar fetch error:", err) })
+      .then(data => {
+        if (data?.morningstarRating) setMstarRating(data.morningstarRating)
+        if (data?.category) setMstarCategory(data.category)
+      })
+      .catch(() => {})
   }, [fund.ticker])
 
   const fetchInsights = useCallback(() => {
@@ -203,7 +207,7 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
           <div className="flex flex-col items-end gap-1.5">
             <StarRating rating={mstarRating} />
             <span className="rounded px-2 py-0.5 text-[11px] font-bold uppercase" style={{ backgroundColor: "#0f3d6b", color: "#fff" }}>
-              {fundCategory(fund.name, dur)}
+              {mstarCategory || fundCategory(fund.name, dur)}
             </span>
             {onCompare && (
               <button
