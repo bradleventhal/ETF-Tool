@@ -51,16 +51,39 @@ async function fetchPdfText(url: string): Promise<string | null> {
   }
 }
 
-type CommentaryResult = { text: string; sourceUrl: string } | null
+type CommentaryResult = { text: string; sourceUrl: string; preview: string } | null
+
+/** Check if PDF text looks like actual commentary vs just a fact sheet / data table */
+function isRealCommentary(text: string): boolean {
+  const lower = text.toLowerCase()
+  // Real commentary has narrative sentences -- look for commentary-specific language
+  const commentarySignals = [
+    "during the quarter", "quarter ended", "market environment", "we believe",
+    "our view", "portfolio positioning", "looking ahead", "outlook",
+    "the fund returned", "contributed to", "detracted from", "we increased",
+    "we reduced", "spread tightening", "spread widening", "credit markets",
+    "rate environment", "monetary policy", "the fed", "federal reserve",
+    "economic growth", "inflation", "positioning the portfolio",
+    "investment strategy", "manager commentary", "portfolio manager",
+    "market review", "performance discussion", "quarter in review",
+  ]
+  let hits = 0
+  for (const signal of commentarySignals) {
+    if (lower.includes(signal)) hits++
+  }
+  // Need at least 3 commentary signals to qualify
+  return hits >= 3
+}
 
 /** Search for a fund's quarterly commentary PDF via DuckDuckGo, download and parse it. */
 async function fetchCommentary(ticker: string, fundName: string): Promise<CommentaryResult> {
   console.log("[v0] Searching commentary for:", ticker, fundName)
 
+  // More targeted search queries -- specifically look for commentary, not fact sheets
   const queries = [
-    `${ticker} ${fundName} quarterly commentary filetype:pdf`,
-    `"${ticker}" fund commentary pdf`,
-    `${fundName} quarterly report pdf`,
+    `"${ticker}" quarterly commentary filetype:pdf`,
+    `"${fundName}" quarterly commentary filetype:pdf`,
+    `"${ticker}" "market commentary" OR "portfolio manager commentary" filetype:pdf`,
   ]
 
   const pdfUrlsFound: string[] = []
@@ -69,42 +92,46 @@ async function fetchCommentary(ticker: string, fundName: string): Promise<Commen
   for (const query of queries) {
     try {
       const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`
-      console.log("[v0] DuckDuckGo search:", query)
+      console.log("[v0] DDG search:", query)
       const res = await fetch(searchUrl, {
         headers: { "User-Agent": UA, "Accept": "text/html" },
         signal: AbortSignal.timeout(8000),
       })
-      if (!res.ok) { console.log("[v0] DDG returned:", res.status); continue }
+      if (!res.ok) continue
       const html = await res.text()
-      console.log("[v0] DDG response length:", html.length)
 
-      // Extract uddg redirect URLs (DuckDuckGo wraps all result links)
       const uddgMatches = [...html.matchAll(/uddg=([^&"']+)/gi)]
-      console.log("[v0] Found", uddgMatches.length, "uddg links")
-
       for (const match of uddgMatches) {
         try {
           const url = decodeURIComponent(match[1])
-          if (url.toLowerCase().endsWith(".pdf")) {
+          const urlLower = url.toLowerCase()
+          // Only grab PDFs with "commentary" in the URL, skip fact sheets
+          if (urlLower.endsWith(".pdf") && (urlLower.includes("comment") || urlLower.includes("quarter") || urlLower.includes("outlook") || urlLower.includes("review"))) {
             if (!pdfUrlsFound.includes(url)) pdfUrlsFound.push(url)
-          } else if (url.includes("commentary") || url.includes("quarterly") || url.includes("report") || url.includes("insights")) {
+          } else if (urlLower.endsWith(".pdf")) {
+            // Lower priority -- could be anything
+            if (!pdfUrlsFound.includes(url)) pdfUrlsFound.push(url)
+          } else if (urlLower.includes("commentary") || urlLower.includes("quarterly")) {
             if (!webPages.includes(url)) webPages.push(url)
           }
         } catch { /* bad URL encoding */ }
       }
 
-      if (pdfUrlsFound.length >= 2) break
-    } catch (err) { console.error("[v0] DDG search error:", err); continue }
+      if (pdfUrlsFound.length >= 3) break
+    } catch { continue }
   }
 
   console.log("[v0] PDF URLs found:", pdfUrlsFound.length, "Web pages:", webPages.length)
 
-  // Try direct PDFs first
+  // Try direct PDFs -- validate each one is actual commentary
   for (const url of pdfUrlsFound.slice(0, 5)) {
     const text = await fetchPdfText(url)
-    if (text) {
-      console.log("[v0] Got commentary from PDF:", url)
-      return { text: text.slice(0, 6000), sourceUrl: url }
+    if (text && isRealCommentary(text)) {
+      console.log("[v0] Validated real commentary from:", url)
+      const preview = text.slice(0, 300).replace(/\s+/g, " ").trim()
+      return { text: text.slice(0, 6000), sourceUrl: url, preview }
+    } else if (text) {
+      console.log("[v0] Skipping PDF (not real commentary):", url, "- first 200 chars:", text.slice(0, 200))
     }
   }
 
@@ -118,22 +145,30 @@ async function fetchCommentary(ticker: string, fundName: string): Promise<Commen
       if (!res.ok) continue
       const html = await res.text()
 
-      const pdfLinks = [...html.matchAll(/href=["'](https?:\/\/[^"']+\.pdf)["']/gi)]
-      for (const m of pdfLinks.slice(0, 3)) {
-        const pdfText = await fetchPdfText(m[1])
-        if (pdfText) return { text: pdfText.slice(0, 6000), sourceUrl: m[1] }
-      }
+      const allPdfLinks = [
+        ...([...html.matchAll(/href=["'](https?:\/\/[^"']+\.pdf)["']/gi)].map(m => m[1])),
+        ...([...html.matchAll(/href=["'](\/[^"']+\.pdf)["']/gi)].map(m => new URL(url).origin + m[1])),
+      ]
 
-      const relLinks = [...html.matchAll(/href=["'](\/[^"']+\.pdf)["']/gi)]
-      const baseUrl = new URL(url).origin
-      for (const m of relLinks.slice(0, 3)) {
-        const pdfText = await fetchPdfText(baseUrl + m[1])
-        if (pdfText) return { text: pdfText.slice(0, 6000), sourceUrl: baseUrl + m[1] }
+      // Prioritize links with "commentary" in the URL
+      allPdfLinks.sort((a, b) => {
+        const aScore = a.toLowerCase().includes("comment") ? 0 : 1
+        const bScore = b.toLowerCase().includes("comment") ? 0 : 1
+        return aScore - bScore
+      })
+
+      for (const pdfUrl of allPdfLinks.slice(0, 5)) {
+        const pdfText = await fetchPdfText(pdfUrl)
+        if (pdfText && isRealCommentary(pdfText)) {
+          console.log("[v0] Validated commentary via page scrape:", pdfUrl)
+          const preview = pdfText.slice(0, 300).replace(/\s+/g, " ").trim()
+          return { text: pdfText.slice(0, 6000), sourceUrl: pdfUrl, preview }
+        }
       }
     } catch { continue }
   }
 
-  console.log("[v0] No commentary found for", ticker)
+  console.log("[v0] No real commentary found for", ticker)
   return null
 }
 
@@ -232,6 +267,7 @@ export async function POST(req: Request) {
       ...parsed,
       hasCommentary: !!commentary,
       commentarySource: commentary?.sourceUrl || null,
+      commentaryPreview: commentary?.preview || null,
     })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)

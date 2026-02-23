@@ -40,6 +40,7 @@ interface FundInsights {
   headwinds: string[]
   hasCommentary?: boolean
   commentarySource?: string | null
+  commentaryPreview?: string | null
   positioning: string
 }
 
@@ -336,11 +337,19 @@ export function FundLookup({ fund, allTickers }: { fund: FundData; allTickers?: 
             </span>
           ) : null}
         </div>
+        {insights?.hasCommentary && insights.commentaryPreview && (
+          <div className="border-b px-3 py-2 sm:px-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#f0fdf4" }}>
+            <p className="text-[10px] italic leading-relaxed" style={{ color: "#64748b" }}>
+              <span className="font-semibold not-italic" style={{ color: "#16a34a" }}>PDF excerpt: </span>
+              {'"'}{insights.commentaryPreview.slice(0, 200)}{'..."'}
+            </p>
+          </div>
+        )}
         <div className="p-4 sm:p-5">
-          {loading && !insights && (
-            <div className="flex items-center gap-2 py-6 text-sm" style={{ color: "#94a3b8" }}>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Analyzing {fund.ticker}...
+        {loading && !insights && (
+        <div className="flex items-center gap-2 py-6 text-sm" style={{ color: "#94a3b8" }}>
+        <Loader2 className="h-4 w-4 animate-spin" />
+        Analyzing {fund.ticker}...
             </div>
           )}
           {insights && (
