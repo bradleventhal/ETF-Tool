@@ -1,4 +1,6 @@
 import OpenAI from "openai"
+// @ts-expect-error pdf-parse has no types
+import pdfParse from "pdf-parse"
 import type { FundData } from "@/lib/fund-types"
 
 export const maxDuration = 60
@@ -7,55 +9,112 @@ function nz(v: number | null): number { return v == null || isNaN(v) ? 0 : v }
 function fPct(v: number | null, d = 2): string { return v == null || isNaN(v) || v === 0 ? "\u2014" : (v * 100).toFixed(d) + "%" }
 function fNum(v: number | null, d = 2): string { return v == null || isNaN(v) ? "\u2014" : v.toFixed(d) }
 
-/** Fetch fund profile + commentary via multiple public sources */
-async function fetchCommentary(ticker: string, fundName: string): Promise<string | null> {
-  const snippets: string[] = []
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
-  // 1. Try Yahoo Finance fund profile page (usually has a description + holdings summary)
+/** Try to fetch a PDF from a URL and extract its text */
+async function fetchPdfText(url: string): Promise<string | null> {
   try {
-    const yahooUrl = `https://finance.yahoo.com/quote/${encodeURIComponent(ticker)}/profile/`
-    const res = await fetch(yahooUrl, {
-      headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
-      signal: AbortSignal.timeout(5000),
+    const res = await fetch(url, {
+      headers: { "User-Agent": UA, "Accept": "application/pdf,*/*" },
+      signal: AbortSignal.timeout(10000),
+      redirect: "follow",
     })
-    if (res.ok) {
-      const html = await res.text()
-      const text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "").replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
-      if (text.length > 300) snippets.push("YAHOO PROFILE:\n" + text.slice(0, 2000))
-    }
-  } catch { /* skip */ }
-
-  // 2. Try MarketWatch fund page
-  try {
-    const mwUrl = `https://www.marketwatch.com/investing/fund/${ticker.toLowerCase()}`
-    const res = await fetch(mwUrl, {
-      headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
-      signal: AbortSignal.timeout(5000),
-    })
-    if (res.ok) {
-      const html = await res.text()
-      const text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "").replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
-      if (text.length > 300) snippets.push("MARKETWATCH:\n" + text.slice(0, 2000))
-    }
-  } catch { /* skip */ }
-
-  // 3. Try ETF.com for ETFs
-  try {
-    const etfUrl = `https://www.etf.com/${ticker.toUpperCase()}`
-    const res = await fetch(etfUrl, {
-      headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
-      signal: AbortSignal.timeout(5000),
-    })
-    if (res.ok) {
-      const html = await res.text()
-      const text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "").replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
-      if (text.length > 300) snippets.push("ETF.COM:\n" + text.slice(0, 2000))
-    }
-  } catch { /* skip */ }
-
-  if (snippets.length > 0) {
-    return snippets.join("\n\n---\n\n")
+    if (!res.ok) return null
+    const contentType = res.headers.get("content-type") || ""
+    // Must be a PDF
+    if (!contentType.includes("pdf") && !url.toLowerCase().endsWith(".pdf")) return null
+    const buffer = Buffer.from(await res.arrayBuffer())
+    const data = await pdfParse(buffer)
+    const text = data.text?.trim()
+    return text && text.length > 100 ? text : null
+  } catch {
+    return null
   }
+}
+
+/** Find and extract text from the fund's quarterly commentary PDF */
+async function fetchCommentary(ticker: string, fundName: string): Promise<string | null> {
+  const nameLower = fundName.toLowerCase()
+
+  // Build list of known PDF URLs based on fund family
+  const pdfUrls: string[] = []
+
+  if (nameLower.includes("angel oak")) {
+    // Angel Oak hosts PDFs at wp-content/uploads with fund name patterns
+    const fundSlug = nameLower.includes("ultrashort") && nameLower.includes("etf") ? "UltraShort-Income-ETF"
+      : nameLower.includes("ultrashort") ? "UltraShort-Income-Fund"
+      : nameLower.includes("multi-strategy") || nameLower.includes("multistrategy") ? "Multi-Strategy-Income-Fund"
+      : nameLower.includes("strategic credit") ? "Strategic-Credit-Fund"
+      : nameLower.includes("income etf") ? "Income-ETF"
+      : nameLower.includes("high yield") ? "High-Yield-Opportunities-ETF"
+      : nameLower.includes("mortgage") ? "Mortgage-Backed-Securities-ETF"
+      : nameLower.includes("total return") ? "Total-Return-ETF"
+      : null
+
+    if (fundSlug) {
+      // Try recent quarterly commentary patterns
+      const quarters = ["Q4-2025", "Q3-2025", "Q2-2025", "Q1-2025", "Q4-2024", "Q3-2024"]
+      for (const q of quarters) {
+        pdfUrls.push(`https://angeloakcapital.com/wp-content/uploads/Angel-Oak-${fundSlug}-Commentary-${q}.pdf`)
+        pdfUrls.push(`https://angeloakcapital.com/wp-content/uploads/AOCA-${fundSlug}-Commentary-${q}.pdf`)
+        pdfUrls.push(`https://angeloakcapital.com/wp-content/uploads/${fundSlug}-Commentary-${q}.pdf`)
+      }
+    }
+    // Also try market outlook
+    pdfUrls.push("https://angeloakcapital.com/wp-content/uploads/AOCA-2025-Mid-Year-Outlook.pdf")
+  } else if (nameLower.includes("pimco")) {
+    pdfUrls.push(`https://www.pimco.com/handlers/PIMCOFundFactSheetHandler.ashx?ticker=${ticker}`)
+  }
+
+  // Try each PDF URL
+  for (const url of pdfUrls) {
+    const text = await fetchPdfText(url)
+    if (text) {
+      console.log("[v0] Found PDF commentary at:", url, "- length:", text.length)
+      return text.slice(0, 6000) // First 6000 chars should capture the meat
+    }
+  }
+
+  // Fallback: try to find the fund's fact sheet / profile page on the company website
+  const fallbackUrls: string[] = []
+  if (nameLower.includes("angel oak")) {
+    fallbackUrls.push("https://angeloakcapital.com/quarterly-fund-commentaries")
+  }
+  fallbackUrls.push(`https://www.etf.com/${ticker.toUpperCase()}`)
+
+  for (const url of fallbackUrls) {
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": UA },
+        signal: AbortSignal.timeout(5000),
+      })
+      if (!res.ok) continue
+      const html = await res.text()
+
+      // Look for PDF links in the page
+      const pdfLinks = [...html.matchAll(/href=["'](https?:\/\/[^"']+\.pdf)["']/gi)]
+      for (const match of pdfLinks.slice(0, 3)) {
+        const pdfText = await fetchPdfText(match[1])
+        if (pdfText) {
+          console.log("[v0] Found PDF via link scrape:", match[1])
+          return pdfText.slice(0, 6000)
+        }
+      }
+
+      // Also check for relative PDF links
+      const relPdfLinks = [...html.matchAll(/href=["'](\/[^"']+\.pdf)["']/gi)]
+      const baseUrl = new URL(url).origin
+      for (const match of relPdfLinks.slice(0, 3)) {
+        const pdfText = await fetchPdfText(baseUrl + match[1])
+        if (pdfText) {
+          console.log("[v0] Found PDF via relative link:", baseUrl + match[1])
+          return pdfText.slice(0, 6000)
+        }
+      }
+    } catch { continue }
+  }
+
+  console.log("[v0] No commentary PDF found for", ticker)
   return null
 }
 
