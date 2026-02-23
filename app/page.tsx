@@ -99,8 +99,7 @@ export default function Page() {
   const [tickerA, setTickerA] = useState("")
   const [tickerB, setTickerB] = useState("")
   const [competitors, setCompetitors] = useState<string[]>([])
-  const [addingComp, setAddingComp] = useState("")
-  const [addCompFocused, setAddCompFocused] = useState(false)
+  // competitor add state removed -- now using TickerInput for competitor selection
   const [mode, setMode] = useState<AnalysisMode>("internal")
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [warRoom, setWarRoom] = useState<WarRoom | null>(null)
@@ -302,10 +301,25 @@ export default function Page() {
       {section === "comparison" && (
       <div className="mx-auto max-w-6xl px-3 sm:px-6">
         <div className="border-b py-4 sm:py-5" style={{ borderColor: "#e2e8f0" }}>
-          {/* Row 1: Our Fund + Mode */}
+          {/* Row 1: Our Fund + Competitor + Mode (balanced) */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
-            <div className="min-w-0 flex-[2]">
+            <div className="min-w-0 flex-1">
               <TickerInput label="Our Fund" value={tickerA} onChange={(v) => { setTickerA(v); if (v && competitors.length > 0 && !tickerB) setTickerB(competitors[0]) }} options={tickers} />
+            </div>
+            <div className="hidden items-end pb-2 sm:flex">
+              <ArrowRightLeft className="h-4 w-4" style={{ color: "#cbd5e1" }} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <TickerInput
+                label="Competitor"
+                value={tickerB}
+                onChange={(v) => {
+                  setTickerB(v)
+                  if (v && !competitors.includes(v)) setCompetitors(prev => [...prev.slice(0, 4), v])
+                }}
+                options={tickers.filter(t => t.ticker !== tickerA && !competitors.includes(t.ticker))}
+                placeholder="Search competitor..."
+              />
             </div>
             <div className="flex shrink-0 flex-col gap-1.5">
               <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>Mode</span>
@@ -316,102 +330,51 @@ export default function Page() {
             </div>
           </div>
 
-          {/* Row 2: Competitor management */}
-          <div className="mt-3 rounded-lg border p-3" style={{ borderColor: "#e9edf2", backgroundColor: "#f8fafc" }}>
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>
-                Competitors {competitors.length > 0 && `(${competitors.length}/5)`}
+          {/* Row 2: Competitor quick-switch chips */}
+          {competitors.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>
+                Saved ({competitors.length}/5):
               </span>
-              {competitors.length > 0 && (
-                <button onClick={() => { setCompetitors([]); setTickerB("") }} className="text-[10px] font-medium" style={{ color: "#dc2626" }}>
+              {competitors.map((comp) => {
+                const isActive = tickerB === comp
+                return (
+                  <div key={comp} className="flex items-center gap-0">
+                    <button
+                      onClick={() => setTickerB(comp)}
+                      className="rounded-l-full py-1 pl-3 pr-1.5 text-[11px] font-semibold transition-all"
+                      style={{
+                        backgroundColor: isActive ? "#0f3d6b" : "#f1f5f9",
+                        color: isActive ? "#fff" : "#334155",
+                        border: `1px solid ${isActive ? "#0f3d6b" : "#e2e8f0"}`,
+                        borderRight: "none",
+                      }}
+                    >
+                      {comp}
+                    </button>
+                    <button
+                      onClick={() => { const next = competitors.filter(c => c !== comp); setCompetitors(next); if (tickerB === comp) setTickerB(next[0] || "") }}
+                      className="rounded-r-full py-1 pl-0.5 pr-2 text-[11px] transition-all"
+                      style={{
+                        backgroundColor: isActive ? "#0f3d6b" : "#f1f5f9",
+                        color: isActive ? "rgba(255,255,255,0.5)" : "#94a3b8",
+                        border: `1px solid ${isActive ? "#0f3d6b" : "#e2e8f0"}`,
+                        borderLeft: "none",
+                      }}
+                      aria-label={`Remove ${comp}`}
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
+                )
+              })}
+              {competitors.length > 1 && (
+                <button onClick={() => { setCompetitors([]); setTickerB("") }} className="text-[10px] font-medium underline" style={{ color: "#94a3b8" }}>
                   Clear all
                 </button>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {competitors.map((comp) => {
-                const isActive = tickerB === comp
-                const fund = tickers.find(t => t.ticker === comp)
-                return (
-                  <button key={comp} onClick={() => setTickerB(comp)}
-                    className="group flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-semibold transition-all"
-                    style={{
-                      backgroundColor: isActive ? "#0f3d6b" : "#fff",
-                      color: isActive ? "#fff" : "#334155",
-                      border: `1.5px solid ${isActive ? "#0f3d6b" : "#e2e8f0"}`,
-                      boxShadow: isActive ? "0 1px 3px rgba(15,61,107,0.25)" : "none",
-                    }}
-                  >
-                    <span>{comp}</span>
-                    {fund && <span className="max-w-[100px] truncate text-[10px] font-normal" style={{ color: isActive ? "rgba(255,255,255,0.6)" : "#94a3b8" }}>{fund.name.split(" ").slice(0, 3).join(" ")}</span>}
-                    <span
-                      onClick={(e) => { e.stopPropagation(); const next = competitors.filter(c => c !== comp); setCompetitors(next); if (tickerB === comp) setTickerB(next[0] || "") }}
-                      className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full transition-colors"
-                      style={{ backgroundColor: isActive ? "rgba(255,255,255,0.15)" : "#f1f5f9" }}
-                    >
-                      <X className="h-2.5 w-2.5" />
-                    </span>
-                  </button>
-                )
-              })}
-              {competitors.length < 5 && (
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={addingComp}
-                    onChange={e => setAddingComp(e.target.value.toUpperCase())}
-                    onFocus={() => setAddCompFocused(true)}
-                    onBlur={() => setTimeout(() => { setAddCompFocused(false); setAddingComp("") }, 200)}
-                    onKeyDown={e => {
-                      if (e.key === "Enter" && addingComp) {
-                        const match = tickers.find(t =>
-                          t.ticker !== tickerA && !competitors.includes(t.ticker) &&
-                          (t.ticker.toUpperCase().includes(addingComp) || t.name.toUpperCase().includes(addingComp))
-                        )
-                        if (match) {
-                          setCompetitors(prev => [...prev.slice(0, 4), match.ticker])
-                          setTickerB(match.ticker)
-                          setAddingComp("")
-                          setAddCompFocused(false)
-                        }
-                      }
-                      if (e.key === "Escape") { setAddingComp(""); setAddCompFocused(false) }
-                    }}
-                    placeholder={competitors.length === 0 ? "Search to add a competitor..." : "+ Add competitor"}
-                    className="h-9 w-[200px] rounded-lg border bg-white px-3 text-[12px] font-medium outline-none placeholder:text-[11px] focus:border-[#0f3d6b] focus:ring-1 focus:ring-[#0f3d6b]"
-                    style={{ borderColor: "#e2e8f0", color: "#334155" }}
-                  />
-                  {addCompFocused && (
-                    <div className="absolute left-0 top-full z-30 mt-1 max-h-[220px] w-[280px] overflow-y-auto rounded-lg border shadow-xl" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-                      {(() => {
-                        const matches = tickers.filter(t => t.ticker !== tickerA && !competitors.includes(t.ticker) &&
-                          (!addingComp || t.ticker.toUpperCase().includes(addingComp) || t.name.toUpperCase().includes(addingComp)))
-                        return matches.length === 0 ? (
-                          <div className="px-3 py-3 text-[11px]" style={{ color: "#94a3b8" }}>No matching funds</div>
-                        ) : matches.slice(0, 10).map(t => (
-                          <button
-                            key={t.ticker}
-                            onMouseDown={e => {
-                              e.preventDefault()
-                              setCompetitors(prev => [...prev.slice(0, 4), t.ticker])
-                              setTickerB(t.ticker)
-                              setAddingComp("")
-                              setAddCompFocused(false)
-                            }}
-                            className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-[12px] font-medium transition-colors hover:bg-[#f0f7ff]"
-                            style={{ color: "#334155" }}
-                          >
-                            <span className="w-[50px] shrink-0 font-bold">{t.ticker}</span>
-                            <span className="truncate" style={{ color: "#64748b" }}>{t.name}</span>
-                          </button>
-                        ))
-                      })()}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+          )}
         </div>
 
         {error && <p className="pt-3 text-sm" style={{ color: "#dc2626" }}>{error}</p>}
