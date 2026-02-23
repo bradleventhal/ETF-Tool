@@ -221,24 +221,21 @@ export default function Page() {
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: "#f8fafc" }}>
-      <header style={{ backgroundColor: "#1b3a5c" }}>
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-2 sm:px-6 sm:py-2.5">
-          <div className="flex items-center gap-3 sm:gap-5">
-            <img src="/images/angel-oak-logo.jpg" alt="Angel Oak Capital Advisors" className="h-[36px] w-auto rounded-sm sm:h-[44px]" />
-            <div className="hidden sm:block" style={{ width: 1, height: 28, backgroundColor: "rgba(255,255,255,0.15)" }} />
-            <div className="hidden sm:flex flex-col">
-              <span className="text-[13px] font-semibold tracking-tight" style={{ color: "rgba(255,255,255,0.95)" }}>Fund Comparison</span>
-              <span className="text-[10px] font-normal tracking-wide" style={{ color: "rgba(255,255,255,0.4)" }}>Internal Analytics Platform</span>
-            </div>
+      <header style={{ backgroundColor: "#172a45" }}>
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-2.5 sm:px-6 sm:py-3">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <img src="/images/angel-oak-logo.jpg" alt="Angel Oak Capital Advisors" className="h-auto w-[120px] sm:w-[160px]" />
+            <div className="hidden sm:block" style={{ width: 1, height: 24, backgroundColor: "rgba(255,255,255,0.2)" }} />
+            <span className="hidden text-sm font-semibold tracking-tight sm:inline" style={{ color: "rgba(255,255,255,0.9)" }}>Fund Comparison</span>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden text-[10px] sm:inline" style={{ color: "rgba(255,255,255,0.35)" }}>
-              {funds.length} funds loaded
-            </span>
-            <button onClick={() => setShowUpload(!showUpload)} className="flex min-h-[44px] items-center gap-1.5 rounded px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider transition-colors" style={{ color: "rgba(255,255,255,0.6)", borderWidth: 1, borderColor: "rgba(255,255,255,0.12)" }}>
+          <div className="flex flex-col items-end gap-0.5">
+            <button onClick={() => setShowUpload(!showUpload)} className="flex min-h-[44px] items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors" style={{ color: "rgba(255,255,255,0.7)" }}>
               {showUpload ? <X className="h-3.5 w-3.5" /> : <Upload className="h-3.5 w-3.5" />}
-              {showUpload ? "Close" : "Update"}
+              {showUpload ? "Close" : "Update Data"}
             </button>
+            <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.35)" }}>
+              {funds.length} funds
+            </span>
           </div>
         </div>
       </header>
