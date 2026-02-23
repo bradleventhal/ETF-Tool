@@ -226,19 +226,48 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
         </table>
       </div>
 
-      {/* Performance */}
+      {/* Performance -- horizontal bar chart */}
       <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
         <div className="border-b px-3 py-2.5 sm:px-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
           <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Performance</h4>
         </div>
-        <table className="w-full text-sm">
-          <tbody>
-            <StatRow label="YTD" value={fPct(fund.ytd)} />
-            <StatRow label="1 Year" value={fPct(fund.oneYear)} highlight />
-            <StatRow label="3 Year (ann.)" value={fPct(fund.threeYear)} />
-            <StatRow label="Since Common Inception" value={fPct(fund.commonInception)} highlight />
-          </tbody>
-        </table>
+        <div className="px-3 py-4 sm:px-4">
+          {(() => {
+            const periods = [
+              { label: "YTD", value: fund.ytd },
+              { label: "1 Year", value: fund.oneYear },
+              { label: "3 Year (ann.)", value: fund.threeYear },
+              { label: "Since Inception", value: fund.commonInception },
+            ].filter(p => p.value != null && !isNaN(p.value) && p.value !== 0)
+            const maxVal = Math.max(...periods.map(p => Math.abs((p.value ?? 0) * 100)), 1)
+            return (
+              <div className="space-y-3">
+                {periods.map(p => {
+                  const pct = (p.value ?? 0) * 100
+                  const width = Math.max((Math.abs(pct) / maxVal) * 100, 2)
+                  return (
+                    <div key={p.label} className="flex items-center gap-3">
+                      <span className="w-[100px] shrink-0 text-right text-[12px] font-medium" style={{ color: "#64748b" }}>{p.label}</span>
+                      <div className="relative h-5 flex-1 rounded" style={{ backgroundColor: "#f1f5f9" }}>
+                        <div
+                          className="absolute inset-y-0 left-0 rounded"
+                          style={{
+                            width: `${width}%`,
+                            backgroundColor: pct >= 0 ? "#0f3d6b" : "#dc2626",
+                            opacity: 0.85,
+                          }}
+                        />
+                      </div>
+                      <span className="w-[52px] shrink-0 text-right font-mono text-[12px] font-semibold" style={{ color: "#334155" }}>
+                        {pct >= 0 ? "+" : ""}{pct.toFixed(2)}%
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })()}
+        </div>
       </div>
 
       {/* Interactive Growth Chart */}
