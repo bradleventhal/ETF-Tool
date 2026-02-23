@@ -94,23 +94,8 @@ function findCompetitorAdvantages(us: FundData, them: FundData, yahoo?: YahooAna
     advantages.push({ id: "duration", metric: "Duration", magnitude: Math.min(durDelta * 12, 100), theirValue: nz(them.duration).toFixed(2) + " yrs", ourValue: nz(us.duration).toFixed(2) + " yrs", deltaBps: 0, category: "risk" })
   }
 
-  // Allocation differences — flag significant differences but DON'T assume one is better
-  // These are structural differences, not inherent advantages. GPT contextualizes.
-  const secUs = nz(us.securitized) * 100, secThem = nz(them.securitized) * 100
-  const corpUs = nz(us.corporateCredit) * 100, corpThem = nz(them.corporateCredit) * 100
-  const govUs = nz(us.governmentCash) * 100, govThem = nz(them.governmentCash) * 100
-
-  const hasMajorAllocDiff = Math.abs(secUs - secThem) > 10 || Math.abs(corpUs - corpThem) > 10 || Math.abs(govUs - govThem) > 10
-  if (hasMajorAllocDiff) {
-    // Single entry capturing the allocation profile difference — not framed as advantage/disadvantage
-    advantages.push({
-      id: "alloc_profile", metric: "Allocation Profile",
-      magnitude: 30, // moderate — GPT decides importance based on context
-      theirValue: `Corp ${corpThem.toFixed(0)}% / Sec ${secThem.toFixed(0)}% / Govt ${govThem.toFixed(0)}%`,
-      ourValue: `Corp ${corpUs.toFixed(0)}% / Sec ${secUs.toFixed(0)}% / Govt ${govUs.toFixed(0)}%`,
-      deltaBps: 0, category: "allocation"
-    })
-  }
+  // Allocation differences are ONLY handled by GPT — the template engine
+  // cannot judge whether an allocation difference is an advantage or not.
 
   return advantages
 }
@@ -233,11 +218,7 @@ const ARG_TEMPLATES: Record<string, string[]> = {
     "Duration comparison: {their} vs {our}. Less rate exposure with comparable income.",
     "{their} vs {our} duration. In a rate-volatile environment, shorter wins.",
   ],
-  alloc_profile: [
-    "Different allocation approach: {their} vs {our}. Different sector exposures mean different risk/return drivers.",
-    "Allocation profiles diverge: {their} vs {our}. A competitor could frame either mix as an advantage depending on the environment.",
-    "Structurally different portfolios: {their} vs {our}. The pitch angle depends on what the advisor prioritizes.",
-  ],
+
 }
 
 function generateArgument(adv: RawAdvantage, us: FundData, them: FundData): string {
@@ -470,22 +451,7 @@ function generateRebuttal(adv: RawAdvantage & { tier?: DifficultyTier }, us: Fun
       bullets.push("Duration is actively managed and reflects our current rate outlook — it's not a passive bet.")
       break
     }
-    case "alloc_profile": {
-      // Acknowledge the difference, explain our rationale
-      const secUs = nz(us.securitized) * 100, corpUs = nz(us.corporateCredit) * 100
-      const secThem = nz(them.securitized) * 100, corpThem = nz(them.corporateCredit) * 100
-      bullets.push(`Different allocations reflect different investment philosophies — neither is inherently wrong.`)
-      if (secUs > secThem + 10) {
-        bullets.push(`Our securitized allocation provides diversified cash flows with structural protections (subordination, overcollateralization) that single-name corporates don't offer.`)
-      }
-      if (corpUs > corpThem + 10) {
-        bullets.push(`Our corporate allocation accesses the deepest, most liquid part of the IG fixed income market.`)
-      }
-      const yieldAdv = (nz(us.secYield) - nz(them.secYield)) * 10000
-      if (yieldAdv > 10) bullets.push(`Our approach delivers ${Math.round(yieldAdv)}bps more yield — the allocation is working.`)
-      bullets.push(`What matters is the outcome: yield, risk-adjusted return, and how it performs through stress. Compare those.`)
-      break
-    }
+
   }
 
   // Assign confidence

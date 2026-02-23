@@ -1,7 +1,6 @@
-import OpenAI from "openai"
+import { generateText } from "ai"
 import type { FundData, YahooAnalytics, WarRoom } from "@/lib/fund-types"
 
-export const runtime = "nodejs"
 export const maxDuration = 30
 
 // Build a compact data payload for GPT (minimize tokens)
@@ -26,7 +25,7 @@ function buildDataPayload(fundA: FundData, fundB: FundData, yahoo: YahooAnalytic
 
 // Compute all deltas between both funds
 function computeDeltas(us: FundData, them: FundData) {
-  const deltas: Record<string, { metric: string; ours: number | null; theirs: number | null; delta: number; unit: string; higherIsBetter: boolean }> = {}
+  const deltas: Record<string, any> = {}
 
   // Performance & risk metrics — these have clear directionality
   const directionalMetrics: { key: keyof FundData; label: string; unit: string; higherBetter: boolean }[] = [
@@ -79,7 +78,7 @@ function computeDeltas(us: FundData, them: FundData) {
     const o = ours ?? 0
     const t = theirs ?? 0
     const delta = t - o
-    if (Math.abs(delta) < 0.005) continue // 0.5% threshold for allocations
+    if (Math.abs(delta) < 0.005) continue
     deltas[m.key] = { metric: m.label, ours, theirs, delta, unit: m.unit, type: "neutral_allocation" }
   }
   return deltas
@@ -156,12 +155,6 @@ IMPORTANT: Return ONLY the JSON object. No markdown, no code fences, no explanat
 
 export async function POST(req: Request) {
   try {
-    console.log("[v0] OPENAI_API_KEY check:", process.env.OPENAI_API_KEY ? "SET (length: " + process.env.OPENAI_API_KEY.length + ")" : "NOT SET")
-    console.log("[v0] All env keys:", Object.keys(process.env).filter(k => k.includes("OPEN") || k.includes("API")).join(", "))
-    if (!process.env.OPENAI_API_KEY) {
-      return Response.json({ error: "OPENAI_API_KEY is not configured" }, { status: 500 })
-    }
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const body = await req.json()
     const { fundA, fundB, yahoo } = body as { fundA: FundData; fundB: FundData; yahoo: YahooAnalytics | null }
 
@@ -172,17 +165,17 @@ export async function POST(req: Request) {
     const deltas = computeDeltas(fundA, fundB)
     const dataPayload = buildDataPayload(fundA, fundB, yahoo, deltas)
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const result = await generateText({
+      model: "openai/gpt-4o-mini",
+      system: SYSTEM_PROMPT,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: `Generate the war room briefing for ${fundA.ticker} (our fund) vs ${fundB.ticker} (competitor).\n\nDATA:\n${dataPayload}` },
       ],
       temperature: 0.3,
-      max_tokens: 2500,
+      maxOutputTokens: 2500,
     })
 
-    const raw = completion.choices[0]?.message?.content || ""
+    const raw = result.text || ""
 
     // Parse JSON from response (handle possible markdown fences)
     let jsonStr = raw.trim()

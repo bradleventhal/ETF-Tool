@@ -1,6 +1,5 @@
-import OpenAI from "openai"
+import { generateText } from "ai"
 
-export const runtime = "nodejs"
 export const maxDuration = 60
 
 // Rate limit: 25/day per user, but ADMIN_IPS get unlimited
@@ -61,11 +60,6 @@ Increase analytical clarity and strengthen sales positioning through disciplined
 
 export async function POST(req: Request) {
   try {
-    console.log("[v0] Chat OPENAI_API_KEY check:", process.env.OPENAI_API_KEY ? "SET (length: " + process.env.OPENAI_API_KEY.length + ")" : "NOT SET")
-    if (!process.env.OPENAI_API_KEY) {
-      return Response.json({ error: "OPENAI_API_KEY is not configured" }, { status: 500 })
-    }
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"
     const { allowed, remaining } = checkRateLimit(ip)
     if (!allowed) {
@@ -83,20 +77,18 @@ export async function POST(req: Request) {
       ? SYSTEM_PROMPT + "\n\nCURRENT FUND COMPARISON DATA:\n" + fundContext
       : SYSTEM_PROMPT
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemContent },
-        ...userMessages.map(m => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        })),
-      ],
+    const result = await generateText({
+      model: "openai/gpt-4o-mini",
+      system: systemContent,
+      messages: userMessages.map(m => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
       temperature: 0.2,
-      max_tokens: 800,
+      maxOutputTokens: 800,
     })
 
-    const text = completion.choices[0]?.message?.content || "No response generated."
+    const text = result.text || "No response generated."
     return Response.json({ content: text }, {
       headers: { "X-RateLimit-Remaining": String(remaining) },
     })
