@@ -91,11 +91,11 @@ KEY DIMENSIONS TO EVALUATE (prioritize based on magnitude):
 - Sector breakdown differences (RMBS, CLO, ABS, CMBS)
 
 RULES:
-1. Surface EVERY metric where the competitor has a material advantage. Do NOT limit to 2 or 3. If they have 6 angles, show all 6. If they only have 1, note that it's likely their only real angle.
+1. Surface EVERY metric where the competitor has a material advantage. Do NOT limit to 2 or 3. If they have 6 angles, show all 6. If they only have 1 or 2, explicitly note in the difficultySummary: "The competitor has limited ammunition — [metric] is likely their only/primary angle." This helps our rep know when the competitor is grasping at straws vs when they have real firepower. Count the angles for the rep.
 2. Difficulty rating is RELATIVE to this specific comparison. The biggest delta = hardest, smallest = easiest. One "Very Difficult" argument pulls the overall rating up regardless of how many easy ones exist.
 3. If duration is short (<1yr), historical stress arguments are easier to counter. If longer, they're harder.
 4. Never defend 2022 or any stress period directly — acknowledge briefly, pivot to recovery and current opportunity.
-5. Use the Yahoo stress period data to cite REAL drawdown numbers and dates. Do not fabricate.
+5. Use the Yahoo stress period data to cite REAL drawdown numbers and dates. Do not fabricate. Each stress period is classified as "Broad" (both funds dropped — likely a macro event like rate shock, spread widening, liquidity event) or "Idiosyncratic" (only one fund dropped — likely fund-specific: sector concentration, credit event, positioning). USE YOUR MACRO KNOWLEDGE to explain WHY each stress event happened (e.g. "April 2025 tariff-driven corporate spread widening", "Q1 2022 onset of Fed hiking cycle", "March 2020 COVID liquidity seizure"). This context is the whole point.
 6. Each rebuttal gets a punchy one-liner the rep can use — sounds like a real person talking. Think "apples to apples" type lines.
 7. If virtually no material differences exist, say so clearly: "This comes down to relationship and service."
 8. If competitor has zero material advantages: return isLayup=true with a confident (not dismissive) message.

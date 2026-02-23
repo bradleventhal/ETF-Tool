@@ -191,8 +191,14 @@ export async function GET(req: NextRequest) {
     const triA = buildTotalReturnIndex(fundA.priceMap, fundA.divMap, commonDates)
     const triB = buildTotalReturnIndex(fundB.priceMap, fundB.divMap, commonDates)
 
-    // Find drawdown periods for either fund (>3% peak-to-trough in rolling window)
-    interface RawStress { startIdx: number; troughIdx: number; endIdx: number; ddA: number; ddB: number }
+    // --- Dynamic stress period detection for fixed income ---
+    // In fixed income, a 1% NAV drop in a short period is significant.
+    // We detect any period where either fund drops >1% from a recent peak.
+    // We also classify: broad (both funds drop) vs idiosyncratic (only one drops).
+    const STRESS_THRESHOLD = -1.0 // 1% drop is significant in FI
+    const RECOVERY_THRESHOLD = -0.25 // considered "recovered" when within 25bps of prior peak
+
+    interface RawStress { startIdx: number; troughIdx: number; endIdx: number; worstDdA: number; worstDdB: number }
     const rawStresses: RawStress[] = []
 
     let peakA = triA[0], peakB = triB[0], peakIdxA = 0, peakIdxB = 0
@@ -206,7 +212,7 @@ export async function GET(req: NextRequest) {
       const ddA = ((triA[i] - peakA) / peakA) * 100
       const ddB = ((triB[i] - peakB) / peakB) * 100
 
-      const eitherStressed = ddA < -3 || ddB < -3
+      const eitherStressed = ddA < STRESS_THRESHOLD || ddB < STRESS_THRESHOLD
 
       if (eitherStressed && !inStress) {
         inStress = true
@@ -221,30 +227,27 @@ export async function GET(req: NextRequest) {
           stressDdB = Math.min(stressDdB, ddB)
         }
       } else if (!eitherStressed && inStress) {
-        // Stress ended — both funds recovered past -1%
-        if (ddA > -1 && ddB > -1) {
-          rawStresses.push({ startIdx: stressStart, troughIdx: stressTroughIdx, endIdx: i, ddA: stressDdA, ddB: stressDdB })
+        if (ddA > RECOVERY_THRESHOLD && ddB > RECOVERY_THRESHOLD) {
+          rawStresses.push({ startIdx: stressStart, troughIdx: stressTroughIdx, endIdx: i, worstDdA: stressDdA, worstDdB: stressDdB })
           inStress = false
           peakA = triA[i]; peakB = triB[i]; peakIdxA = i; peakIdxB = i
         }
       }
     }
-    // If still in stress at end of data
     if (inStress) {
-      rawStresses.push({ startIdx: stressStart, troughIdx: stressTroughIdx, endIdx: commonDates.length - 1, ddA: stressDdA, ddB: stressDdB })
+      rawStresses.push({ startIdx: stressStart, troughIdx: stressTroughIdx, endIdx: commonDates.length - 1, worstDdA: stressDdA, worstDdB: stressDdB })
     }
 
-    // Convert to StressPeriod objects, keep top 5 most significant
+    // Convert to StressPeriod objects
+    // Classify each: "broad" (both >0.75% drop), "idiosyncratic_A" (only A dropped meaningfully), "idiosyncratic_B"
     const stressPeriods: StressPeriod[] = rawStresses
-      .filter(s => s.troughIdx - s.startIdx > 5) // at least 5 trading days
-      .sort((a, b) => Math.min(a.ddA, a.ddB) - Math.min(b.ddA, b.ddB)) // worst first
-      .slice(0, 8)
+      .filter(s => s.troughIdx - s.startIdx >= 3) // at least 3 trading days (not just noise)
+      .sort((a, b) => Math.min(a.worstDdA, a.worstDdB) - Math.min(b.worstDdA, b.worstDdB))
+      .slice(0, 10) // keep top 10 events
       .map(s => {
         const startDate = commonDates[s.startIdx]
         const endDate = commonDates[s.endIdx]
-        const troughDate = commonDates[s.troughIdx]
 
-        // Calculate actual drawdown for each fund in this window
         const windowDates = commonDates.slice(s.startIdx, s.endIdx + 1)
         const ddInfoA = maxDrawdown(fundA.priceMap, fundA.divMap, windowDates)
         const ddInfoB = maxDrawdown(fundB.priceMap, fundB.divMap, windowDates)
@@ -253,11 +256,21 @@ export async function GET(req: NextRequest) {
           : ddInfoB.drawdown > ddInfoA.drawdown ? "B" as const
           : "tie" as const
 
+        // Classify: broad market event vs idiosyncratic
+        const bothDropped = ddInfoA.drawdown < -0.75 && ddInfoB.drawdown < -0.75
+        const onlyADropped = ddInfoA.drawdown < -0.75 && ddInfoB.drawdown > -0.5
+        const onlyBDropped = ddInfoB.drawdown < -0.75 && ddInfoA.drawdown > -0.5
+
+        let eventType = "broad"
+        if (onlyADropped) eventType = `idiosyncratic_${tickerA}`
+        else if (onlyBDropped) eventType = `idiosyncratic_${tickerB}`
+
         const startMonth = new Date(startDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" })
         const endMonth = new Date(endDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" })
+        const durationDays = s.endIdx - s.startIdx
 
         return {
-          label: `${startMonth} - ${endMonth}`,
+          label: `${startMonth}${startMonth !== endMonth ? ` - ${endMonth}` : ""} (${durationDays} trading days)`,
           startDate,
           endDate,
           drawdownA: ddInfoA.drawdown,
@@ -265,11 +278,13 @@ export async function GET(req: NextRequest) {
           recoveryDateA: ddInfoA.recoveryDate,
           recoveryDateB: ddInfoB.recoveryDate,
           winner,
-          narrative: winner === "A"
-            ? `${tickerA} held up better (${ddInfoA.drawdown.toFixed(1)}% vs ${ddInfoB.drawdown.toFixed(1)}%)`
-            : winner === "B"
-              ? `${tickerB} held up better (${ddInfoB.drawdown.toFixed(1)}% vs ${ddInfoA.drawdown.toFixed(1)}%)`
-              : `Both funds drew down similarly (~${ddInfoA.drawdown.toFixed(1)}%)`,
+          narrative: eventType === "broad"
+            ? `Broad market stress: ${tickerA} ${ddInfoA.drawdown.toFixed(2)}% vs ${tickerB} ${ddInfoB.drawdown.toFixed(2)}%. ${winner === "A" ? tickerA + " held up better." : winner === "B" ? tickerB + " held up better." : "Similar impact."}`
+            : eventType === `idiosyncratic_${tickerA}`
+              ? `Idiosyncratic to ${tickerA}: dropped ${ddInfoA.drawdown.toFixed(2)}% while ${tickerB} was largely unaffected (${ddInfoB.drawdown.toFixed(2)}%).`
+              : eventType === `idiosyncratic_${tickerB}`
+                ? `Idiosyncratic to ${tickerB}: dropped ${ddInfoB.drawdown.toFixed(2)}% while ${tickerA} was largely unaffected (${ddInfoA.drawdown.toFixed(2)}%).`
+                : `${tickerA} ${ddInfoA.drawdown.toFixed(2)}% vs ${tickerB} ${ddInfoB.drawdown.toFixed(2)}%.`,
         }
       })
 
