@@ -22,19 +22,29 @@ async function parsePdf(buffer: Buffer): Promise<string | null> {
   }
 }
 
-/** Fetch a PDF from a URL and extract its text */
+/** Fetch a PDF from a URL (follows redirects, checks content-type) and extract its text */
 async function fetchPdfText(url: string): Promise<string | null> {
   try {
     console.log("[v0] Trying PDF:", url)
     const res = await fetch(url, {
       headers: { "User-Agent": UA, "Accept": "application/pdf,*/*" },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(15000),
       redirect: "follow",
     })
     if (!res.ok) { console.log("[v0] PDF fetch failed:", res.status); return null }
     const contentType = res.headers.get("content-type") || ""
-    if (!contentType.includes("pdf") && !url.toLowerCase().endsWith(".pdf")) {
-      console.log("[v0] Not a PDF, content-type:", contentType)
+    const finalUrl = res.url || url
+    // Accept if content-type says PDF, or URL ends in .pdf, or original URL ends in .pdf
+    const isPdf = contentType.includes("pdf") || finalUrl.toLowerCase().endsWith(".pdf") || url.toLowerCase().endsWith(".pdf")
+    if (!isPdf) {
+      // Could be a redirect to a PDF -- check if body starts with %PDF
+      const buf = Buffer.from(await res.arrayBuffer())
+      if (buf.length > 4 && buf.toString("ascii", 0, 5) === "%PDF-") {
+        console.log("[v0] Detected PDF by magic bytes from:", url)
+        const text = await parsePdf(buf)
+        return text && text.length > 100 ? text : null
+      }
+      console.log("[v0] Not a PDF, content-type:", contentType, "final URL:", finalUrl)
       return null
     }
     const buffer = Buffer.from(await res.arrayBuffer())
@@ -78,8 +88,52 @@ function isRealCommentary(text: string): boolean {
 /** Search for a fund's quarterly commentary PDF via DuckDuckGo, download and parse it. */
 async function fetchCommentary(ticker: string, fundName: string): Promise<CommentaryResult> {
   console.log("[v0] Searching commentary for:", ticker, fundName)
+  const nameLower = fundName.toLowerCase()
+  const tickerLower = ticker.toLowerCase()
 
-  // More targeted search queries -- specifically look for commentary, not fact sheets
+  // Step 0: Try known commentary redirect URLs first -- these are the fastest path
+  const knownUrls: string[] = []
+
+  // Angel Oak uses go.angeloakcapital.com redirects
+  if (nameLower.includes("angel oak")) {
+    const slugMap: Record<string, string> = {
+      "uyld": "ultrashort_income_etf_commentary",
+      "aodo": "income_etf_commentary",
+      "aohy": "high_yield_opportunities_etf_commentary",
+      "aomr": "mortgage_backed_securities_etf_commentary",
+      "aotr": "total_return_etf_commentary",
+      "anglx": "multi_strategy_income_fund_commentary",
+      "anflx": "financials_income_fund_commentary",
+      "aousx": "ultrashort_income_fund_commentary",
+      "aoscx": "strategic_credit_fund_commentary",
+    }
+    const slug = slugMap[tickerLower]
+    if (slug) {
+      knownUrls.push(`https://go.angeloakcapital.com/${slug}`)
+    }
+    // Also try the quarterly commentaries page for scraping
+  }
+
+  // PIMCO uses pimco.com/handlers for PDFs
+  if (nameLower.includes("pimco")) {
+    knownUrls.push(`https://www.pimco.com/handlers/PIMCOFundFactSheetHandler.ashx?ticker=${ticker}`)
+  }
+
+  // Try known URLs first
+  for (const url of knownUrls) {
+    const text = await fetchPdfText(url)
+    if (text && isRealCommentary(text)) {
+      console.log("[v0] Got commentary from known URL:", url)
+      const preview = text.slice(0, 300).replace(/\s+/g, " ").trim()
+      return { text: text.slice(0, 6000), sourceUrl: url, preview }
+    } else if (text) {
+      console.log("[v0] Known URL returned PDF but not real commentary:", url, "hits:", text.slice(0, 150))
+    } else {
+      console.log("[v0] Known URL failed:", url)
+    }
+  }
+
+  // Step 1: DuckDuckGo search as fallback
   const queries = [
     `"${ticker}" quarterly commentary filetype:pdf`,
     `"${fundName}" quarterly commentary filetype:pdf`,
@@ -119,6 +173,11 @@ async function fetchCommentary(ticker: string, fundName: string): Promise<Commen
 
       if (pdfUrlsFound.length >= 3) break
     } catch { continue }
+  }
+
+  // Also add known commentary index pages to scrape
+  if (nameLower.includes("angel oak") && !webPages.includes("https://angeloakcapital.com/quarterly-fund-commentaries")) {
+    webPages.push("https://angeloakcapital.com/quarterly-fund-commentaries")
   }
 
   console.log("[v0] PDF URLs found:", pdfUrlsFound.length, "Web pages:", webPages.length)
