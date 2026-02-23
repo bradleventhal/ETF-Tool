@@ -516,19 +516,23 @@ export function buildWarRoom(us: FundData, them: FundData, yahoo?: YahooAnalytic
   // Build "lead with" string from our advantages
   const leads: string[] = []
   if ((nz(us.secYield) - nz(them.secYield)) * 10000 > 10) leads.push("yield advantage")
-  if (igPct(us) > igPct(them) + 0.03) leads.push("higher credit quality")
+  // Credit quality: check BOTH total IG% AND quality-within-IG (AAA+AA vs their AAA+AA)
+  const highQualUs = nz(us.aaa) + nz(us.aa)
+  const highQualThem = nz(them.aaa) + nz(them.aa)
+  if (igPct(us) > igPct(them) + 0.03 || highQualUs > highQualThem + 0.05) leads.push("higher credit quality")
   if (nz(us.duration) < nz(them.duration) - 0.2) leads.push("shorter duration")
   else if (Math.abs(nz(us.duration) - nz(them.duration)) <= 0.2) leads.push("comparable duration")
   if ((nz(us.threeYear) - nz(them.threeYear)) * 100 > 0.5) leads.push("3Y outperformance")
   if (nz(us.stdDev) < nz(them.stdDev)) leads.push("lower volatility")
   const leadWith = leads.length > 0 ? leads.join(", ") : null
 
-  // Conversational difficulty summary -- talk to the rep like a person
+  // Conversational difficulty summary -- talk to the rep like a coach
   let difficultySummary: string
   const argCount = ranked.length
   if (overall === "Very Easy" || overall === "Easy") {
     if (argCount <= 1) {
-      difficultySummary = `This is a layup. They have ${argCount === 0 ? "nothing" : "one thin angle"} to work with. No reason an advisor doesn't swap if they want what's best for their clients.`
+      const leadsSnippet = leads.length > 0 ? ` You're picking up ${leads.slice(0, 2).join(" and ")} — that's a strong story.` : ""
+      difficultySummary = `This is a layup. They have ${argCount === 0 ? "nothing" : "one thin angle"} to work with.${leadsSnippet}`
     } else {
       difficultySummary = `You're in great shape here. They have ${argCount} points but none of them are hard to counter. Lead with your strengths and you'll close this.`
     }
