@@ -107,11 +107,7 @@ KEY DIMENSIONS TO EVALUATE (prioritize based on magnitude):
 - Sector breakdown differences (RMBS, CLO, ABS, CMBS)
 
 CRITICAL — ALLOCATION DIFFERENCES:
-Metrics labeled "neutral_allocation" in the data are NOT inherently good or bad. Having more corporate credit is NOT automatically an advantage. Having more securitized is NOT automatically a disadvantage. YOU must use your fixed income knowledge to determine:
-- Would a competitor ACTUALLY use this allocation difference as a pitch point? In what context?
-- Is this allocation difference a VULNERABILITY in the current environment? (e.g. heavy corporate during a spread-widening episode)
-- Or is it just a structural difference that doesn't give either fund a meaningful edge?
-Only include allocation as a competitor argument if a real competitor wholesaler would actually lead with it. Note allocation differences in the difficultySummary as context even if they don't warrant a standalone argument.
+Metrics labeled "neutral_allocation" in the data are NOT inherently good or bad. Do NOT treat any allocation as inherently better or worse. The ONLY test for whether an allocation difference belongs in the competitor arguments is: would a real competitor wholesaler sitting across from an advisor actually use this difference as a pitch point? If a competitor wouldn't lead with it in a meeting, don't force it into the arguments. When in doubt, note it as context in the difficultySummary, not as a standalone argument.
 
 RULES:
 1. Surface EVERY metric where the competitor has a material advantage. Do NOT limit to 2 or 3. If they have 6 angles, show all 6. If they only have 1 or 2, explicitly note in the difficultySummary: "The competitor has limited ammunition — [metric] is likely their only/primary angle." This helps our rep know when the competitor is grasping at straws vs when they have real firepower. Count the angles for the rep.
