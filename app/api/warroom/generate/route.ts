@@ -1,195 +1,185 @@
-import { generateText } from "ai"
-import type { FundData, YahooAnalytics, WarRoom } from "@/lib/fund-types"
+import OpenAI from "openai"
+import { NextResponse } from "next/server"
+import type { FundData, YahooAnalytics } from "@/lib/fund-types"
 
 export const maxDuration = 30
 
-function buildDataPayload(fundA: FundData, fundB: FundData, yahoo: YahooAnalytics | null, deltas: Record<string, any>) {
-  return JSON.stringify({
-    ourFund: fundA.ticker,
-    competitor: fundB.ticker,
-    ourData: fundA,
-    theirData: fundB,
-    metricDeltas: deltas,
-    yahooData: yahoo ? {
-      commonInception: yahoo.commonInceptionDate,
-      periodReturns: yahoo.periodReturns,
-      stressPeriods: yahoo.stressPeriods,
-      bestPeriodForUs: yahoo.bestPeriodForA,
-      bestPeriodForThem: yahoo.bestPeriodForB,
-      ourMaxDrawdown: yahoo.maxDrawdownA,
-      theirMaxDrawdown: yahoo.maxDrawdownB,
-    } : null,
-  })
+function nz(v: number | null | undefined): number {
+  return v == null || isNaN(v) ? 0 : v
 }
 
-function computeDeltas(us: FundData, them: FundData) {
-  const deltas: Record<string, any> = {}
-  const directionalMetrics: { key: keyof FundData; label: string; unit: string; higherBetter: boolean }[] = [
+function fPct(v: number | null | undefined, d = 2): string {
+  return v == null ? "—" : (v * 100).toFixed(d) + "%"
+}
+
+function bps(a: number, b: number): number {
+  return Math.round((nz(a) - nz(b)) * 10000)
+}
+
+interface Delta {
+  metric: string
+  ours: string
+  theirs: string
+  deltaBps: number
+  direction: string
+}
+
+function computeDeltas(a: FundData, b: FundData): Delta[] {
+  const deltas: Delta[] = []
+
+  const metrics: { key: keyof FundData; label: string; unit: string; higherBetter: boolean; neutral?: boolean }[] = [
     { key: "secYield", label: "SEC Yield", unit: "%", higherBetter: true },
     { key: "distributionYield", label: "Distribution Yield", unit: "%", higherBetter: true },
     { key: "expense", label: "Expense Ratio", unit: "%", higherBetter: false },
     { key: "duration", label: "Duration", unit: "yrs", higherBetter: false },
-    { key: "stdDev", label: "Standard Deviation", unit: "%", higherBetter: false },
+    { key: "stdDev", label: "Std Dev", unit: "%", higherBetter: false },
     { key: "sharpe", label: "Sharpe Ratio", unit: "", higherBetter: true },
-    { key: "ytd", label: "YTD Return", unit: "%", higherBetter: true },
-    { key: "oneYear", label: "1Y Return", unit: "%", higherBetter: true },
     { key: "threeYear", label: "3Y Return", unit: "%", higherBetter: true },
-    { key: "commonInception", label: "Common Inception Return", unit: "%", higherBetter: true },
+    { key: "oneYear", label: "1Y Return", unit: "%", higherBetter: true },
+    { key: "securitized", label: "Securitized Allocation", unit: "%", higherBetter: false, neutral: true },
+    { key: "corporateCredit", label: "Corporate Credit Allocation", unit: "%", higherBetter: false, neutral: true },
   ]
-  const neutralMetrics: { key: keyof FundData; label: string; unit: string }[] = [
-    { key: "securitized", label: "Securitized Allocation", unit: "%" },
-    { key: "corporateCredit", label: "Corporate Credit Allocation", unit: "%" },
-    { key: "governmentCash", label: "Government/Cash Allocation", unit: "%" },
-    { key: "nonAgencyRmbs", label: "Non-Agency RMBS", unit: "%" },
-    { key: "agencyRmbs", label: "Agency RMBS", unit: "%" },
-    { key: "abs", label: "ABS", unit: "%" },
-    { key: "clo", label: "CLO", unit: "%" },
-    { key: "cmbs", label: "CMBS", unit: "%" },
-    { key: "aaa", label: "AAA Allocation", unit: "%" },
-    { key: "aa", label: "AA Allocation", unit: "%" },
-    { key: "a", label: "A Allocation", unit: "%" },
-    { key: "bbb", label: "BBB Allocation", unit: "%" },
-    { key: "bb", label: "BB Allocation", unit: "%" },
-    { key: "b", label: "B Allocation", unit: "%" },
-    { key: "ccc", label: "CCC Allocation", unit: "%" },
-  ]
-  for (const m of directionalMetrics) {
-    const ours = us[m.key] as number | null
-    const theirs = them[m.key] as number | null
-    if (ours == null && theirs == null) continue
-    const o = ours ?? 0
-    const t = theirs ?? 0
-    const delta = t - o
-    if (Math.abs(delta) < 0.001) continue
-    deltas[m.key] = { metric: m.label, ours, theirs, delta, unit: m.unit, type: "directional", higherIsBetter: m.higherBetter }
-  }
-  for (const m of neutralMetrics) {
-    const ours = us[m.key] as number | null
-    const theirs = them[m.key] as number | null
-    if (ours == null && theirs == null) continue
-    const o = ours ?? 0
-    const t = theirs ?? 0
-    const delta = t - o
-    if (Math.abs(delta) < 0.005) continue
-    deltas[m.key] = { metric: m.label, ours, theirs, delta, unit: m.unit, type: "neutral_allocation" }
+
+  for (const m of metrics) {
+    const av = nz(a[m.key] as number)
+    const bv = nz(b[m.key] as number)
+    const d = bps(av, bv)
+    if (Math.abs(d) < 1 && !m.neutral) continue
+
+    let direction: string
+    if (m.neutral) {
+      direction = "neutral_allocation"
+    } else if ((m.higherBetter && d > 0) || (!m.higherBetter && d < 0)) {
+      direction = "advantage_ours"
+    } else {
+      direction = "advantage_theirs"
+    }
+
+    deltas.push({
+      metric: m.label,
+      ours: m.unit === "%" ? fPct(av / 100) : av.toFixed(2),
+      theirs: m.unit === "%" ? fPct(bv / 100) : bv.toFixed(2),
+      deltaBps: d,
+      direction,
+    })
   }
   return deltas
 }
 
-const SYSTEM_PROMPT = `You are a war room strategist for an Angel Oak fixed income ETF wholesaler. You are generating a competitive intelligence briefing.
+function buildDataPayload(a: FundData, b: FundData, yahoo: YahooAnalytics | null, deltas: Delta[]): string {
+  const lines: string[] = []
+  lines.push(`OUR FUND: ${a.ticker} (${a.name})`)
+  lines.push(`COMPETITOR: ${b.ticker} (${b.name})`)
+  lines.push("")
+  lines.push("METRIC DELTAS:")
+  for (const d of deltas) {
+    lines.push(`  ${d.metric}: ${a.ticker}=${d.ours} vs ${b.ticker}=${d.theirs} (${d.deltaBps > 0 ? "+" : ""}${d.deltaBps}bps, ${d.direction})`)
+  }
+  lines.push("")
+  lines.push("CREDIT QUALITY:")
+  lines.push(`  ${a.ticker}: AAA=${fPct(a.aaa)}, AA=${fPct(a.aa)}, A=${fPct(a.a)}, BBB=${fPct(a.bbb)}`)
+  lines.push(`  ${b.ticker}: AAA=${fPct(b.aaa)}, AA=${fPct(b.aa)}, A=${fPct(b.a)}, BBB=${fPct(b.bbb)}`)
 
-ROLE: You are preparing our wholesaler to sell AGAINST the competitor fund. You must identify EVERY angle the competitor could use, and give our rep the ammunition to handle each one.
+  if (yahoo) {
+    lines.push("")
+    lines.push("YAHOO FINANCE DATA:")
+    if (yahoo.correlationToAGG != null) lines.push(`  Correlation to AGG: ${a.ticker}=${yahoo.correlationToAGG.toFixed(2)}`)
+    if (yahoo.maxDrawdownA != null) lines.push(`  Max Drawdown ${a.ticker}: ${(yahoo.maxDrawdownA * 100).toFixed(1)}%`)
+    if (yahoo.maxDrawdownB != null) lines.push(`  Max Drawdown ${b.ticker}: ${(yahoo.maxDrawdownB * 100).toFixed(1)}%`)
+  }
+  return lines.join("\n")
+}
 
-YOUR KNOWLEDGE: You have deep knowledge of fixed income markets, macro events, credit cycles, and sector dynamics. Use this knowledge to provide accurate macro context. For example, you know the Fed hiked rates ~550bps in 2022-2023, you know April 2025 saw corporate credit stress from tariff uncertainty, you know securitized spread dynamics vs IG corporates. USE your knowledge — do not make up specific numbers but DO provide accurate directional context.
+const SYSTEM_PROMPT = `You are a senior fixed income portfolio strategist generating competitive war room briefings for fund wholesalers.
 
-TONE RULES:
-- Calm, controlled confidence. Direct.
-- Slightly assertive when logic is strong.
-- Constructively critical when logic is weak.
-- No filler. No motivational language. No slang. No theatrics. No buzzword overload.
-- No "Great question" or "Let me explain" or conversational openers.
-
-KEY DIMENSIONS TO EVALUATE (prioritize based on magnitude):
-- SEC yield, distribution yield, expense ratio
-- Duration, credit quality (IG% vs HY%)
-- Standard deviation, Sharpe ratio (supplementary only)
-- Performance: YTD, 1Y, 3Y, common inception
-- Stress period behavior from Yahoo price data
-- Sector breakdown differences (RMBS, CLO, ABS, CMBS)
-
-CRITICAL — ALLOCATION DIFFERENCES:
-Metrics labeled "neutral_allocation" in the data are NOT inherently good or bad. Do NOT treat any allocation as inherently better or worse. The ONLY test for whether an allocation difference belongs in the competitor arguments is: would a real competitor wholesaler sitting across from an advisor actually use this difference as a pitch point? If a competitor wouldn't lead with it in a meeting, don't force it into the arguments. When in doubt, note it as context in the difficultySummary, not as a standalone argument.
-
-RULES:
-1. Surface EVERY metric where the competitor has a material advantage. Do NOT limit to 2 or 3. If they have 6 angles, show all 6. If they only have 1 or 2, explicitly note in the difficultySummary: "The competitor has limited ammunition — [metric] is likely their only/primary angle." This helps our rep know when the competitor is grasping at straws vs when they have real firepower. Count the angles for the rep.
-2. Difficulty rating is RELATIVE to this specific comparison. The biggest delta = hardest, smallest = easiest. One "Very Difficult" argument pulls the overall rating up regardless of how many easy ones exist.
-3. If both funds are in the SAME Morningstar category (e.g. both ultrashort), treat small duration/risk differences as DE MINIMIS. A 0.1yr duration difference between two ultrashort funds is NOT a material argument -- a real competitor wouldn't lead with that. Focus on what actually differentiates: allocation, sector exposure, yield, performance.
-4. SHARPE RATIO is supplementary, NOT a lead argument. It can be mentioned as supporting evidence within another rebuttal but should never be the primary argument or a standalone section unless the difference is extreme (>0.5). Competitors don't lead meetings with Sharpe ratios.
-5. If duration is short (<1yr), historical stress arguments are easier to counter. If longer, they're harder.
-6. Never defend a stress period directly — acknowledge briefly with real numbers, pivot to recovery and current opportunity.
-7. Use the Yahoo stress period data to cite REAL drawdown numbers and dates. Do not fabricate. Each stress period is classified as "Broad" (both funds dropped — likely a macro event like rate shock, spread widening, liquidity event) or "Idiosyncratic" (only one fund dropped — likely fund-specific: sector concentration, credit event, positioning). USE YOUR MACRO KNOWLEDGE to explain WHY each stress event happened (e.g. "April 2025 tariff-driven corporate spread widening", "Q1 2022 onset of Fed hiking cycle", "March 2020 COVID liquidity seizure"). This context is the whole point.
-8. ALWAYS use actual ticker symbols (e.g. "UYLD", "VNLA") in arguments and rebuttals. NEVER write "our fund" or "your fund" or "Fund A" or "Fund B". Use the real tickers throughout.
-9. Each rebuttal gets a punchy one-liner the rep can use — sounds like a real person talking. Think "apples to apples" type lines. One-liners ONLY go on rebuttals, NOT on competitor arguments.
-10. If virtually no material differences exist, say so clearly: "This comes down to relationship and service."
-11. If competitor has zero material advantages: return isLayup=true with a confident (not dismissive) message.
-
-OUTPUT FORMAT: Return valid JSON matching this exact structure:
+OUTPUT: Return valid JSON matching this schema:
 {
   "overallDifficulty": "Very Easy" | "Easy" | "Moderate" | "Difficult" | "Very Difficult",
-  "difficultySummary": "CONVERSATIONAL 2-3 sentences talking directly to the rep. If easy: 'This is a layup. They have nothing real. No reason they don't swap.' If moderate: 'Winnable but be ready — their X edge is real, have your response loaded.' If hard: 'This one's tough — their X is hard to argue against. Lean on Y and don't let them control the convo.' Sound like a coach in a huddle, NOT a report.",
-  "leadWith": "Comma-separated list of our fund's key advantages to lead with in the meeting (e.g. 'yield advantage, higher credit quality, comparable duration'). Null if layup.",
+  "difficultySummary": "CONVERSATIONAL 2-3 sentences talking directly to the rep like a coach. If easy: 'This is a layup. They have nothing real.' If moderate: 'Winnable but be ready — their X edge is real, have your response loaded.' If hard: 'This one's tough — their X is hard to argue against. Lean on Y.'",
+  "leadWith": "Comma-separated list of our fund's key advantages to lead with (e.g. 'yield advantage, higher credit quality, comparable duration'). Null if layup.",
   "isLayup": boolean,
   "layupMessage": string | null,
   "marketContext": "1-2 sentence current market context relevant to this comparison",
   "competitorArguments": [
     {
-      "id": "unique_id",
-      "metric": "Metric Name",
-      "difficulty": "Easy" | "Moderate" | "Difficult" | "Very Difficult",
-      "argument": "What the competitor wholesaler would actually say — specific, pointed, uses real tickers and numbers from the data",
-      "theirValue": "their actual value",
-      "ourValue": "our actual value",
-      "deltaBps": number or null
+      "id": "string",
+      "metric": "string",
+      "difficulty": "Very Easy" | "Easy" | "Moderate" | "Difficult" | "Very Difficult",
+      "argument": "What the competitor rep would say (1-2 sentences, in quotes)",
+      "theirValue": "their metric value",
+      "ourValue": "our metric value",
+      "deltaBps": number
     }
   ],
   "rebuttals": [
     {
-      "argumentId": "matches the competitor argument id",
-      "metric": "Metric Name",
-      "opener": "One natural opening line the rep can say verbatim — human, not scripted",
-      "bullets": ["Supporting point 1", "Supporting point 2", "Supporting point 3 if needed"],
-      "confidence": "Airtight" | "Strong" | "Use With Caution",
-      "oneLiner": "A punchy closer the rep can drop — sounds like a real wholesaler"
+      "id": "string",
+      "targetMetric": "string",
+      "approach": "The rebuttal strategy name",
+      "script": "Word-for-word rebuttal script the wholesaler can use (2-3 sentences)",
+      "confidence": "HIGH" | "MEDIUM" | "LOW",
+      "oneLiner": "One punchy line summary"
     }
   ]
 }
 
-IMPORTANT: Return ONLY the JSON object. No markdown, no code fences, no explanation.`
+CRITICAL RULES:
+- Items with direction "neutral_allocation" are NOT advantages for either side. Do NOT treat higher securitized or corporate allocation as inherently better.
+- Focus on metrics that MATTER: yield, risk-adjusted performance, credit quality, duration.
+- Allocation differences should only be mentioned as context, never as arguments.
+- Generate 1-5 competitor arguments based on what data actually supports.
+- Each argument needs a matching rebuttal.
+- Be honest — if the competitor has a real edge, acknowledge it and provide the best possible counter.
+- Return ONLY valid JSON, no markdown, no code fences.`
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json()
-    const { fundA, fundB, yahoo } = body as { fundA: FundData; fundB: FundData; yahoo: YahooAnalytics | null }
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "OpenAI API key not found. Please add OPENAI_API_KEY in the Vars section of the sidebar." },
+        { status: 500 }
+      )
+    }
 
-    if (!fundA || !fundB) {
-      return Response.json({ error: "fundA and fundB required" }, { status: 400 })
+    const openai = new OpenAI({ apiKey })
+
+    const { fundA, fundB, yahoo } = (await req.json()) as {
+      fundA: FundData
+      fundB: FundData
+      yahoo: YahooAnalytics | null
+    }
+
+    if (!fundA?.ticker || !fundB?.ticker) {
+      return NextResponse.json({ error: "Missing fund data" }, { status: 400 })
     }
 
     const deltas = computeDeltas(fundA, fundB)
     const dataPayload = buildDataPayload(fundA, fundB, yahoo, deltas)
 
-    const result = await generateText({
-      model: "openai/gpt-4o-mini",
-      system: SYSTEM_PROMPT,
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
       messages: [
+        { role: "system", content: SYSTEM_PROMPT },
         {
-          role: "user" as const,
+          role: "user",
           content: `Generate the war room briefing for ${fundA.ticker} (our fund) vs ${fundB.ticker} (competitor).\n\nDATA:\n${dataPayload}`,
         },
       ],
       temperature: 0.3,
-      maxOutputTokens: 2500,
+      max_tokens: 2500,
     })
 
-    const raw = result.text || ""
+    const raw = completion.choices[0]?.message?.content || ""
 
-    let jsonStr = raw.trim()
-    if (jsonStr.startsWith("\`\`\`")) {
-      jsonStr = jsonStr.replace(/^\`\`\`(?:json)?\n?/, "").replace(/\n?\`\`\`$/, "")
-    }
+    // Parse JSON from response (strip code fences if present)
+    const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim()
+    const parsed = JSON.parse(cleaned)
 
-    let warRoom: WarRoom
-    try {
-      warRoom = JSON.parse(jsonStr)
-    } catch {
-      console.error("[warroom] Failed to parse GPT response:", raw.slice(0, 200))
-      return Response.json({ error: "Failed to parse war room response" }, { status: 500 })
-    }
-
-    return Response.json(warRoom)
+    return NextResponse.json(parsed)
   } catch (err: unknown) {
+    console.error("[v0] War room generate error:", err)
     const message = err instanceof Error ? err.message : "Unknown error"
-    console.error("[warroom] Error:", message)
-    return Response.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
