@@ -1,5 +1,38 @@
 import { NextRequest, NextResponse } from "next/server"
 
+export interface StressPeriod {
+  label: string
+  startDate: string
+  endDate: string
+  drawdownA: number
+  drawdownB: number
+  recoveryDateA: string | null
+  recoveryDateB: string | null
+  winner: "A" | "B" | "tie"
+  narrative: string // e.g. "Fund A held up better during this period"
+}
+
+export interface PeriodReturn {
+  label: string
+  startDate: string
+  returnA: number
+  returnB: number
+  spread: number // A minus B
+}
+
+export interface YahooAnalyticsResponse {
+  commonInceptionDate: string
+  lastDate: string
+  tickerA: string
+  tickerB: string
+  periodReturns: PeriodReturn[]
+  stressPeriods: StressPeriod[]
+  bestPeriodForA: PeriodReturn | null
+  bestPeriodForB: PeriodReturn | null
+  maxDrawdownA: { drawdown: number; peakDate: string; troughDate: string; recoveryDate: string | null }
+  maxDrawdownB: { drawdown: number; peakDate: string; troughDate: string; recoveryDate: string | null }
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const tickerA = searchParams.get("tickerA")
@@ -44,7 +77,6 @@ export async function GET(req: NextRequest) {
 
     const [fundA, fundB] = await Promise.all([fetchFund(tickerA), fetchFund(tickerB)])
 
-    // Common dates
     const commonDates = [...fundA.priceMap.keys()].filter(d => fundB.priceMap.has(d)).sort()
     if (commonDates.length < 5) {
       return NextResponse.json({ error: "Insufficient overlapping data" }, { status: 400 })
@@ -53,7 +85,8 @@ export async function GET(req: NextRequest) {
     const commonInceptionDate = commonDates[0]
     const lastDate = commonDates[commonDates.length - 1]
 
-    // Total return with dividend reinvestment from startIdx to end
+    // --- Utility functions ---
+
     function totalReturn(priceMap: Map<string, number>, divMap: Map<string, number>, dates: string[]): number {
       if (dates.length < 2) return 0
       const basePrice = priceMap.get(dates[0])!
@@ -61,162 +94,202 @@ export async function GET(req: NextRequest) {
       for (const date of dates) {
         const close = priceMap.get(date)!
         const div = divMap.get(date)
-        if (div && div > 0) {
-          shares += (div * shares) / close
-        }
+        if (div && div > 0) shares += (div * shares) / close
       }
       const lastClose = priceMap.get(dates[dates.length - 1])!
       return ((shares * lastClose - basePrice) / basePrice) * 100
     }
 
-    // Max drawdown within a date range (peak-to-trough)
-    function maxDrawdown(priceMap: Map<string, number>, divMap: Map<string, number>, dates: string[]): { drawdown: number; troughDate: string; peakDate: string; recoveryDate: string | null } {
-      if (dates.length < 2) return { drawdown: 0, troughDate: dates[0] || "", peakDate: dates[0] || "", recoveryDate: null }
+    function maxDrawdown(priceMap: Map<string, number>, divMap: Map<string, number>, dates: string[]) {
+      if (dates.length < 2) return { drawdown: 0, troughDate: dates[0] || "", peakDate: dates[0] || "", recoveryDate: null as string | null }
       const basePrice = priceMap.get(dates[0])!
       let shares = 1.0
-      let peak = basePrice
-      let peakDate = dates[0]
-      let maxDd = 0
-      let troughDate = dates[0]
-      let bestPeakDate = dates[0]
-
-      // Track portfolio values for recovery
+      let peak = basePrice, peakDate = dates[0]
+      let maxDd = 0, troughDate = dates[0], bestPeakDate = dates[0]
       const values: { date: string; value: number }[] = []
 
       for (const date of dates) {
         const close = priceMap.get(date)!
         const div = divMap.get(date)
-        if (div && div > 0) {
-          shares += (div * shares) / close
-        }
+        if (div && div > 0) shares += (div * shares) / close
         const value = shares * close
         values.push({ date, value })
-
-        if (value > peak) {
-          peak = value
-          peakDate = date
-        }
+        if (value > peak) { peak = value; peakDate = date }
         const dd = (value - peak) / peak
-        if (dd < maxDd) {
-          maxDd = dd
-          troughDate = date
-          bestPeakDate = peakDate
-        }
+        if (dd < maxDd) { maxDd = dd; troughDate = date; bestPeakDate = peakDate }
       }
 
-      // Find recovery date (when value first exceeds the pre-drawdown peak after trough)
       let recoveryDate: string | null = null
       const troughIdx = values.findIndex(v => v.date === troughDate)
       const prePeak = values.find(v => v.date === bestPeakDate)?.value || 0
       if (troughIdx >= 0) {
         for (let i = troughIdx + 1; i < values.length; i++) {
-          if (values[i].value >= prePeak) {
-            recoveryDate = values[i].date
-            break
-          }
+          if (values[i].value >= prePeak) { recoveryDate = values[i].date; break }
         }
       }
 
-      return { drawdown: maxDd * 100, troughDate, peakDate: bestPeakDate, recoveryDate }
+      return { drawdown: parseFloat((maxDd * 100).toFixed(2)), troughDate, peakDate: bestPeakDate, recoveryDate }
     }
 
-    // Period returns for standard timeframes
-    function periodReturn(priceMap: Map<string, number>, divMap: Map<string, number>, startDate: string, allDates: string[]): number | null {
-      const startIdx = allDates.findIndex(d => d >= startDate)
-      if (startIdx === -1 || allDates.length - startIdx < 2) return null
-      return totalReturn(priceMap, divMap, allDates.slice(startIdx))
-    }
+    // --- Period returns (every standard timeframe) ---
 
     const now = new Date()
-    const ytdStart = `${now.getFullYear()}-01-01`
-    const y1Start = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString().slice(0, 10)
-    const y3Start = new Date(now.getFullYear() - 3, now.getMonth(), now.getDate()).toISOString().slice(0, 10)
-    const y5Start = new Date(now.getFullYear() - 5, now.getMonth(), now.getDate()).toISOString().slice(0, 10)
-
-    const returnsA: Record<string, number | null> = {
-      ytd: periodReturn(fundA.priceMap, fundA.divMap, ytdStart, commonDates),
-      "1y": periodReturn(fundA.priceMap, fundA.divMap, y1Start, commonDates),
-      "3y": periodReturn(fundA.priceMap, fundA.divMap, y3Start, commonDates),
-      "5y": periodReturn(fundA.priceMap, fundA.divMap, y5Start, commonDates),
-      ci: totalReturn(fundA.priceMap, fundA.divMap, commonDates),
-    }
-    const returnsB: Record<string, number | null> = {
-      ytd: periodReturn(fundB.priceMap, fundB.divMap, ytdStart, commonDates),
-      "1y": periodReturn(fundB.priceMap, fundB.divMap, y1Start, commonDates),
-      "3y": periodReturn(fundB.priceMap, fundB.divMap, y3Start, commonDates),
-      "5y": periodReturn(fundB.priceMap, fundB.divMap, y5Start, commonDates),
-      ci: totalReturn(fundB.priceMap, fundB.divMap, commonDates),
-    }
-
-    // 2022 drawdown analysis (only if fund existed pre-2022)
-    const dates2022 = commonDates.filter(d => d >= "2021-12-01" && d <= "2023-06-30")
-    let drawdown2022A: number | null = null
-    let drawdown2022B: number | null = null
-    let recovery2022A: string | null = null
-    let recovery2022B: string | null = null
-    let trough2022A: string | null = null
-    let trough2022B: string | null = null
-
-    if (dates2022.length > 20 && commonInceptionDate < "2022-01-01") {
-      const ddA = maxDrawdown(fundA.priceMap, fundA.divMap, dates2022)
-      const ddB = maxDrawdown(fundB.priceMap, fundB.divMap, dates2022)
-      drawdown2022A = parseFloat(ddA.drawdown.toFixed(2))
-      drawdown2022B = parseFloat(ddB.drawdown.toFixed(2))
-      recovery2022A = ddA.recoveryDate
-      recovery2022B = ddB.recoveryDate
-      trough2022A = ddA.troughDate
-      trough2022B = ddB.troughDate
-    }
-
-    // Find best outperformance period for Fund A
-    // Test Jan 1 of each year + common inception
-    const firstYear = parseInt(commonDates[0].slice(0, 4))
-    const currentYear = now.getFullYear()
-
-    const candidates: { label: string; startDate: string }[] = [
-      { label: `Since Common Inception (${commonInceptionDate})`, startDate: commonInceptionDate },
+    const periodDefs: { label: string; start: string }[] = [
+      { label: "YTD", start: `${now.getFullYear()}-01-01` },
+      { label: "1Y", start: new Date(now.getFullYear() - 1, now.getMonth(), now.getDate()).toISOString().slice(0, 10) },
+      { label: "3Y", start: new Date(now.getFullYear() - 3, now.getMonth(), now.getDate()).toISOString().slice(0, 10) },
+      { label: "5Y", start: new Date(now.getFullYear() - 5, now.getMonth(), now.getDate()).toISOString().slice(0, 10) },
+      { label: "Common Inception", start: commonInceptionDate },
     ]
-    for (let year = firstYear; year <= currentYear; year++) {
-      candidates.push({ label: `Since Jan ${year}`, startDate: `${year}-01-01` })
-    }
-    // Also add YTD, 1Y, 3Y
-    candidates.push({ label: "YTD", startDate: ytdStart })
-    candidates.push({ label: "Trailing 1Y", startDate: y1Start })
-    candidates.push({ label: "Trailing 3Y", startDate: y3Start })
 
-    let bestPeriodLabel = "Since Common Inception"
-    let bestPeriodSpread = -Infinity
-    let bestPeriodStartDate = commonInceptionDate
-
-    for (const candidate of candidates) {
-      const startIdx = commonDates.findIndex(d => d >= candidate.startDate)
-      if (startIdx === -1 || commonDates.length - startIdx < 10) continue
-      const datesFromStart = commonDates.slice(startIdx)
-      const retA = totalReturn(fundA.priceMap, fundA.divMap, datesFromStart)
-      const retB = totalReturn(fundB.priceMap, fundB.divMap, datesFromStart)
-      const spread = retA - retB
-      if (spread > bestPeriodSpread) {
-        bestPeriodSpread = spread
-        bestPeriodLabel = candidate.label
-        bestPeriodStartDate = candidate.startDate
+    // Add every Jan 1 as a candidate
+    const firstYear = parseInt(commonDates[0].slice(0, 4))
+    for (let year = firstYear; year <= now.getFullYear(); year++) {
+      const key = `Since Jan ${year}`
+      if (!periodDefs.find(p => p.label === key)) {
+        periodDefs.push({ label: key, start: `${year}-01-01` })
       }
     }
+
+    const periodReturns: PeriodReturn[] = []
+    for (const pd of periodDefs) {
+      const startIdx = commonDates.findIndex(d => d >= pd.start)
+      if (startIdx === -1 || commonDates.length - startIdx < 5) continue
+      const slice = commonDates.slice(startIdx)
+      const retA = totalReturn(fundA.priceMap, fundA.divMap, slice)
+      const retB = totalReturn(fundB.priceMap, fundB.divMap, slice)
+      periodReturns.push({
+        label: pd.label,
+        startDate: pd.start,
+        returnA: parseFloat(retA.toFixed(2)),
+        returnB: parseFloat(retB.toFixed(2)),
+        spread: parseFloat((retA - retB).toFixed(2)),
+      })
+    }
+
+    // Best period for each fund
+    const bestForA = periodReturns.reduce((best, p) => p.spread > (best?.spread ?? -Infinity) ? p : best, null as PeriodReturn | null)
+    const bestForB = periodReturns.reduce((best, p) => p.spread < (best?.spread ?? Infinity) ? p : best, null as PeriodReturn | null)
+
+    // --- Dynamic stress period detection ---
+    // Find periods where EITHER fund dropped >2% from a recent peak in a rolling 60-day window
+    // Group overlapping drops into stress events
+
+    function buildTotalReturnIndex(priceMap: Map<string, number>, divMap: Map<string, number>, dates: string[]): number[] {
+      const idx: number[] = [100]
+      let shares = 1.0
+      const base = priceMap.get(dates[0])!
+      for (let i = 1; i < dates.length; i++) {
+        const close = priceMap.get(dates[i])!
+        const div = divMap.get(dates[i])
+        if (div && div > 0) shares += (div * shares) / close
+        idx.push((shares * close / base) * 100)
+      }
+      return idx
+    }
+
+    const triA = buildTotalReturnIndex(fundA.priceMap, fundA.divMap, commonDates)
+    const triB = buildTotalReturnIndex(fundB.priceMap, fundB.divMap, commonDates)
+
+    // Find drawdown periods for either fund (>3% peak-to-trough in rolling window)
+    interface RawStress { startIdx: number; troughIdx: number; endIdx: number; ddA: number; ddB: number }
+    const rawStresses: RawStress[] = []
+
+    let peakA = triA[0], peakB = triB[0], peakIdxA = 0, peakIdxB = 0
+    let inStress = false, stressStart = 0, stressTroughIdx = 0
+    let stressDdA = 0, stressDdB = 0
+
+    for (let i = 1; i < commonDates.length; i++) {
+      if (triA[i] > peakA) { peakA = triA[i]; peakIdxA = i }
+      if (triB[i] > peakB) { peakB = triB[i]; peakIdxB = i }
+
+      const ddA = ((triA[i] - peakA) / peakA) * 100
+      const ddB = ((triB[i] - peakB) / peakB) * 100
+
+      const eitherStressed = ddA < -3 || ddB < -3
+
+      if (eitherStressed && !inStress) {
+        inStress = true
+        stressStart = Math.min(peakIdxA, peakIdxB)
+        stressTroughIdx = i
+        stressDdA = ddA
+        stressDdB = ddB
+      } else if (eitherStressed && inStress) {
+        if (ddA < stressDdA || ddB < stressDdB) {
+          stressTroughIdx = i
+          stressDdA = Math.min(stressDdA, ddA)
+          stressDdB = Math.min(stressDdB, ddB)
+        }
+      } else if (!eitherStressed && inStress) {
+        // Stress ended — both funds recovered past -1%
+        if (ddA > -1 && ddB > -1) {
+          rawStresses.push({ startIdx: stressStart, troughIdx: stressTroughIdx, endIdx: i, ddA: stressDdA, ddB: stressDdB })
+          inStress = false
+          peakA = triA[i]; peakB = triB[i]; peakIdxA = i; peakIdxB = i
+        }
+      }
+    }
+    // If still in stress at end of data
+    if (inStress) {
+      rawStresses.push({ startIdx: stressStart, troughIdx: stressTroughIdx, endIdx: commonDates.length - 1, ddA: stressDdA, ddB: stressDdB })
+    }
+
+    // Convert to StressPeriod objects, keep top 5 most significant
+    const stressPeriods: StressPeriod[] = rawStresses
+      .filter(s => s.troughIdx - s.startIdx > 5) // at least 5 trading days
+      .sort((a, b) => Math.min(a.ddA, a.ddB) - Math.min(b.ddA, b.ddB)) // worst first
+      .slice(0, 8)
+      .map(s => {
+        const startDate = commonDates[s.startIdx]
+        const endDate = commonDates[s.endIdx]
+        const troughDate = commonDates[s.troughIdx]
+
+        // Calculate actual drawdown for each fund in this window
+        const windowDates = commonDates.slice(s.startIdx, s.endIdx + 1)
+        const ddInfoA = maxDrawdown(fundA.priceMap, fundA.divMap, windowDates)
+        const ddInfoB = maxDrawdown(fundB.priceMap, fundB.divMap, windowDates)
+
+        const winner = ddInfoA.drawdown > ddInfoB.drawdown ? "A" as const
+          : ddInfoB.drawdown > ddInfoA.drawdown ? "B" as const
+          : "tie" as const
+
+        const startMonth = new Date(startDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" })
+        const endMonth = new Date(endDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" })
+
+        return {
+          label: `${startMonth} - ${endMonth}`,
+          startDate,
+          endDate,
+          drawdownA: ddInfoA.drawdown,
+          drawdownB: ddInfoB.drawdown,
+          recoveryDateA: ddInfoA.recoveryDate,
+          recoveryDateB: ddInfoB.recoveryDate,
+          winner,
+          narrative: winner === "A"
+            ? `${tickerA} held up better (${ddInfoA.drawdown.toFixed(1)}% vs ${ddInfoB.drawdown.toFixed(1)}%)`
+            : winner === "B"
+              ? `${tickerB} held up better (${ddInfoB.drawdown.toFixed(1)}% vs ${ddInfoA.drawdown.toFixed(1)}%)`
+              : `Both funds drew down similarly (~${ddInfoA.drawdown.toFixed(1)}%)`,
+        }
+      })
+
+    // Full-history max drawdowns
+    const fullDdA = maxDrawdown(fundA.priceMap, fundA.divMap, commonDates)
+    const fullDdB = maxDrawdown(fundB.priceMap, fundB.divMap, commonDates)
 
     return NextResponse.json({
       commonInceptionDate,
       lastDate,
-      drawdown2022A,
-      drawdown2022B,
-      recovery2022A,
-      recovery2022B,
-      trough2022A,
-      trough2022B,
-      returnsA,
-      returnsB,
-      bestPeriodLabel,
-      bestPeriodSpread: parseFloat(bestPeriodSpread.toFixed(2)),
-      bestPeriodStartDate,
-    })
+      tickerA,
+      tickerB,
+      periodReturns,
+      stressPeriods,
+      bestPeriodForA: bestForA,
+      bestPeriodForB: bestForB,
+      maxDrawdownA: fullDdA,
+      maxDrawdownB: fullDdB,
+    } satisfies YahooAnalyticsResponse)
+
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error"
     return NextResponse.json({ error: message }, { status: 500 })

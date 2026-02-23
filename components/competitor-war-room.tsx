@@ -70,7 +70,7 @@ export function CompetitorWarRoom({ warRoom, competitorTicker, ourTicker, polish
       {polishing && (
         <div className="flex items-center gap-2 rounded border px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f8fafc" }}>
           <div className="h-2 w-2 animate-pulse rounded-full" style={{ backgroundColor: "#0f3d6b" }} />
-          <span className="text-[11px] font-medium" style={{ color: "#64748b" }}>Enriching with market context...</span>
+          <span className="text-[11px] font-medium" style={{ color: "#64748b" }}>Analyzing matchup with market intelligence...</span>
         </div>
       )}
 

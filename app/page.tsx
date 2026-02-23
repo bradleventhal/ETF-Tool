@@ -133,48 +133,33 @@ export default function Page() {
       if (fA && fB) {
         setError(null)
         setResult(runAnalysis(fA, fB, mode))
-        // Fetch Yahoo analytics for war room
         if (mode === "internal") {
           setPolishing(true)
-          fetch(`/api/growth/analytics?tickerA=${tickerA}&tickerB=${tickerB}`)
-            .then(r => r.json())
-            .then((yahoo: YahooAnalytics) => {
-              const templateWarRoom = yahoo.commonInceptionDate
-                ? buildWarRoom(fA, fB, yahoo)
-                : buildWarRoom(fA, fB)
-              // Show template immediately
-              setWarRoom(templateWarRoom)
-              // Fire GPT polish call in background
-              return fetch("/api/warroom/polish", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ warRoom: templateWarRoom, fundA: fA, fundB: fB, yahoo }),
+          // Show template fallback immediately
+          setWarRoom(buildWarRoom(fA, fB))
+
+          // Fetch Yahoo analytics + GPT war room in parallel
+          const yahooPromise = fetch(`/api/growth/analytics?tickerA=${tickerA}&tickerB=${tickerB}`)
+            .then(r => r.ok ? r.json() : null)
+            .catch(() => null)
+
+          yahooPromise.then((yahoo: YahooAnalytics | null) => {
+            // Fire GPT generation with all data
+            return fetch("/api/warroom/generate", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ fundA: fA, fundB: fB, yahoo }),
+            })
+              .then(r => r.json())
+              .then(gptWarRoom => {
+                if (!gptWarRoom.error && gptWarRoom.competitorArguments) {
+                  setWarRoom(gptWarRoom)
+                }
+                // If GPT fails, template fallback is already showing
               })
-                .then(r => r.json())
-                .then(polished => {
-                  if (polished.error) return
-                  // Merge polished content back into war room
-                  const merged = { ...templateWarRoom }
-                  if (polished.competitorArguments) {
-                    merged.competitorArguments = templateWarRoom.competitorArguments.map(arg => {
-                      const p = polished.competitorArguments.find((pa: any) => pa.id === arg.id)
-                      return p ? { ...arg, argument: p.argument, oneLiner: p.oneLiner } : arg
-                    })
-                  }
-                  if (polished.rebuttals) {
-                    merged.rebuttals = templateWarRoom.rebuttals.map(reb => {
-                      const p = polished.rebuttals.find((pr: any) => pr.id === reb.argumentId)
-                      return p ? { ...reb, opener: p.opener, bullets: p.bullets || reb.bullets, oneLiner: p.oneLiner } : reb
-                    })
-                  }
-                  setWarRoom(merged)
-                })
-                .catch(() => { /* polish failed, keep template version */ })
-            })
-            .catch(() => {
-              setWarRoom(buildWarRoom(fA, fB))
-            })
-            .finally(() => setPolishing(false))
+              .catch(() => { /* GPT failed, template stays */ })
+              .finally(() => setPolishing(false))
+          })
         } else {
           setWarRoom(null)
           setPolishing(false)

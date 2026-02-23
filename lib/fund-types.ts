@@ -71,20 +71,37 @@ export interface AnalysisResult {
   reversePitch: NarrativeSection | null
 }
 
+export interface StressPeriod {
+  label: string
+  startDate: string
+  endDate: string
+  drawdownA: number
+  drawdownB: number
+  recoveryDateA: string | null
+  recoveryDateB: string | null
+  winner: "A" | "B" | "tie"
+  narrative: string
+}
+
+export interface PeriodReturn {
+  label: string
+  startDate: string
+  returnA: number
+  returnB: number
+  spread: number
+}
+
 export interface YahooAnalytics {
   commonInceptionDate: string
   lastDate: string
-  drawdown2022A: number | null
-  drawdown2022B: number | null
-  recovery2022A: string | null
-  recovery2022B: string | null
-  trough2022A: string | null
-  trough2022B: string | null
-  returnsA: Record<string, number | null>
-  returnsB: Record<string, number | null>
-  bestPeriodLabel: string
-  bestPeriodSpread: number
-  bestPeriodStartDate: string
+  tickerA: string
+  tickerB: string
+  periodReturns: PeriodReturn[]
+  stressPeriods: StressPeriod[]
+  bestPeriodForA: PeriodReturn | null
+  bestPeriodForB: PeriodReturn | null
+  maxDrawdownA: { drawdown: number; peakDate: string; troughDate: string; recoveryDate: string | null }
+  maxDrawdownB: { drawdown: number; peakDate: string; troughDate: string; recoveryDate: string | null }
 }
 
 export type DifficultyTier = "Very Easy" | "Easy" | "Moderate" | "Difficult" | "Very Difficult"
