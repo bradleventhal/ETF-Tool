@@ -63,24 +63,32 @@ async function fetchPdfText(url: string): Promise<string | null> {
 
 type CommentaryResult = { text: string; sourceUrl: string; preview: string } | null
 
-/** Check if PDF text is real commentary AND is for the correct fund */
-function isRealCommentary(text: string, ticker: string, fundName: string): boolean {
+/** Check if PDF text is real commentary AND is for the correct fund.
+ *  STRICT: the PDF must contain the ticker (e.g. "UYLD") in the first 2000 chars. */
+function isRealCommentary(text: string, ticker: string, _fundName: string): boolean {
   const lower = text.toLowerCase()
   const tickerLower = ticker.toLowerCase()
 
-  // First: the PDF must mention THIS fund's ticker or a distinctive part of the fund name
-  const nameWords = fundName.toLowerCase().split(/\s+/).filter(w => w.length > 4)
-  const mentionsTicker = lower.includes(tickerLower)
-  // Check for distinctive name words (skip generic words)
-  const genericWords = ["fund", "income", "trust", "total", "return", "short", "credit", "bond", "securities", "investment"]
-  const distinctiveWords = nameWords.filter(w => !genericWords.includes(w))
-  const mentionsName = distinctiveWords.length > 0
-    ? distinctiveWords.some(w => lower.includes(w))
-    : nameWords.slice(0, 2).every(w => lower.includes(w))
-
-  if (!mentionsTicker && !mentionsName) {
-    console.log("[v0] PDF doesn't mention ticker", ticker, "or fund name words. Skipping.")
-    return false
+  // The PDF MUST mention this fund's ticker in the header/first section.
+  // This is the only reliable way to confirm it's for the right fund.
+  const headerSection = lower.slice(0, 2000)
+  if (!headerSection.includes(tickerLower)) {
+    // Also check the full fund name as it appears in titles (e.g. "UltraShort Income ETF")
+    // Build the specific fund product name by removing the company prefix
+    const fundWords = _fundName.split(/\s+/)
+    // Find where the "product" part starts (after company name)
+    const productKeywords = ["ultrashort", "ultra-short", "short-term", "short", "high", "total", "core", "income", "mortgage", "strategic", "floating", "enhanced", "dynamic", "flexible", "multi"]
+    let productStart = 0
+    for (let i = 0; i < fundWords.length; i++) {
+      if (productKeywords.includes(fundWords[i].toLowerCase())) { productStart = i; break }
+    }
+    const productName = fundWords.slice(productStart).join(" ").toLowerCase()
+    if (productName.length > 8 && headerSection.includes(productName)) {
+      console.log("[v0] PDF header matches product name:", productName)
+    } else {
+      console.log("[v0] PDF header doesn't contain ticker", ticker, "or product name. Skipping.")
+      return false
+    }
   }
 
   // Second: check for commentary-style narrative language
@@ -232,6 +240,22 @@ async function fetchCommentary(ticker: string, fundName: string): Promise<Commen
 
   console.log("[v0] Direct PDFs:", pdfUrls.length, "Redirect pages:", redirectPages.length)
 
+  // Sort redirect pages: prioritize ones whose URL contains the ticker or fund-specific terms
+  const tickerLower = ticker.toLowerCase()
+  const fundSlugWords = fundName.toLowerCase().split(/\s+/)
+    .filter(w => w.length > 4 && !["fund", "income", "trust", "securities", "investment"].includes(w))
+  redirectPages.sort((a, b) => {
+    const aL = a.toLowerCase()
+    const bL = b.toLowerCase()
+    const aHasTicker = aL.includes(tickerLower) ? 0 : 1
+    const bHasTicker = bL.includes(tickerLower) ? 0 : 1
+    if (aHasTicker !== bHasTicker) return aHasTicker - bHasTicker
+    const aNameHits = fundSlugWords.filter(w => aL.includes(w)).length
+    const bNameHits = fundSlugWords.filter(w => bL.includes(w)).length
+    return bNameHits - aNameHits // more name hits = higher priority
+  })
+  console.log("[v0] Sorted redirect pages:", redirectPages.slice(0, 4))
+
   // Step 3: Follow redirect pages -- these often have embedded PDFs in <embed> or JS
   for (const url of redirectPages.slice(0, 6)) {
     try {
@@ -266,7 +290,6 @@ async function fetchCommentary(ticker: string, fundName: string): Promise<Commen
 
   // Step 4: Download and validate all found PDFs
   // Prioritize URLs with ticker or "commentary" in them
-  const tickerLower = ticker.toLowerCase()
   pdfUrls.sort((a, b) => {
     const aL = a.toLowerCase()
     const bL = b.toLowerCase()
