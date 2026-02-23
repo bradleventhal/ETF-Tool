@@ -125,19 +125,16 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
     if (fund.commonInception != null) { setInceptionReturn(fund.commonInception); return }
     // Fetch max-range growth data to compute inception return
     const today = new Date().toISOString().slice(0, 10)
-    console.log("[v0] Fetching inception for", fund.ticker, "commonInception:", fund.commonInception)
     fetch(`/api/growth?tickers=${fund.ticker},${fund.ticker}&start=2000-01-01&end=${today}`)
       .then(r => r.json())
       .then(json => {
-        console.log("[v0] Growth API response for inception:", JSON.stringify(json).slice(0, 300))
         const fundData = json.funds?.[0]
         if (fundData?.data?.length > 0) {
           const lastGrowth = fundData.data[fundData.data.length - 1].growth
-          console.log("[v0] Computed inception return:", lastGrowth, "-> decimal:", lastGrowth / 100)
-          setInceptionReturn(lastGrowth / 100) // Convert from pct to decimal
+          setInceptionReturn(lastGrowth / 100)
         }
       })
-      .catch((err) => { console.log("[v0] Inception fetch error:", err) })
+      .catch(() => {})
   }, [fund.ticker, fund.commonInception])
 
   const fetchInsights = useCallback(() => {

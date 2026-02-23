@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useRef, useEffect } from "react"
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
   ResponsiveContainer, Tooltip, ZAxis, Cell, ReferenceLine, Label,
@@ -118,14 +118,14 @@ function TickerDot(props: any) {
   )
 }
 
-/* ── Toggle chip ── */
+/* ── Toggle chip (inside popovers) ── */
 function Chip({ label, active, count, onClick }: { label: string; active: boolean; count?: number; onClick: () => void }) {
   return (
     <button onClick={onClick}
-      className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-all"
+      className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all"
       style={{
         backgroundColor: active ? PRIMARY : "#f1f5f9",
-        color: active ? "#fff" : "#94a3b8",
+        color: active ? "#fff" : "#64748b",
       }}
     >
       {label}
@@ -133,6 +133,49 @@ function Chip({ label, active, count, onClick }: { label: string; active: boolea
         <span className="text-[9px] font-bold tabular-nums" style={{ opacity: 0.7 }}>{count}</span>
       )}
     </button>
+  )
+}
+
+/* ── Filter popover wrapper ── */
+function FilterPopover({ label, activeCount, children }: { label: string; activeCount: number; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [open])
+
+  const hasActive = activeCount > 0
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex h-7 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-all"
+        style={{
+          borderColor: hasActive ? PRIMARY : "#e2e8f0",
+          color: hasActive ? PRIMARY : "#64748b",
+          backgroundColor: hasActive ? "#f0f7ff" : open ? "#f8fafc" : "#fff",
+        }}
+      >
+        {label}
+        {hasActive && (
+          <span className="flex h-4 min-w-4 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ backgroundColor: PRIMARY }}>
+            {activeCount}
+          </span>
+        )}
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-40 mt-1.5 min-w-[200px] rounded-lg border bg-white p-3 shadow-xl" style={{ borderColor: "#e2e8f0" }}>
+          {children}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -369,149 +412,134 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
         </div>
       </div>
 
-      {/* ═══ FILTER PANEL ═══ */}
+      {/* ═══ FILTER BAR ═══ */}
       {showFilters && (
-        <div className="mb-4 overflow-hidden rounded-lg border" style={{ borderColor: "#e2e8f0" }}>
-          {/* Filter header */}
-          <div className="flex items-center justify-between px-3 py-1.5" style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e9edf2" }}>
-            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#475569" }}>Filters</span>
-            {hasActiveFilters && (
-              <button onClick={clearFilters} className="text-[10px] font-semibold" style={{ color: "#dc2626" }}>Reset all</button>
-            )}
-          </div>
-
-          {/* Row: Category */}
-          <div className="flex items-start gap-2 border-b px-3 py-1.5" style={{ borderColor: "#f1f5f9" }}>
-            <div className="flex w-[60px] shrink-0 items-center gap-1 pt-0.5">
-              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Category</span>
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {/* Category popover */}
+          <FilterPopover label="Category" activeCount={allMstarSelected ? 0 : MSTAR_CATEGORIES.length - mstarCats.size}>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Morningstar Category</span>
               <button onClick={() => setMstarCats(allMstarSelected ? new Set() : new Set(MSTAR_CATEGORIES))}
-                className="text-[9px]" style={{ color: PRIMARY }}>{allMstarSelected ? "x" : "all"}</button>
+                className="text-[10px] font-semibold" style={{ color: PRIMARY }}>{allMstarSelected ? "Clear" : "Select All"}</button>
             </div>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex max-w-[320px] flex-wrap gap-1.5">
               {MSTAR_CATEGORIES.map(c => (
                 <Chip key={c} label={c} active={mstarCats.has(c)} count={mstarCatCounts[c] || 0}
                   onClick={() => { const s = new Set(mstarCats); s.has(c) ? s.delete(c) : s.add(c); setMstarCats(s) }} />
               ))}
             </div>
-          </div>
+          </FilterPopover>
 
-          {/* Row: Duration buckets */}
-          <div className="flex items-center gap-2 border-b px-3 py-1.5" style={{ borderColor: "#f1f5f9" }}>
-            <div className="flex w-[60px] shrink-0 items-center gap-1">
-              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Duration</span>
+          {/* Duration popover */}
+          <FilterPopover label="Duration" activeCount={allDurSelected ? 0 : DURATION_CATEGORIES.length - durationCats.size}>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Duration Range</span>
               <button onClick={() => setDurationCats(allDurSelected ? new Set() : new Set(DURATION_CATEGORIES.map(c => c.label)))}
-                className="text-[9px]" style={{ color: PRIMARY }}>{allDurSelected ? "x" : "all"}</button>
+                className="text-[10px] font-semibold" style={{ color: PRIMARY }}>{allDurSelected ? "Clear" : "Select All"}</button>
             </div>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1.5">
               {DURATION_CATEGORIES.map(c => (
-                <Chip key={c.label} label={`${c.min}-${c.max === 100 ? "6+" : c.max}y`} active={durationCats.has(c.label)}
+                <Chip key={c.label} label={`${c.label} (${c.min}-${c.max === 100 ? "6+" : c.max}y)`} active={durationCats.has(c.label)}
                   onClick={() => { const s = new Set(durationCats); s.has(c.label) ? s.delete(c.label) : s.add(c.label); setDurationCats(s) }} />
               ))}
             </div>
-          </div>
+          </FilterPopover>
 
-          {/* Row: Credit */}
-          <div className="flex items-center gap-2 border-b px-3 py-1.5" style={{ borderColor: "#f1f5f9" }}>
-            <div className="flex w-[60px] shrink-0 items-center gap-1">
-              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Credit</span>
+          {/* Credit popover */}
+          <FilterPopover label="Credit" activeCount={allCreditSelected ? 0 : CREDIT_CATS.length - creditCats.size}>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Credit Quality</span>
               <button onClick={() => setCreditCats(allCreditSelected ? new Set() : new Set(CREDIT_CATS))}
-                className="text-[9px]" style={{ color: PRIMARY }}>{allCreditSelected ? "x" : "all"}</button>
+                className="text-[10px] font-semibold" style={{ color: PRIMARY }}>{allCreditSelected ? "Clear" : "Select All"}</button>
             </div>
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-1.5">
               {CREDIT_CATS.map(c => (
                 <Chip key={c} label={c} active={creditCats.has(c)}
                   onClick={() => { const s = new Set(creditCats); s.has(c) ? s.delete(c) : s.add(c); setCreditCats(s) }} />
               ))}
             </div>
-          </div>
+          </FilterPopover>
 
-          {/* Row: Quick filters (presets instead of inputs) */}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2" style={{ backgroundColor: "#fafbfc" }}>
-            {/* Yield minimum presets */}
-            <div className="flex items-center gap-1">
-              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Yield</span>
+          {/* Yield popover */}
+          <FilterPopover label="Yield" activeCount={yieldMinPreset != null ? 1 : 0}>
+            <div className="mb-2">
+              <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Minimum Yield</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
               {[3, 4, 5, 6, 7].map(v => (
-                <button key={v} onClick={() => setYieldMinPreset(yieldMinPreset === v ? null : v)}
-                  className="rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums transition-all"
-                  style={{
-                    backgroundColor: yieldMinPreset === v ? PRIMARY : "#fff",
-                    color: yieldMinPreset === v ? "#fff" : "#64748b",
-                    border: `1px solid ${yieldMinPreset === v ? PRIMARY : "#e2e8f0"}`,
-                  }}
-                >{v}%+</button>
+                <Chip key={v} label={`${v}%+`} active={yieldMinPreset === v}
+                  onClick={() => setYieldMinPreset(yieldMinPreset === v ? null : v)} />
               ))}
             </div>
+          </FilterPopover>
 
-            <div className="h-3.5 w-px" style={{ backgroundColor: "#e2e8f0" }} />
-
-            {/* Expense max presets */}
-            <div className="flex items-center gap-1">
-              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Expense</span>
+          {/* Expense popover */}
+          <FilterPopover label="Expense" activeCount={expenseMaxPreset != null ? 1 : 0}>
+            <div className="mb-2">
+              <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Max Expense Ratio</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
               {[
                 { v: 0.25, l: "<0.25%" },
                 { v: 0.5, l: "<0.5%" },
                 { v: 1, l: "<1%" },
               ].map(({ v, l }) => (
-                <button key={v} onClick={() => setExpenseMaxPreset(expenseMaxPreset === v ? null : v)}
-                  className="rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums transition-all"
-                  style={{
-                    backgroundColor: expenseMaxPreset === v ? PRIMARY : "#fff",
-                    color: expenseMaxPreset === v ? "#fff" : "#64748b",
-                    border: `1px solid ${expenseMaxPreset === v ? PRIMARY : "#e2e8f0"}`,
-                  }}
-                >{l}</button>
+                <Chip key={v} label={l} active={expenseMaxPreset === v}
+                  onClick={() => setExpenseMaxPreset(expenseMaxPreset === v ? null : v)} />
               ))}
             </div>
+          </FilterPopover>
 
-            <div className="h-3.5 w-px" style={{ backgroundColor: "#e2e8f0" }} />
-
-            {/* Sharpe min presets */}
-            <div className="flex items-center gap-1">
-              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Sharpe</span>
+          {/* Sharpe popover */}
+          <FilterPopover label="Sharpe" activeCount={sharpeMinPreset != null ? 1 : 0}>
+            <div className="mb-2">
+              <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Min Sharpe Ratio</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
               {[0, 0.5, 1, 1.5].map(v => (
-                <button key={v} onClick={() => setSharpeMinPreset(sharpeMinPreset === v ? null : v)}
-                  className="rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums transition-all"
-                  style={{
-                    backgroundColor: sharpeMinPreset === v ? PRIMARY : "#fff",
-                    color: sharpeMinPreset === v ? "#fff" : "#64748b",
-                    border: `1px solid ${sharpeMinPreset === v ? PRIMARY : "#e2e8f0"}`,
-                  }}
-                >{`>${v}`}</button>
+                <Chip key={v} label={`>${v}`} active={sharpeMinPreset === v}
+                  onClick={() => setSharpeMinPreset(sharpeMinPreset === v ? null : v)} />
               ))}
             </div>
+          </FilterPopover>
 
-            <div className="h-3.5 w-px" style={{ backgroundColor: "#e2e8f0" }} />
-
-            {/* StdDev max presets */}
-            <div className="flex items-center gap-1">
-              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Std Dev</span>
+          {/* Std Dev popover */}
+          <FilterPopover label="Std Dev" activeCount={stdDevMaxPreset != null ? 1 : 0}>
+            <div className="mb-2">
+              <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Max Std Deviation</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
               {[2, 3, 5].map(v => (
-                <button key={v} onClick={() => setStdDevMaxPreset(stdDevMaxPreset === v ? null : v)}
-                  className="rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums transition-all"
-                  style={{
-                    backgroundColor: stdDevMaxPreset === v ? PRIMARY : "#fff",
-                    color: stdDevMaxPreset === v ? "#fff" : "#64748b",
-                    border: `1px solid ${stdDevMaxPreset === v ? PRIMARY : "#e2e8f0"}`,
-                  }}
-                >{`<${v}`}</button>
+                <Chip key={v} label={`<${v}`} active={stdDevMaxPreset === v}
+                  onClick={() => setStdDevMaxPreset(stdDevMaxPreset === v ? null : v)} />
               ))}
             </div>
+          </FilterPopover>
 
-            <div className="h-3.5 w-px" style={{ backgroundColor: "#e2e8f0" }} />
-
-            {/* Star rating (min) */}
-            <div className="flex items-center gap-1">
-              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Min stars</span>
-              <div className="flex items-center gap-0.5">
-                {[1, 2, 3, 4, 5].map(s => (
-                  <button key={s} onClick={() => setStarMin(s === starMin ? 0 : s)}
-                    className="text-sm leading-none transition-all" style={{ color: s <= starMin ? "#f59e0b" : "#d1d5db" }}
-                    aria-label={`Minimum ${s} stars`}
-                  >{"★"}</button>
-                ))}
-              </div>
+          {/* Stars popover */}
+          <FilterPopover label="Stars" activeCount={starMin > 0 ? 1 : 0}>
+            <div className="mb-2">
+              <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Min Morningstar Rating</span>
             </div>
-          </div>
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map(s => (
+                <button key={s} onClick={() => setStarMin(s === starMin ? 0 : s)}
+                  className="text-lg leading-none transition-all" style={{ color: s <= starMin ? "#f59e0b" : "#d1d5db" }}
+                  aria-label={`Minimum ${s} stars`}
+                >{"★"}</button>
+              ))}
+            </div>
+          </FilterPopover>
+
+          {/* Reset button */}
+          {hasActiveFilters && (
+            <button onClick={clearFilters}
+              className="ml-1 flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold transition-all"
+              style={{ color: "#dc2626", backgroundColor: "#fef2f2" }}
+            >
+              <X className="h-3 w-3" /> Reset
+            </button>
+          )}
         </div>
       )}
 
