@@ -1,6 +1,5 @@
 "use client"
 
-console.log("[v0] page.tsx module loading")
 import { useState, useMemo, useCallback, useEffect } from "react"
 import { TickerInput } from "@/components/ticker-input"
 import { ComparisonTable } from "@/components/comparison-table"
