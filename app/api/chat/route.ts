@@ -1,4 +1,4 @@
-import { generateText } from 'ai'
+import OpenAI from 'openai'
 
 export const maxDuration = 60
 
@@ -53,18 +53,23 @@ export async function POST(req: Request) {
       ? SYSTEM_PROMPT + '\n\nCURRENT FUND COMPARISON DATA:\n' + fundContext
       : SYSTEM_PROMPT
 
-    const { text } = await generateText({
-      model: 'openai/gpt-4o-mini',
-      system: systemContent,
-      messages: userMessages.map((m) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemContent },
+        ...userMessages.map((m) => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+        })),
+      ],
       temperature: 0.2,
-      maxOutputTokens: 800,
+      max_tokens: 800,
     })
 
-    return Response.json({ content: text || 'No response generated.' })
+    const text = completion.choices[0]?.message?.content || 'No response generated.'
+    return Response.json({ content: text })
   } catch (err: unknown) {
     console.error('[v0] Chat error:', err)
     const message = err instanceof Error ? err.message : 'Unknown error'
