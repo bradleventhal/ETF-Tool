@@ -8,7 +8,10 @@ import {
 interface ChartPoint { date: string; [key: string]: string | number }
 const BASE = 10000
 function pctToDollar(pct: number): number { return Math.round(BASE * (1 + pct / 100)) }
-function fmtDollar(v: number): string { return v >= 10000 ? `$${(v / 1000).toFixed(1)}k` : `$${v.toLocaleString()}` }
+function fmtDollar(v: number): string {
+  if (v >= 100000) return `$${(v / 1000).toFixed(0)}k`
+  return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+}
 
 interface Props {
   tickerA: string
@@ -283,28 +286,20 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
         </div>
       )}
 
-      {/* Legend -- Morningstar style: "TICKER wDiv +$amount | +XX.XX%" */}
-      <div className="px-4 pt-2.5 pb-0.5">
+      {/* Legend -- Morningstar style: line + ticker + percentage */}
+      <div className="px-4 pt-2.5 pb-1">
         {totalA != null && totalB != null && (
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
-            <div className="flex items-center gap-1.5 text-[11px]" style={{ color: navy }}>
-              <span className="font-mono" style={{ color: "#94a3b8" }}>{"x"}</span>
-              <span className="inline-block h-[2px] w-3" style={{ backgroundColor: navy }} />
-              <span className="font-bold">{tickerA}</span>
-              <span style={{ color: "#94a3b8" }}>wDiv</span>
-              <span className="font-mono font-semibold">{totalA >= 0 ? "+" : ""}{((totalA / 100) * BASE).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-              <span style={{ color: "#cbd5e1" }}>|</span>
-              <span className="font-mono font-bold">{totalA >= 0 ? "+" : ""}{totalA.toFixed(2)}%</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <div className="flex items-center gap-1.5 text-[11px]">
+              <span className="inline-block h-[2px] w-4" style={{ backgroundColor: navy }} />
+              <span className="font-bold" style={{ color: navy }}>{tickerA}</span>
+              <span className="font-mono font-semibold" style={{ color: navy }}>{totalA >= 0 ? "+" : ""}{totalA.toFixed(2)}%</span>
             </div>
             {tickerA !== tickerB && (
-              <div className="flex items-center gap-1.5 text-[11px]" style={{ color: red }}>
-                <span className="font-mono" style={{ color: "#94a3b8" }}>{"x"}</span>
-                <span className="inline-block h-[2px] w-3" style={{ backgroundColor: red }} />
-                <span className="font-bold">{tickerB}</span>
-                <span style={{ color: "#94a3b8" }}>wDiv</span>
-                <span className="font-mono font-semibold">{totalB >= 0 ? "+" : ""}{((totalB / 100) * BASE).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                <span style={{ color: "#cbd5e1" }}>|</span>
-                <span className="font-mono font-bold">{totalB >= 0 ? "+" : ""}{totalB.toFixed(2)}%</span>
+              <div className="flex items-center gap-1.5 text-[11px]">
+                <span className="inline-block h-[2px] w-4" style={{ backgroundColor: red }} />
+                <span className="font-bold" style={{ color: red }}>{tickerB}</span>
+                <span className="font-mono font-semibold" style={{ color: red }}>{totalB >= 0 ? "+" : ""}{totalB.toFixed(2)}%</span>
               </div>
             )}
           </div>
@@ -340,7 +335,7 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#94a3b8" }} tickFormatter={formatDateLabel} interval={tickInterval} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmtDollar(v)} width={52} domain={["auto", "auto"]} padding={{ top: 10, bottom: 10 }} />
+              <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmtDollar(v)} width={55} domain={["dataMin", "dataMax"]} tickCount={6} allowDecimals={false} />
               <ReferenceLine y={BASE} stroke="#e2e8f0" strokeDasharray="3 3" />
               <Tooltip
                 labelFormatter={(l: string) => { const d = new Date(l + "T00:00:00"); return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) }}
@@ -357,18 +352,17 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
               {tickerA !== tickerB && (
                 <Area type="monotone" dataKey={`${tickerB}_dollar`} name={`${tickerB}_dollar`} stroke={red} strokeWidth={1.5} fill={`url(#fillB_${tickerB})`} dot={false} activeDot={{ r: 3, fill: red, stroke: "#fff", strokeWidth: 2 }} />
               )}
-              {/* End-of-line % badge like Morningstar */}
+              {/* End-of-line percentage badge like Morningstar */}
               {data.length > 0 && totalA != null && (() => {
                 const last = data[data.length - 1]
                 const lastDateStr = last.date as string
                 const lastValA = last[`${tickerA}_dollar`] as number
                 const labelA = `${totalA >= 0 ? "+" : ""}${totalA.toFixed(2)}%`
-                const w = labelA.length * 6.5 + 12
                 const badges: React.ReactNode[] = [
-                  <ReferenceDot key="a" x={lastDateStr} y={lastValA} r={0} stroke="none">
+                  <ReferenceDot key="endA" x={lastDateStr} y={lastValA} r={3} fill={navy} stroke="#fff" strokeWidth={2}>
                     <g>
-                      <rect x={6} y={-9} width={w} height={18} rx={3} fill={navy} opacity={0.85} />
-                      <text x={6 + w / 2} y={4} fontSize={10} fontWeight={600} fontFamily="ui-monospace, monospace" fill="#fff" textAnchor="middle">
+                      <rect x={8} y={-10} width={62} height={20} rx={4} fill={navy} />
+                      <text x={39} y={4} fontSize={11} fontWeight={700} fontFamily="ui-monospace, monospace" fill="#fff" textAnchor="middle">
                         {labelA}
                       </text>
                     </g>
@@ -377,12 +371,11 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
                 if (tickerA !== tickerB && totalB != null) {
                   const lastValB = last[`${tickerB}_dollar`] as number
                   const labelB = `${totalB >= 0 ? "+" : ""}${totalB.toFixed(2)}%`
-                  const wB = labelB.length * 6.5 + 12
                   badges.push(
-                    <ReferenceDot key="b" x={lastDateStr} y={lastValB} r={0} stroke="none">
+                    <ReferenceDot key="endB" x={lastDateStr} y={lastValB} r={3} fill={red} stroke="#fff" strokeWidth={2}>
                       <g>
-                        <rect x={6} y={-9} width={wB} height={18} rx={3} fill={red} opacity={0.85} />
-                        <text x={6 + wB / 2} y={4} fontSize={10} fontWeight={600} fontFamily="ui-monospace, monospace" fill="#fff" textAnchor="middle">
+                        <rect x={8} y={-10} width={62} height={20} rx={4} fill={red} />
+                        <text x={39} y={4} fontSize={11} fontWeight={700} fontFamily="ui-monospace, monospace" fill="#fff" textAnchor="middle">
                           {labelB}
                         </text>
                       </g>

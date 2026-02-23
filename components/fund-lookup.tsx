@@ -226,41 +226,30 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
         </table>
       </div>
 
-      {/* Performance -- horizontal bar chart */}
+      {/* Performance */}
       <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
         <div className="border-b px-3 py-2.5 sm:px-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
           <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Performance</h4>
         </div>
-        <div className="px-3 py-4 sm:px-4">
+        <div className="px-3 py-3 sm:px-4">
           {(() => {
             const periods = [
               { label: "YTD", value: fund.ytd },
               { label: "1 Year", value: fund.oneYear },
-              { label: "3 Year (ann.)", value: fund.threeYear },
-              { label: "Since Inception", value: fund.commonInception },
-            ].filter(p => p.value != null && !isNaN(p.value) && p.value !== 0)
-            const maxVal = Math.max(...periods.map(p => Math.abs((p.value ?? 0) * 100)), 1)
+              { label: "3 Year", value: fund.threeYear },
+              { label: "Inception", value: fund.commonInception },
+            ].filter(p => p.value != null && !isNaN(p.value))
             return (
-              <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {periods.map(p => {
                   const pct = (p.value ?? 0) * 100
-                  const width = Math.max((Math.abs(pct) / maxVal) * 100, 2)
+                  const isPos = pct >= 0
                   return (
-                    <div key={p.label} className="flex items-center gap-3">
-                      <span className="w-[100px] shrink-0 text-right text-[12px] font-medium" style={{ color: "#64748b" }}>{p.label}</span>
-                      <div className="relative h-5 flex-1 rounded" style={{ backgroundColor: "#f1f5f9" }}>
-                        <div
-                          className="absolute inset-y-0 left-0 rounded"
-                          style={{
-                            width: `${width}%`,
-                            backgroundColor: pct >= 0 ? "#0f3d6b" : "#dc2626",
-                            opacity: 0.85,
-                          }}
-                        />
+                    <div key={p.label} className="text-center">
+                      <div className="mb-1 text-[10px] font-medium uppercase tracking-wide" style={{ color: "#94a3b8" }}>{p.label}</div>
+                      <div className="font-mono text-lg font-bold" style={{ color: isPos ? "#0f3d6b" : "#dc2626" }}>
+                        {isPos ? "+" : ""}{pct.toFixed(2)}%
                       </div>
-                      <span className="w-[52px] shrink-0 text-right font-mono text-[12px] font-semibold" style={{ color: "#334155" }}>
-                        {pct >= 0 ? "+" : ""}{pct.toFixed(2)}%
-                      </span>
                     </div>
                   )
                 })}
