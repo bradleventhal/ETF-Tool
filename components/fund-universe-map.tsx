@@ -166,14 +166,11 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
   /* ── Star rating filter ── */
   const [starMin, setStarMin] = useState(0) // 0 = no filter
 
-  /* ── Range filters -- null means "no filter" ── */
-  const [yieldMin, setYieldMin] = useState<string>("")
-  const [yieldMax, setYieldMax] = useState<string>("")
-  const [durationMin, setDurationMin] = useState<string>("")
-  const [durationMax, setDurationMax] = useState<string>("")
-  const [expenseMax, setExpenseMax] = useState<string>("")
-  const [sharpeMin, setSharpeMin] = useState<string>("")
-  const [stdDevMax, setStdDevMax] = useState<string>("")
+  /* ── Preset-based range filters (null = no filter) ── */
+  const [yieldMinPreset, setYieldMinPreset] = useState<number | null>(null)
+  const [expenseMaxPreset, setExpenseMaxPreset] = useState<number | null>(null)
+  const [sharpeMinPreset, setSharpeMinPreset] = useState<number | null>(null)
+  const [stdDevMaxPreset, setStdDevMaxPreset] = useState<number | null>(null)
 
   /* ── Compute fund counts per Morningstar category ── */
   const mstarCatCounts = useMemo(() => {
@@ -215,15 +212,12 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
       // Star rating filter
       if (starMin > 0 && f.morningstarRating != null && f.morningstarRating < starMin) return null
 
-      // Range filters (only applied if user entered a value)
+      // Preset-based range filters
       const yld = (f.ytwYtm ?? f.secYield ?? 0) * 100
-      if (yieldMin && yld < parseFloat(yieldMin)) return null
-      if (yieldMax && yld > parseFloat(yieldMax)) return null
-      if (durationMin && f.duration != null && f.duration < parseFloat(durationMin)) return null
-      if (durationMax && f.duration != null && f.duration > parseFloat(durationMax)) return null
-      if (expenseMax && f.expense != null && f.expense * 100 > parseFloat(expenseMax)) return null
-      if (sharpeMin && f.sharpe != null && f.sharpe < parseFloat(sharpeMin)) return null
-      if (stdDevMax && f.stdDev != null && f.stdDev > parseFloat(stdDevMax)) return null
+      if (yieldMinPreset != null && yld < yieldMinPreset) return null
+      if (expenseMaxPreset != null && f.expense != null && f.expense * 100 > expenseMaxPreset) return null
+      if (sharpeMinPreset != null && f.sharpe != null && f.sharpe < sharpeMinPreset) return null
+      if (stdDevMaxPreset != null && f.stdDev != null && f.stdDev > stdDevMaxPreset) return null
 
       const xVal = xAxis.getValue(f)
       const yVal = yAxis.getValue(f)
@@ -241,13 +235,13 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
       avgX: count > 0 ? xSum / count : 0,
       avgY: count > 0 ? ySum / count : 0,
     }
-  }, [funds, xAxis, yAxis, highlightTicker, search, durationCats, creditCats, mstarCats, starMin, yieldMin, yieldMax, durationMin, durationMax, expenseMax, sharpeMin, stdDevMax])
+  }, [funds, xAxis, yAxis, highlightTicker, search, durationCats, creditCats, mstarCats, starMin, yieldMinPreset, expenseMaxPreset, sharpeMinPreset, stdDevMaxPreset])
 
   /* ── Filter state checks ── */
   const allDurSelected = durationCats.size === DURATION_CATEGORIES.length
   const allCreditSelected = creditCats.size === CREDIT_CATS.length
   const allMstarSelected = mstarCats.size === MSTAR_CATEGORIES.length
-  const hasRangeFilters = !!(yieldMin || yieldMax || durationMin || durationMax || expenseMax || sharpeMin || stdDevMax)
+  const hasRangeFilters = yieldMinPreset != null || expenseMaxPreset != null || sharpeMinPreset != null || stdDevMaxPreset != null
   const hasActiveFilters = !!search || !allDurSelected || !allCreditSelected || !allMstarSelected || starMin > 0 || hasRangeFilters
   const activeFilterCount = [!allDurSelected, !allCreditSelected, !allMstarSelected, starMin > 0, hasRangeFilters, !!search].filter(Boolean).length
 
@@ -257,8 +251,8 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
     setCreditCats(new Set(CREDIT_CATS))
     setMstarCats(new Set(MSTAR_CATEGORIES))
     setStarMin(0)
-    setYieldMin(""); setYieldMax(""); setDurationMin(""); setDurationMax("")
-    setExpenseMax(""); setSharpeMin(""); setStdDevMax("")
+    setYieldMinPreset(null); setExpenseMaxPreset(null)
+    setSharpeMinPreset(null); setStdDevMaxPreset(null)
   }, [])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -380,19 +374,19 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
       {showFilters && (
         <div className="mb-4 overflow-hidden rounded-lg border" style={{ borderColor: "#e2e8f0" }}>
           {/* Filter header */}
-          <div className="flex items-center justify-between px-3 py-2" style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e9edf2" }}>
+          <div className="flex items-center justify-between px-3 py-1.5" style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e9edf2" }}>
             <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#475569" }}>Filters</span>
             {hasActiveFilters && (
               <button onClick={clearFilters} className="text-[10px] font-semibold" style={{ color: "#dc2626" }}>Reset all</button>
             )}
           </div>
 
-          {/* Row 1: Category */}
-          <div className="flex items-start gap-3 border-b px-3 py-2" style={{ borderColor: "#f1f5f9" }}>
-            <div className="flex w-[70px] shrink-0 items-center gap-1 pt-0.5">
+          {/* Row: Category */}
+          <div className="flex items-start gap-2 border-b px-3 py-1.5" style={{ borderColor: "#f1f5f9" }}>
+            <div className="flex w-[60px] shrink-0 items-center gap-1 pt-0.5">
               <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Category</span>
               <button onClick={() => setMstarCats(allMstarSelected ? new Set() : new Set(MSTAR_CATEGORIES))}
-                className="text-[9px]" style={{ color: PRIMARY }}>{allMstarSelected ? "clear" : "all"}</button>
+                className="text-[9px]" style={{ color: PRIMARY }}>{allMstarSelected ? "x" : "all"}</button>
             </div>
             <div className="flex flex-wrap gap-1">
               {MSTAR_CATEGORIES.map(c => (
@@ -402,27 +396,27 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
             </div>
           </div>
 
-          {/* Row 2: Duration */}
-          <div className="flex items-center gap-3 border-b px-3 py-2" style={{ borderColor: "#f1f5f9" }}>
-            <div className="flex w-[70px] shrink-0 items-center gap-1">
+          {/* Row: Duration buckets */}
+          <div className="flex items-center gap-2 border-b px-3 py-1.5" style={{ borderColor: "#f1f5f9" }}>
+            <div className="flex w-[60px] shrink-0 items-center gap-1">
               <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Duration</span>
               <button onClick={() => setDurationCats(allDurSelected ? new Set() : new Set(DURATION_CATEGORIES.map(c => c.label)))}
-                className="text-[9px]" style={{ color: PRIMARY }}>{allDurSelected ? "clear" : "all"}</button>
+                className="text-[9px]" style={{ color: PRIMARY }}>{allDurSelected ? "x" : "all"}</button>
             </div>
             <div className="flex flex-wrap gap-1">
               {DURATION_CATEGORIES.map(c => (
-                <Chip key={c.label} label={`${c.label} ${c.max === 100 ? "6y+" : `<${c.max}y`}`} active={durationCats.has(c.label)}
+                <Chip key={c.label} label={`${c.min}-${c.max === 100 ? "6+" : c.max}y`} active={durationCats.has(c.label)}
                   onClick={() => { const s = new Set(durationCats); s.has(c.label) ? s.delete(c.label) : s.add(c.label); setDurationCats(s) }} />
               ))}
             </div>
           </div>
 
-          {/* Row 3: Credit */}
-          <div className="flex items-center gap-3 border-b px-3 py-2" style={{ borderColor: "#f1f5f9" }}>
-            <div className="flex w-[70px] shrink-0 items-center gap-1">
+          {/* Row: Credit */}
+          <div className="flex items-center gap-2 border-b px-3 py-1.5" style={{ borderColor: "#f1f5f9" }}>
+            <div className="flex w-[60px] shrink-0 items-center gap-1">
               <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Credit</span>
               <button onClick={() => setCreditCats(allCreditSelected ? new Set() : new Set(CREDIT_CATS))}
-                className="text-[9px]" style={{ color: PRIMARY }}>{allCreditSelected ? "clear" : "all"}</button>
+                className="text-[9px]" style={{ color: PRIMARY }}>{allCreditSelected ? "x" : "all"}</button>
             </div>
             <div className="flex flex-wrap gap-1">
               {CREDIT_CATS.map(c => (
@@ -432,58 +426,91 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
             </div>
           </div>
 
-          {/* Row 4: Numeric ranges + stars (all inline) */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2" style={{ backgroundColor: "#fafbfc" }}>
+          {/* Row: Quick filters (presets instead of inputs) */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3 py-2" style={{ backgroundColor: "#fafbfc" }}>
+            {/* Yield minimum presets */}
             <div className="flex items-center gap-1">
               <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Yield</span>
-              <input type="number" value={yieldMin} onChange={e => setYieldMin(e.target.value)} placeholder="min"
-                className="h-6 w-[48px] rounded border px-1 text-center text-[10px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.5" />
-              <span className="text-[9px]" style={{ color: "#cbd5e1" }}>-</span>
-              <input type="number" value={yieldMax} onChange={e => setYieldMax(e.target.value)} placeholder="max"
-                className="h-6 w-[48px] rounded border px-1 text-center text-[10px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.5" />
-              <span className="text-[9px]" style={{ color: "#94a3b8" }}>%</span>
+              {[3, 4, 5, 6, 7].map(v => (
+                <button key={v} onClick={() => setYieldMinPreset(yieldMinPreset === v ? null : v)}
+                  className="rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums transition-all"
+                  style={{
+                    backgroundColor: yieldMinPreset === v ? PRIMARY : "#fff",
+                    color: yieldMinPreset === v ? "#fff" : "#64748b",
+                    border: `1px solid ${yieldMinPreset === v ? PRIMARY : "#e2e8f0"}`,
+                  }}
+                >{v}%+</button>
+              ))}
             </div>
-            <div className="h-4 w-px" style={{ backgroundColor: "#e2e8f0" }} />
+
+            <div className="h-3.5 w-px" style={{ backgroundColor: "#e2e8f0" }} />
+
+            {/* Expense max presets */}
             <div className="flex items-center gap-1">
-              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Dur</span>
-              <input type="number" value={durationMin} onChange={e => setDurationMin(e.target.value)} placeholder="min"
-                className="h-6 w-[48px] rounded border px-1 text-center text-[10px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.5" />
-              <span className="text-[9px]" style={{ color: "#cbd5e1" }}>-</span>
-              <input type="number" value={durationMax} onChange={e => setDurationMax(e.target.value)} placeholder="max"
-                className="h-6 w-[48px] rounded border px-1 text-center text-[10px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.5" />
-              <span className="text-[9px]" style={{ color: "#94a3b8" }}>yrs</span>
+              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Expense</span>
+              {[
+                { v: 0.25, l: "<0.25%" },
+                { v: 0.5, l: "<0.5%" },
+                { v: 1, l: "<1%" },
+              ].map(({ v, l }) => (
+                <button key={v} onClick={() => setExpenseMaxPreset(expenseMaxPreset === v ? null : v)}
+                  className="rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums transition-all"
+                  style={{
+                    backgroundColor: expenseMaxPreset === v ? PRIMARY : "#fff",
+                    color: expenseMaxPreset === v ? "#fff" : "#64748b",
+                    border: `1px solid ${expenseMaxPreset === v ? PRIMARY : "#e2e8f0"}`,
+                  }}
+                >{l}</button>
+              ))}
             </div>
-            <div className="h-4 w-px" style={{ backgroundColor: "#e2e8f0" }} />
-            <div className="flex items-center gap-1">
-              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Exp</span>
-              <span className="text-[9px]" style={{ color: "#94a3b8" }}>{"<"}</span>
-              <input type="number" value={expenseMax} onChange={e => setExpenseMax(e.target.value)} placeholder="max"
-                className="h-6 w-[48px] rounded border px-1 text-center text-[10px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.1" />
-              <span className="text-[9px]" style={{ color: "#94a3b8" }}>%</span>
-            </div>
-            <div className="h-4 w-px" style={{ backgroundColor: "#e2e8f0" }} />
+
+            <div className="h-3.5 w-px" style={{ backgroundColor: "#e2e8f0" }} />
+
+            {/* Sharpe min presets */}
             <div className="flex items-center gap-1">
               <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Sharpe</span>
-              <span className="text-[9px]" style={{ color: "#94a3b8" }}>{">"}</span>
-              <input type="number" value={sharpeMin} onChange={e => setSharpeMin(e.target.value)} placeholder="min"
-                className="h-6 w-[48px] rounded border px-1 text-center text-[10px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.1" />
-            </div>
-            <div className="h-4 w-px" style={{ backgroundColor: "#e2e8f0" }} />
-            <div className="flex items-center gap-1">
-              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>StdDev</span>
-              <span className="text-[9px]" style={{ color: "#94a3b8" }}>{"<"}</span>
-              <input type="number" value={stdDevMax} onChange={e => setStdDevMax(e.target.value)} placeholder="max"
-                className="h-6 w-[48px] rounded border px-1 text-center text-[10px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.25" />
-            </div>
-            <div className="h-4 w-px" style={{ backgroundColor: "#e2e8f0" }} />
-            <div className="flex items-center gap-0.5">
-              <span className="mr-0.5 text-[10px] font-semibold" style={{ color: "#64748b" }}>Stars</span>
-              {[1, 2, 3, 4, 5].map(s => (
-                <button key={s} onClick={() => setStarMin(s === starMin ? 0 : s)}
-                  className="text-sm leading-none transition-all" style={{ color: s <= starMin ? "#f59e0b" : "#d1d5db" }}
-                  aria-label={`${s} stars minimum`}
-                >{"★"}</button>
+              {[0, 0.5, 1, 1.5].map(v => (
+                <button key={v} onClick={() => setSharpeMinPreset(sharpeMinPreset === v ? null : v)}
+                  className="rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums transition-all"
+                  style={{
+                    backgroundColor: sharpeMinPreset === v ? PRIMARY : "#fff",
+                    color: sharpeMinPreset === v ? "#fff" : "#64748b",
+                    border: `1px solid ${sharpeMinPreset === v ? PRIMARY : "#e2e8f0"}`,
+                  }}
+                >{`>${v}`}</button>
               ))}
+            </div>
+
+            <div className="h-3.5 w-px" style={{ backgroundColor: "#e2e8f0" }} />
+
+            {/* StdDev max presets */}
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Std Dev</span>
+              {[2, 3, 5].map(v => (
+                <button key={v} onClick={() => setStdDevMaxPreset(stdDevMaxPreset === v ? null : v)}
+                  className="rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums transition-all"
+                  style={{
+                    backgroundColor: stdDevMaxPreset === v ? PRIMARY : "#fff",
+                    color: stdDevMaxPreset === v ? "#fff" : "#64748b",
+                    border: `1px solid ${stdDevMaxPreset === v ? PRIMARY : "#e2e8f0"}`,
+                  }}
+                >{`<${v}`}</button>
+              ))}
+            </div>
+
+            <div className="h-3.5 w-px" style={{ backgroundColor: "#e2e8f0" }} />
+
+            {/* Star rating (min) */}
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Min stars</span>
+              <div className="flex items-center gap-0.5">
+                {[1, 2, 3, 4, 5].map(s => (
+                  <button key={s} onClick={() => setStarMin(s === starMin ? 0 : s)}
+                    className="text-sm leading-none transition-all" style={{ color: s <= starMin ? "#f59e0b" : "#d1d5db" }}
+                    aria-label={`Minimum ${s} stars`}
+                  >{"★"}</button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
