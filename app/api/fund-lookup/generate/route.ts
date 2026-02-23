@@ -51,8 +51,10 @@ async function fetchPdfText(url: string): Promise<string | null> {
   }
 }
 
+type CommentaryResult = { text: string; sourceUrl: string } | null
+
 /** Search for a fund's quarterly commentary PDF via DuckDuckGo, download and parse it. */
-async function fetchCommentary(ticker: string, fundName: string): Promise<string | null> {
+async function fetchCommentary(ticker: string, fundName: string): Promise<CommentaryResult> {
   console.log("[v0] Searching commentary for:", ticker, fundName)
 
   const queries = [
@@ -102,7 +104,7 @@ async function fetchCommentary(ticker: string, fundName: string): Promise<string
     const text = await fetchPdfText(url)
     if (text) {
       console.log("[v0] Got commentary from PDF:", url)
-      return text.slice(0, 6000)
+      return { text: text.slice(0, 6000), sourceUrl: url }
     }
   }
 
@@ -119,14 +121,14 @@ async function fetchCommentary(ticker: string, fundName: string): Promise<string
       const pdfLinks = [...html.matchAll(/href=["'](https?:\/\/[^"']+\.pdf)["']/gi)]
       for (const m of pdfLinks.slice(0, 3)) {
         const pdfText = await fetchPdfText(m[1])
-        if (pdfText) return pdfText.slice(0, 6000)
+        if (pdfText) return { text: pdfText.slice(0, 6000), sourceUrl: m[1] }
       }
 
       const relLinks = [...html.matchAll(/href=["'](\/[^"']+\.pdf)["']/gi)]
       const baseUrl = new URL(url).origin
       for (const m of relLinks.slice(0, 3)) {
         const pdfText = await fetchPdfText(baseUrl + m[1])
-        if (pdfText) return pdfText.slice(0, 6000)
+        if (pdfText) return { text: pdfText.slice(0, 6000), sourceUrl: baseUrl + m[1] }
       }
     } catch { continue }
   }
@@ -207,7 +209,7 @@ export async function POST(req: Request) {
 
     let userContent = `Generate the fund analysis for ${fund.ticker}.\n\nDATA:\n${dataPayload}`
     if (commentary) {
-      userContent += `\n\nFUND COMPANY COMMENTARY (scraped from their website -- use this heavily):\n${commentary}`
+      userContent += `\n\nFUND COMPANY COMMENTARY (scraped from their quarterly PDF at ${commentary.sourceUrl} -- use this heavily to inform your analysis):\n${commentary.text}`
     }
 
     const openai = new OpenAI()
@@ -226,7 +228,11 @@ export async function POST(req: Request) {
     const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()
     const parsed = JSON.parse(cleaned)
 
-    return Response.json({ ...parsed, hasCommentary: !!commentary })
+    return Response.json({
+      ...parsed,
+      hasCommentary: !!commentary,
+      commentarySource: commentary?.sourceUrl || null,
+    })
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err)
     const stack = err instanceof Error ? err.stack : ""

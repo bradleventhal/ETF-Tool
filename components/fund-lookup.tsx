@@ -39,6 +39,7 @@ interface FundInsights {
   tailwinds: string[]
   headwinds: string[]
   hasCommentary?: boolean
+  commentarySource?: string | null
   positioning: string
 }
 
@@ -319,11 +320,21 @@ export function FundLookup({ fund, allTickers }: { fund: FundData; allTickers?: 
             Fund Analysis
             {loading && <Loader2 className="ml-2 inline-block h-3 w-3 animate-spin" style={{ color: "#94a3b8" }} />}
           </h4>
-          {insights?.hasCommentary && (
-            <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "#dcfce7", color: "#16a34a" }}>
-              Sourced from commentary
+          {insights?.hasCommentary && insights.commentarySource ? (
+            <a
+              href={insights.commentarySource}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold tracking-wider transition-colors hover:opacity-80"
+              style={{ backgroundColor: "#dcfce7", color: "#16a34a" }}
+            >
+              Via {(() => { try { return new URL(insights.commentarySource).hostname.replace("www.", "") } catch { return "PDF" } })()}
+            </a>
+          ) : !insights?.hasCommentary && insights ? (
+            <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "#fef3c7", color: "#d97706" }}>
+              Data-only analysis
             </span>
-          )}
+          ) : null}
         </div>
         <div className="p-4 sm:p-5">
           {loading && !insights && (
