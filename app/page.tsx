@@ -155,9 +155,9 @@ export default function Page() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ fundA: fA, fundB: fB, yahoo }),
             })
-              .then(r => r.json())
+              .then(r => r.ok ? r.json() : null)
               .then(gptWarRoom => {
-                if (!gptWarRoom.error && gptWarRoom.competitorArguments) {
+                if (gptWarRoom && !gptWarRoom.error && gptWarRoom.competitorArguments) {
                   setWarRoom(gptWarRoom)
                 }
               })

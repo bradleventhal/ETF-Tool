@@ -286,7 +286,7 @@ export function FundChat({ result }: FundChatProps) {
                   border: isUser ? "none" : "1px solid #e2e8f0",
                 }}
               >
-                <div className="text-sm leading-relaxed">{isUser ? msg.content : renderMarkdown(msg.content)}</div>
+                <div className="text-sm leading-relaxed">{isUser ? msg.content : (() => { try { return renderMarkdown(msg.content) } catch { return msg.content } })()}</div>
               </div>
             </div>
           )
