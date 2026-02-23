@@ -161,7 +161,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
   const [yKey, setYKey] = useState(PRESETS[0].y)
   const [activeInsight, setActiveInsight] = useState(PRESETS[0].insight)
   const [search, setSearch] = useState("")
-  const [showFilters, setShowFilters] = useState(false)
+  const [showFilters, setShowFilters] = useState(true)
   const [hoveredTicker, setHoveredTicker] = useState<string | null>(null)
 
   // Duration category filter (multiple can be selected)
@@ -170,6 +170,13 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
   // Credit quality filter
   const CREDIT_CATS = ["AAA", "AA", "A", "BBB", "BB & Below"] as const
   const [creditCats, setCreditCats] = useState<Set<string>>(new Set(CREDIT_CATS))
+
+  // Range filters
+  const [yieldMin, setYieldMin] = useState("")
+  const [yieldMax, setYieldMax] = useState("")
+  const [expenseMax, setExpenseMax] = useState("")
+  const [stdDevMax, setStdDevMax] = useState("")
+  const [sharpeMin, setSharpeMin] = useState("")
 
   const xAxis = AXIS_OPTIONS[findAxis(xKey)] || AXIS_OPTIONS[0]
   const yAxis = AXIS_OPTIONS[findAxis(yKey)] || AXIS_OPTIONS[0]
@@ -209,6 +216,13 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
           if (cl === "BBB" && !creditCats.has("BBB")) return false
           if (["BB", "B", "CCC", "<CCC"].includes(cl) && !creditCats.has("BB & Below")) return false
         }
+        // Range filters
+        const yld = (f.ytwYtm ?? f.secYield ?? 0) * 100
+        if (yieldMin && yld < parseFloat(yieldMin)) return false
+        if (yieldMax && yld > parseFloat(yieldMax)) return false
+        if (expenseMax && f.expense != null && f.expense * 100 > parseFloat(expenseMax)) return false
+        if (stdDevMax && f.stdDev != null && f.stdDev > parseFloat(stdDevMax)) return false
+        if (sharpeMin && f.sharpe != null && f.sharpe < parseFloat(sharpeMin)) return false
         return true
       })
       .map(f => {
@@ -227,7 +241,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
         x: number; y: number; ticker: string; name: string
         xLabel: string; yLabel: string; xFormatted: string; yFormatted: string; isHighlighted: boolean
       }[]
-  }, [funds, xAxis, yAxis, highlightTicker, search, durationCats, creditCats])
+  }, [funds, xAxis, yAxis, highlightTicker, search, durationCats, creditCats, yieldMin, yieldMax, expenseMax, stdDevMax, sharpeMin])
 
   const sortedData = useMemo(() => [...data].sort((a, b) => (a.isHighlighted ? 1 : 0) - (b.isHighlighted ? 1 : 0)), [data])
 
@@ -238,12 +252,14 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
 
   const allDurSelected = durationCats.size === DURATION_CATEGORIES.length
   const allCreditSelected = creditCats.size === CREDIT_CATS.length
-  const hasActiveFilters = !!search || !allDurSelected || !allCreditSelected
+  const hasRangeFilters = !!yieldMin || !!yieldMax || !!expenseMax || !!stdDevMax || !!sharpeMin
+  const hasActiveFilters = !!search || !allDurSelected || !allCreditSelected || hasRangeFilters
 
   const clearFilters = () => {
     setSearch("")
     setDurationCats(new Set(DURATION_CATEGORIES.map(c => c.label)))
     setCreditCats(new Set(CREDIT_CATS))
+    setYieldMin(""); setYieldMax(""); setExpenseMax(""); setStdDevMax(""); setSharpeMin("")
   }
 
   return (
@@ -413,6 +429,40 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
             </div>
           </div>
 
+          {/* Range filters */}
+          <div className="mt-4 border-t pt-3" style={{ borderColor: "#e9edf2" }}>
+            <span className="mb-2.5 block text-[10px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Range Filters</span>
+            <div className="flex flex-wrap gap-x-5 gap-y-3">
+              <div className="flex items-center gap-1.5">
+                <span className="w-[58px] text-[11px] font-medium" style={{ color: "#64748b" }}>Yield %</span>
+                <input type="number" step="0.1" placeholder="Min" value={yieldMin} onChange={e => setYieldMin(e.target.value)}
+                  className="h-7 w-[60px] rounded border px-2 text-[11px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} />
+                <span className="text-[10px]" style={{ color: "#94a3b8" }}>to</span>
+                <input type="number" step="0.1" placeholder="Max" value={yieldMax} onChange={e => setYieldMax(e.target.value)}
+                  className="h-7 w-[60px] rounded border px-2 text-[11px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-[58px] text-[11px] font-medium" style={{ color: "#64748b" }}>Expense</span>
+                <span className="text-[10px]" style={{ color: "#94a3b8" }}>max</span>
+                <input type="number" step="0.01" placeholder="e.g. 0.5" value={expenseMax} onChange={e => setExpenseMax(e.target.value)}
+                  className="h-7 w-[68px] rounded border px-2 text-[11px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} />
+                <span className="text-[10px]" style={{ color: "#94a3b8" }}>%</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-[58px] text-[11px] font-medium" style={{ color: "#64748b" }}>Std Dev</span>
+                <span className="text-[10px]" style={{ color: "#94a3b8" }}>max</span>
+                <input type="number" step="0.1" placeholder="e.g. 3" value={stdDevMax} onChange={e => setStdDevMax(e.target.value)}
+                  className="h-7 w-[60px] rounded border px-2 text-[11px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-[58px] text-[11px] font-medium" style={{ color: "#64748b" }}>Sharpe</span>
+                <span className="text-[10px]" style={{ color: "#94a3b8" }}>min</span>
+                <input type="number" step="0.1" placeholder="e.g. 1" value={sharpeMin} onChange={e => setSharpeMin(e.target.value)}
+                  className="h-7 w-[60px] rounded border px-2 text-[11px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} />
+              </div>
+            </div>
+          </div>
+
           {hasActiveFilters && (
             <button onClick={clearFilters} className="mt-3 text-[11px] font-medium underline" style={{ color: PRIMARY }}>
               Clear all filters
@@ -441,6 +491,10 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis
                 type="number" dataKey="x" name={xAxis.label}
+                domain={[
+                  (dataMin: number) => Math.max(0, Math.floor(dataMin * 0.9 * 10) / 10),
+                  (dataMax: number) => Math.ceil(dataMax * 1.1 * 10) / 10,
+                ]}
                 tick={{ fontSize: 11, fill: "#94a3b8" }}
                 tickFormatter={v => xAxis.format(v)}
                 tickLine={{ stroke: "#e2e8f0" }}

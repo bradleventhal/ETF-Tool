@@ -1,83 +1,79 @@
 import { NextRequest, NextResponse } from "next/server"
 
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+
+async function tryYahooV10(ticker: string): Promise<{ rating: number | null; category: string | null }> {
+  const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=fundProfile,defaultKeyStatistics`
+  const res = await fetch(url, { headers: { "User-Agent": UA } })
+  if (!res.ok) return { rating: null, category: null }
+  const json = await res.json()
+  const result = json?.quoteSummary?.result?.[0]
+  const cat = result?.fundProfile?.categoryName || null
+  const rawRating = result?.defaultKeyStatistics?.morningStarOverallRating?.raw
+  const rating = rawRating >= 1 && rawRating <= 5 ? rawRating : null
+  console.log("[v0] Yahoo v10 result for", ticker, "rating:", rating, "category:", cat)
+  return { rating, category: cat }
+}
+
+async function tryYahooV6(ticker: string): Promise<{ rating: number | null; category: string | null }> {
+  const url = `https://query1.finance.yahoo.com/v6/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=fundProfile,defaultKeyStatistics`
+  const res = await fetch(url, { headers: { "User-Agent": UA } })
+  if (!res.ok) return { rating: null, category: null }
+  const json = await res.json()
+  const result = json?.quoteSummary?.result?.[0]
+  const cat = result?.fundProfile?.categoryName || null
+  const rawRating = result?.defaultKeyStatistics?.morningStarOverallRating?.raw
+  const rating = rawRating >= 1 && rawRating <= 5 ? rawRating : null
+  console.log("[v0] Yahoo v6 result for", ticker, "rating:", rating, "category:", cat)
+  return { rating, category: cat }
+}
+
+async function tryMorningstarScrape(ticker: string): Promise<{ rating: number | null; category: string | null }> {
+  const searchUrl = `https://www.morningstar.com/search?query=${encodeURIComponent(ticker)}`
+  const res = await fetch(searchUrl, {
+    headers: { "User-Agent": UA, "Accept": "text/html,application/xhtml+xml" },
+  })
+  if (!res.ok) return { rating: null, category: null }
+  const html = await res.text()
+
+  const ratingMatch = html.match(/"starRating"\s*:\s*(\d)/i)
+    || html.match(/"overallRating"\s*:\s*(\d)/i)
+    || html.match(/"performanceRating"\s*:\s*(\d)/i)
+  const rawRating = ratingMatch ? parseInt(ratingMatch[1]) : null
+  const rating = rawRating && rawRating >= 1 && rawRating <= 5 ? rawRating : null
+
+  const catMatch = html.match(/"categoryName"\s*:\s*"([^"]+)"/i)
+  const category = catMatch ? catMatch[1] : null
+  console.log("[v0] Morningstar scrape result for", ticker, "rating:", rating, "category:", category)
+  return { rating, category }
+}
+
 export async function GET(req: NextRequest) {
   const ticker = req.nextUrl.searchParams.get("ticker")
   if (!ticker) return NextResponse.json({ error: "ticker required" }, { status: 400 })
 
+  let rating: number | null = null
+  let category: string | null = null
+
+  // Try multiple sources in parallel
   try {
-    // Scrape Morningstar search page to get the star rating
-    const searchUrl = `https://www.morningstar.com/search?query=${encodeURIComponent(ticker)}`
-    const res = await fetch(searchUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml",
-      },
-    })
+    const [yahoo10, yahoo6, mstar] = await Promise.allSettled([
+      tryYahooV10(ticker),
+      tryYahooV6(ticker),
+      tryMorningstarScrape(ticker),
+    ])
 
-    if (!res.ok) throw new Error(`Morningstar returned ${res.status}`)
-    const html = await res.text()
-
-    // Look for star rating pattern in the HTML
-    const ratingMatch = html.match(/"starRating"\s*:\s*(\d)/i)
-      || html.match(/"overallRating"\s*:\s*(\d)/i)
-      || html.match(/"performanceRating"\s*:\s*(\d)/i)
-      || html.match(/rating["\s]*[:=]\s*(\d)/i)
-      || html.match(/(\d)\s*star/i)
-      || html.match(/mstar-rating["\s:]+(\d)/i)
-
-    const rating = ratingMatch ? parseInt(ratingMatch[1]) : null
-    let validRating = rating && rating >= 1 && rating <= 5 ? rating : null
-
-    // Also try to extract category from Morningstar HTML
-    const catMatch = html.match(/"categoryName"\s*:\s*"([^"]+)"/i)
-    let category = catMatch ? catMatch[1] : null
-
-    // Use Yahoo Finance as fallback for both rating and category
-    if (!validRating || !category) {
-      try {
-        const yahooUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=fundProfile,defaultKeyStatistics`
-        const yahooRes = await fetch(yahooUrl, {
-          headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" },
-        })
-        if (yahooRes.ok) {
-          const yahooJson = await yahooRes.json()
-          const result = yahooJson?.quoteSummary?.result?.[0]
-          if (!category) {
-            const yahooCat = result?.fundProfile?.categoryName
-            if (yahooCat) category = yahooCat
-          }
-          if (!validRating) {
-            const yahooRating = result?.defaultKeyStatistics?.morningStarOverallRating?.raw
-              || result?.defaultKeyStatistics?.morningStarRiskRating?.raw
-            if (yahooRating && yahooRating >= 1 && yahooRating <= 5) validRating = yahooRating
-          }
-        }
-      } catch {
-        // Yahoo fallback failed, that's fine
+    // Merge results: prefer Yahoo for rating (structured data), Morningstar for category
+    for (const result of [yahoo10, yahoo6, mstar]) {
+      if (result.status === "fulfilled") {
+        if (!rating && result.value.rating) rating = result.value.rating
+        if (!category && result.value.category) category = result.value.category
       }
     }
-
-    console.log("[v0] Morningstar result:", ticker, "rating:", validRating, "category:", category)
-    return NextResponse.json({ ticker, morningstarRating: validRating, category })
   } catch (err) {
-    console.error("[v0] Morningstar fetch error:", err)
-    // Even if Morningstar fails entirely, try Yahoo for both
-    try {
-      const yahooUrl = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=fundProfile,defaultKeyStatistics`
-      const yahooRes = await fetch(yahooUrl, {
-        headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36" },
-      })
-      if (yahooRes.ok) {
-        const yahooJson = await yahooRes.json()
-        const result = yahooJson?.quoteSummary?.result?.[0]
-        const yahooCat = result?.fundProfile?.categoryName || null
-        const yahooRating = result?.defaultKeyStatistics?.morningStarOverallRating?.raw || null
-        const validYahooRating = yahooRating && yahooRating >= 1 && yahooRating <= 5 ? yahooRating : null
-        if (yahooCat || validYahooRating) {
-          return NextResponse.json({ ticker, morningstarRating: validYahooRating, category: yahooCat })
-        }
-      }
-    } catch { /* ignore */ }
-    return NextResponse.json({ ticker, morningstarRating: null, category: null })
+    console.error("[v0] All sources failed for", ticker, err)
   }
+
+  console.log("[v0] Final morningstar result:", ticker, "rating:", rating, "category:", category)
+  return NextResponse.json({ ticker, morningstarRating: rating, category })
 }

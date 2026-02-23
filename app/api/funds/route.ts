@@ -1,41 +1,47 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
+function num(v: unknown): number | null {
+  if (v == null) return null
+  const n = Number(v)
+  return isNaN(n) ? null : n
+}
+
 function rowToFund(r: Record<string, unknown>) {
   return {
     ticker: r.ticker,
     name: r.name,
     asOfDate: r.as_of_date,
-    duration: r.duration,
-    ytwYtm: r.ytw_ytm,
-    distributionYield: r.distribution_yield,
-    secYield: r.sec_yield,
-    expense: r.expense,
-    correlation: r.correlation,
-    stdDev: r.std_dev,
-    sharpe: r.sharpe,
-    ytd: r.ytd,
-    oneYear: r.one_year,
-    commonInception: r.common_inception,
-    threeYear: r.three_year,
-    nonAgencyRmbs: r.non_agency_rmbs,
-    agencyRmbs: r.agency_rmbs,
-    abs: r.abs,
-    clo: r.clo,
-    cmbs: r.cmbs,
-    securitized: r.securitized,
-    corporateCredit: r.corporate_credit,
-    governmentCash: r.government_cash,
-    other: r.other,
-    aaa: r.aaa,
-    aa: r.aa,
-    a: r.a,
-    bbb: r.bbb,
-    bb: r.bb,
-    b: r.b,
-    ccc: r.ccc,
-    belowCcc: r.below_ccc,
-    creditOther: r.credit_other,
+    duration: num(r.duration),
+    ytwYtm: num(r.ytw_ytm),
+    distributionYield: num(r.distribution_yield),
+    secYield: num(r.sec_yield),
+    expense: num(r.expense),
+    correlation: num(r.correlation),
+    stdDev: num(r.std_dev),
+    sharpe: num(r.sharpe),
+    ytd: num(r.ytd),
+    oneYear: num(r.one_year),
+    commonInception: num(r.common_inception),
+    threeYear: num(r.three_year),
+    nonAgencyRmbs: num(r.non_agency_rmbs),
+    agencyRmbs: num(r.agency_rmbs),
+    abs: num(r.abs),
+    clo: num(r.clo),
+    cmbs: num(r.cmbs),
+    securitized: num(r.securitized),
+    corporateCredit: num(r.corporate_credit),
+    governmentCash: num(r.government_cash),
+    other: num(r.other),
+    aaa: num(r.aaa),
+    aa: num(r.aa),
+    a: num(r.a),
+    bbb: num(r.bbb),
+    bb: num(r.bb),
+    b: num(r.b),
+    ccc: num(r.ccc),
+    belowCcc: num(r.below_ccc),
+    creditOther: num(r.credit_other),
   }
 }
 

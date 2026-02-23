@@ -324,6 +324,7 @@ export default function Page() {
           </div>
 
           {/* Multi-competitor chips */}
+          {console.log("[v0] competitors state:", competitors, "tickerA:", tickerA, "tickerB:", tickerB)}
           {competitors.length > 0 && (
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
               <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>Comparing vs:</span>
