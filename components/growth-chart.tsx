@@ -129,14 +129,17 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
       .then(r => r.json())
       .then(json => {
         if (json.commonInceptionDate) setCiDate(json.commonInceptionDate)
-        if (json.recommended) {
-          setRecDate(json.recommended)
-          if (mode === "advisor") {
-            // Auto-apply best timeframe in advisor mode
-            setCustomStart(json.recommended)
-            setCustomEnd(todayStr())
-            setUseCustom(true)
-          }
+        if (json.recommended) setRecDate(json.recommended)
+
+        if (mode === "advisor" && json.recommended) {
+          // Advisor mode: auto-select the most favorable timeframe
+          setCustomStart(json.recommended)
+          setCustomEnd(todayStr())
+          setUseCustom(true)
+        } else if (mode === "internal" && json.commonInceptionDate) {
+          // Internal mode: default to common inception
+          setPreset("CI")
+          setUseCustom(false)
         }
       })
       .catch(() => { /* silently fail, just use default preset */ })
