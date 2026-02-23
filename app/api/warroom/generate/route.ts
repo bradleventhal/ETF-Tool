@@ -165,6 +165,8 @@ export async function POST(req: Request) {
     const deltas = computeDeltas(fundA, fundB)
     const dataPayload = buildDataPayload(fundA, fundB, yahoo, deltas)
 
+    console.log("[v0] War room generate called for", fundA.ticker, "vs", fundB.ticker, "- calling AI SDK generateText...")
+
     const result = await generateText({
       model: "openai/gpt-4o-mini",
       system: SYSTEM_PROMPT,
