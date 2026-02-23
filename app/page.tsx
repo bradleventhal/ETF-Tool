@@ -109,6 +109,7 @@ export default function Page() {
   const [refreshingRatings, setRefreshingRatings] = useState(false)
   const [section, setSection] = useState<"comparison" | "lookup" | "map">("lookup")
   const [lookupTicker, setLookupTicker] = useState("")
+  const [cameFromMap, setCameFromMap] = useState(false)
 
   useEffect(() => {
     fetch("/api/funds")
@@ -289,7 +290,7 @@ export default function Page() {
       <div className="border-b" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
         <div className="mx-auto flex max-w-6xl px-3 sm:px-6">
           <button
-            onClick={() => setSection("lookup")}
+            onClick={() => { setSection("lookup"); setCameFromMap(false) }}
             className="flex min-h-[44px] items-center gap-1.5 border-b-2 px-4 py-2.5 text-[12px] font-semibold uppercase tracking-wider transition-colors sm:text-[13px]"
             style={{
               borderColor: section === "lookup" ? "#0f3d6b" : "transparent",
@@ -561,6 +562,7 @@ export default function Page() {
           highlightTicker={undefined}
           onSelectFund={(t) => {
             setLookupTicker(t)
+            setCameFromMap(true)
             setSection("lookup")
           }}
         />
@@ -571,8 +573,20 @@ export default function Page() {
       {section === "lookup" && (
       <div className="mx-auto max-w-6xl px-3 sm:px-6">
         <div className="border-b py-4 sm:py-5" style={{ borderColor: "#e2e8f0" }}>
-          <div className="max-w-sm">
-            <TickerInput label="Look Up Fund" value={lookupTicker} onChange={setLookupTicker} options={tickers} />
+          <div className="flex items-end gap-4">
+            <div className="max-w-sm flex-1">
+              <TickerInput label="Look Up Fund" value={lookupTicker} onChange={(v) => { setLookupTicker(v); if (!v) setCameFromMap(false) }} options={tickers} />
+            </div>
+            {cameFromMap && (
+              <button
+                onClick={() => { setSection("map"); setCameFromMap(false) }}
+                className="mb-0.5 flex h-10 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-semibold transition-all hover:bg-[#f0f7ff]"
+                style={{ borderColor: "#e2e8f0", color: "#0f3d6b" }}
+              >
+                <Crosshair className="h-3.5 w-3.5" />
+                Back to Map
+              </button>
+            )}
           </div>
         </div>
 

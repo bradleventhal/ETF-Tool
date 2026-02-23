@@ -269,8 +269,21 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
       return {
         ticker: f.ticker, name: f.name, x: xVal, y: yVal,
         isHighlighted: f.ticker === highlightTicker,
+        // Extra stats for tooltip
+        ytwYtm: f.ytwYtm != null ? f.ytwYtm * 100 : null,
+        secYield: f.secYield != null ? f.secYield * 100 : null,
+        duration: f.duration,
+        expense: f.expense != null ? f.expense * 100 : null,
+        stdDev: f.stdDev,
+        sharpe: f.sharpe,
+        creditQuality: cs != null ? creditLabel(cs) : null,
+        morningstarRating: f.morningstarRating,
+        morningstarCategory: f.morningstarCategory,
+        ytd: f.ytd != null ? f.ytd * 100 : null,
+        oneYear: f.oneYear != null ? f.oneYear * 100 : null,
+        threeYear: f.threeYear != null ? f.threeYear * 100 : null,
       }
-    }).filter(Boolean) as { ticker: string; name: string; x: number; y: number; isHighlighted: boolean }[]
+    }).filter(Boolean) as { ticker: string; name: string; x: number; y: number; isHighlighted: boolean; ytwYtm: number | null; secYield: number | null; duration: number | null; expense: number | null; stdDev: number | null; sharpe: number | null; creditQuality: string | null; morningstarRating: number | null; morningstarCategory: string | null; ytd: number | null; oneYear: number | null; threeYear: number | null }[]
 
     return {
       sortedData: points.sort((a, b) => a.x - b.x),
@@ -301,13 +314,39 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
   const CustomTooltip = ({ active, payload }: any) => {
     if (!active || !payload?.[0]?.payload) return null
     const d = payload[0].payload
+    const fmtPct = (v: number | null) => v != null ? `${v.toFixed(2)}%` : "—"
+    const fmtNum = (v: number | null) => v != null ? v.toFixed(2) : "—"
+    const stats: { label: string; value: string }[] = [
+      { label: "YTW / YTM", value: fmtPct(d.ytwYtm) },
+      { label: "SEC Yield", value: fmtPct(d.secYield) },
+      { label: "Duration", value: d.duration != null ? `${d.duration.toFixed(2)} yrs` : "—" },
+      { label: "Expense", value: fmtPct(d.expense) },
+      { label: "Credit", value: d.creditQuality ?? "—" },
+      { label: "Std Dev", value: fmtNum(d.stdDev) },
+      { label: "Sharpe", value: fmtNum(d.sharpe) },
+      { label: "YTD", value: fmtPct(d.ytd) },
+      { label: "1Y", value: fmtPct(d.oneYear) },
+      { label: "3Y", value: fmtPct(d.threeYear) },
+    ].filter(s => s.value !== "—")
     return (
-      <div className="rounded-lg border px-3 py-2 shadow-lg" style={{ backgroundColor: "#fff", borderColor: "#e2e8f0" }}>
-        <div className="text-xs font-bold" style={{ color: PRIMARY }}>{d.ticker}</div>
-        <div className="text-[10px]" style={{ color: "#64748b" }}>{d.name}</div>
-        <div className="mt-1 flex gap-3 text-[10px] font-semibold" style={{ color: "#334155" }}>
-          <span>{xAxis.label}: {xAxis.format(d.x)}</span>
-          <span>{yAxis.label}: {yAxis.format(d.y)}</span>
+      <div className="rounded-lg border px-3 py-2.5 shadow-lg" style={{ backgroundColor: "#fff", borderColor: "#e2e8f0", minWidth: 200 }}>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold" style={{ color: PRIMARY }}>{d.ticker}</span>
+          {d.morningstarRating != null && d.morningstarRating > 0 && (
+            <span className="text-[10px]" style={{ color: "#f59e0b" }}>{"★".repeat(d.morningstarRating)}</span>
+          )}
+        </div>
+        <div className="text-[10px] leading-snug" style={{ color: "#64748b" }}>{d.name}</div>
+        {d.morningstarCategory && (
+          <div className="mt-0.5 text-[9px] font-medium" style={{ color: "#94a3b8" }}>{d.morningstarCategory}</div>
+        )}
+        <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-0.5 border-t pt-1.5" style={{ borderColor: "#f1f5f9" }}>
+          {stats.map(s => (
+            <div key={s.label} className="flex items-baseline justify-between gap-2">
+              <span className="text-[9px]" style={{ color: "#94a3b8" }}>{s.label}</span>
+              <span className="text-[10px] font-semibold tabular-nums" style={{ color: "#334155" }}>{s.value}</span>
+            </div>
+          ))}
         </div>
       </div>
     )
