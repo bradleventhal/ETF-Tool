@@ -54,9 +54,9 @@ export function CompetitorWarRoom({ warRoom, competitorTicker, ourTicker, polish
   return (
     <div className="space-y-3">
       {/* Overall Difficulty Rating */}
-      <div className="flex items-start gap-3 rounded border p-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+      <div className="flex items-start gap-2.5 rounded border p-3 sm:gap-3 sm:p-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
         <Shield size={18} style={{ color: "#0f3d6b", flexShrink: 0, marginTop: 2 }} />
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex flex-wrap items-center gap-2">
             <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#0f3d6b" }}>Competitive Difficulty</span>
             <DifficultyBadge tier={warRoom.overallDifficulty} />
@@ -81,7 +81,7 @@ export function CompetitorWarRoom({ warRoom, competitorTicker, ourTicker, polish
 
       {/* Layup — no sections needed */}
       {warRoom.isLayup && warRoom.layupMessage && (
-        <div className="rounded border-l-4 p-5" style={{ borderColor: "#22c55e", backgroundColor: "#f0fdf4" }}>
+        <div className="rounded border-l-4 p-3.5 sm:p-5" style={{ borderColor: "#22c55e", backgroundColor: "#f0fdf4" }}>
           <p className="text-sm leading-relaxed" style={{ color: "#166534" }}>{warRoom.layupMessage}</p>
         </div>
       )}
@@ -91,11 +91,11 @@ export function CompetitorWarRoom({ warRoom, competitorTicker, ourTicker, polish
         <div className="overflow-hidden rounded border" style={{ borderColor: pitchOpen ? "#fca5a5" : "#e2e8f0", transition: "border-color 0.2s" }}>
           <button
             onClick={() => setPitchOpen(!pitchOpen)}
-            className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors"
+            className="flex w-full items-center gap-2.5 px-3.5 py-3 text-left transition-colors sm:gap-3 sm:px-5 sm:py-3.5"
             style={{ backgroundColor: pitchOpen ? "#fef2f2" : "#fafafa" }}
           >
             <Shield size={16} style={{ color: "#dc2626", flexShrink: 0 }} />
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#dc2626" }}>
                 How {competitorTicker} Would Pitch Against You
               </span>
@@ -116,13 +116,13 @@ export function CompetitorWarRoom({ warRoom, competitorTicker, ourTicker, polish
               {warRoom.competitorArguments.map((arg, i) => (
                 <div
                   key={arg.id}
-                  className="px-5 py-4"
+                  className="px-3.5 py-3 sm:px-5 sm:py-4"
                   style={{ borderBottom: i < warRoom.competitorArguments.length - 1 ? "1px solid #fee2e2" : undefined, backgroundColor: i % 2 === 0 ? "#fff" : "#fffbfb" }}
                 >
-                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <div className="mb-2 flex flex-wrap items-center gap-1.5 sm:gap-2">
                     <span className="text-xs font-bold" style={{ color: "#991b1b" }}>{arg.metric}</span>
                     <DifficultyBadge tier={arg.difficulty} />
-                    <span className="text-[10px] font-mono" style={{ color: "#94a3b8" }}>
+                    <span className="block w-full text-[10px] font-mono sm:inline sm:w-auto" style={{ color: "#94a3b8" }}>
                       {arg.theirValue} vs {arg.ourValue}
                     </span>
                   </div>
@@ -141,11 +141,11 @@ export function CompetitorWarRoom({ warRoom, competitorTicker, ourTicker, polish
         <div className="overflow-hidden rounded border" style={{ borderColor: rebuttalsOpen ? "#93c5fd" : "#e2e8f0", transition: "border-color 0.2s" }}>
           <button
             onClick={() => setRebuttalsOpen(!rebuttalsOpen)}
-            className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors"
+            className="flex w-full items-center gap-2.5 px-3.5 py-3 text-left transition-colors sm:gap-3 sm:px-5 sm:py-3.5"
             style={{ backgroundColor: rebuttalsOpen ? "#eff6ff" : "#fafafa" }}
           >
             <MessageSquare size={16} style={{ color: "#0f3d6b", flexShrink: 0 }} />
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#0f3d6b" }}>
                 Recommended Responses
               </span>
@@ -166,7 +166,7 @@ export function CompetitorWarRoom({ warRoom, competitorTicker, ourTicker, polish
               {warRoom.rebuttals.map((reb, i) => (
                 <div
                   key={reb.argumentId}
-                  className="px-5 py-4"
+                  className="px-3.5 py-3 sm:px-5 sm:py-4"
                   style={{ borderBottom: i < warRoom.rebuttals.length - 1 ? "1px solid #dbeafe" : undefined, backgroundColor: i % 2 === 0 ? "#fff" : "#f8fbff" }}
                 >
                   <div className="mb-2 flex flex-wrap items-center gap-2">

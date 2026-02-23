@@ -24,24 +24,26 @@ export function ComparisonTable({ title, rows, tickerA, tickerB, highlight = fal
 
   return (
     <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-      <table className="w-full text-sm">
-        <thead>
-          <tr style={{ backgroundColor: "#f1f5f9", borderBottom: "1px solid #e2e8f0" }}>
-            <th className="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>{title}</th>
-            <th className="px-4 py-2.5 text-right font-mono text-[11px] font-bold uppercase tracking-wider" style={{ color: "#0f3d6b" }}>{tickerA}</th>
-            <th className="px-4 py-2.5 text-right font-mono text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>{tickerB}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={row.label} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: i < rows.length - 1 ? "1px solid #f1f5f9" : undefined }}>
-              <td className="px-4 py-2 text-[13px]" style={{ color: "#64748b" }}>{row.label}</td>
-              <td className="px-4 py-2 text-right font-mono text-[13px]" style={cellStyle(row, "a")}>{row.a}</td>
-              <td className="px-4 py-2 text-right font-mono text-[13px]" style={cellStyle(row, "b")}>{row.b}</td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ backgroundColor: "#f1f5f9", borderBottom: "1px solid #e2e8f0" }}>
+              <th className="px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider sm:px-4" style={{ color: "#64748b" }}>{title}</th>
+              <th className="px-3 py-2.5 text-right font-mono text-[11px] font-bold uppercase tracking-wider sm:px-4" style={{ color: "#0f3d6b" }}>{tickerA}</th>
+              <th className="px-3 py-2.5 text-right font-mono text-[11px] font-bold uppercase tracking-wider sm:px-4" style={{ color: "#64748b" }}>{tickerB}</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={row.label} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: i < rows.length - 1 ? "1px solid #f1f5f9" : undefined }}>
+                <td className="whitespace-nowrap px-3 py-2 text-[12px] sm:px-4 sm:text-[13px]" style={{ color: "#64748b" }}>{row.label}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-[12px] sm:px-4 sm:text-[13px]" style={cellStyle(row, "a")}>{row.a}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-[12px] sm:px-4 sm:text-[13px]" style={cellStyle(row, "b")}>{row.b}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

@@ -81,7 +81,8 @@ export function TickerInput({ label, value, onChange, options, placeholder = "Se
               onFocus={() => { setIsOpen(true); setHlIdx(0) }}
               onKeyDown={onKey}
               placeholder={placeholder}
-              className="h-10 w-full rounded-md border border-border bg-card px-3 pl-9 text-sm text-foreground shadow-sm placeholder:text-muted-foreground/50 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/10"
+              className="h-11 w-full rounded-md border border-border bg-card px-3 pl-9 text-foreground shadow-sm placeholder:text-muted-foreground/50 focus:border-primary/40 focus:outline-none focus:ring-2 focus:ring-primary/10 sm:h-10 sm:text-sm"
+              style={{ fontSize: 16 }}
               autoComplete="off"
             />
           </>
