@@ -1,0 +1,251 @@
+"use client"
+
+import { useState, useEffect, useCallback } from "react"
+import { SectorPieChart } from "@/components/sector-pie-chart"
+import { Loader2 } from "lucide-react"
+import type { FundData } from "@/lib/fund-types"
+
+function nz(v: number | null): number { return v == null || isNaN(v) ? 0 : v }
+function fPct(v: number | null, d = 2): string { return v == null || isNaN(v) || v === 0 ? "\u2014" : (v * 100).toFixed(d) + "%" }
+function fNum(v: number | null, d = 2): string { return v == null || isNaN(v) ? "\u2014" : v.toFixed(d) }
+
+function avgCreditQuality(d: FundData): string {
+  const buckets = [
+    { label: "AAA", v: nz(d.aaa), rank: 1 }, { label: "AA", v: nz(d.aa), rank: 2 },
+    { label: "A", v: nz(d.a), rank: 3 }, { label: "BBB", v: nz(d.bbb), rank: 4 },
+    { label: "BB", v: nz(d.bb), rank: 5 }, { label: "B", v: nz(d.b), rank: 6 },
+    { label: "CCC", v: nz(d.ccc), rank: 7 }, { label: "Below CCC", v: nz(d.belowCcc), rank: 8 },
+  ]
+  let totalWeight = 0, weightedRank = 0
+  buckets.forEach(b => { if (b.v > 0) { totalWeight += b.v; weightedRank += b.v * b.rank } })
+  if (totalWeight === 0) return "N/A"
+  const avg = weightedRank / totalWeight
+  if (avg <= 1.5) return "AAA"; if (avg <= 2.5) return "AA"; if (avg <= 3.5) return "A"
+  if (avg <= 4.5) return "BBB"; if (avg <= 5.5) return "BB"; if (avg <= 6.5) return "B"
+  if (avg <= 7.5) return "CCC"; return "Below CCC"
+}
+
+function durCategory(d: number): string {
+  if (d < 1) return "Ultrashort"
+  if (d < 2) return "Short"
+  if (d < 5) return "Intermediate"
+  if (d < 7) return "Core/Core Plus"
+  return "Long Duration"
+}
+
+interface FundInsights {
+  performanceDrivers: string[]
+  tailwinds: string[]
+  headwinds: string[]
+  positioning: string
+}
+
+function StatRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <tr style={{ backgroundColor: highlight ? "#f0f7ff" : "#fff", borderBottom: "1px solid #f1f5f9" }}>
+      <td className="px-2.5 py-1.5 text-[12px] sm:px-4 sm:text-[13px]" style={{ color: "#64748b" }}>{label}</td>
+      <td className="px-2.5 py-1.5 text-right font-mono text-[12px] font-medium sm:px-4 sm:text-[13px]" style={{ color: "#334155" }}>{value}</td>
+    </tr>
+  )
+}
+
+function InsightSection({ title, items, color }: { title: string; items: string[]; color: string }) {
+  if (items.length === 0) return null
+  return (
+    <div>
+      <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wider" style={{ color }}>{title}</h4>
+      <ul className="space-y-1.5">
+        {items.map((item, i) => (
+          <li key={i} className="flex gap-2.5 text-sm leading-relaxed" style={{ color: "#1e293b" }}>
+            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+export function FundLookup({ fund }: { fund: FundData }) {
+  const [insights, setInsights] = useState<FundInsights | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const fetchInsights = useCallback(() => {
+    setLoading(true)
+    setInsights(null)
+    fetch("/api/fund-lookup/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fund }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data && !data.error && data.performanceDrivers) {
+          setInsights(data)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [fund])
+
+  useEffect(() => { fetchInsights() }, [fetchInsights])
+
+  const sectorData = [
+    { name: "Non-Agency RMBS", value: nz(fund.nonAgencyRmbs) },
+    { name: "Agency RMBS", value: nz(fund.agencyRmbs) },
+    { name: "ABS", value: nz(fund.abs) },
+    { name: "CLO", value: nz(fund.clo) },
+    { name: "CMBS", value: nz(fund.cmbs) },
+    { name: "Corporate Credit", value: nz(fund.corporateCredit) },
+    { name: "Government/Cash", value: nz(fund.governmentCash) },
+    { name: "Other", value: nz(fund.other) },
+  ].filter(d => d.value > 0.005)
+
+  const creditData = [
+    { name: "AAA", value: nz(fund.aaa) },
+    { name: "AA", value: nz(fund.aa) },
+    { name: "A", value: nz(fund.a) },
+    { name: "BBB", value: nz(fund.bbb) },
+    { name: "BB", value: nz(fund.bb) },
+    { name: "B", value: nz(fund.b) },
+    { name: "CCC", value: nz(fund.ccc) },
+    { name: "Below CCC", value: nz(fund.belowCcc) },
+  ].filter(d => d.value > 0.005)
+
+  const dur = nz(fund.duration)
+  const avgCredit = avgCreditQuality(fund)
+  const securitized = nz(fund.nonAgencyRmbs) + nz(fund.clo) + nz(fund.abs)
+
+  return (
+    <div className="space-y-4 py-4 sm:space-y-6 sm:py-6">
+      {/* Fund Header */}
+      <div className="rounded border-l-4 p-4 sm:p-5" style={{ borderColor: "#0f3d6b", backgroundColor: "#f0f7ff" }}>
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-lg font-bold tracking-tight sm:text-xl" style={{ color: "#0f3d6b" }}>{fund.ticker}</h2>
+            <p className="mt-0.5 text-sm" style={{ color: "#64748b" }}>{fund.name}</p>
+          </div>
+          <div className="text-right">
+            <span className="rounded px-2 py-0.5 text-[11px] font-bold uppercase" style={{ backgroundColor: "#0f3d6b", color: "#fff" }}>
+              {durCategory(dur)}
+            </span>
+            <p className="mt-1 text-[10px]" style={{ color: "#94a3b8" }}>Duration: {fNum(fund.duration)} yrs</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Key Statistics */}
+      <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+        <div className="border-b px-3 py-2.5 sm:px-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
+          <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Key Statistics</h4>
+        </div>
+        <table className="w-full text-sm">
+          <tbody>
+            <StatRow label="30-Day SEC Yield" value={fPct(fund.secYield)} highlight />
+            <StatRow label="Distribution Yield" value={fPct(fund.distributionYield)} />
+            <StatRow label="YTW / YTM" value={fPct(fund.ytwYtm)} highlight />
+            <StatRow label="Duration" value={fNum(fund.duration) + " yrs"} />
+            <StatRow label="Avg Credit Quality" value={avgCredit} highlight />
+            <StatRow label="Std Deviation" value={fNum(fund.stdDev)} />
+            <StatRow label="Sharpe Ratio" value={fNum(fund.sharpe)} highlight />
+            <StatRow label="Expense Ratio" value={fPct(fund.expense)} />
+          </tbody>
+        </table>
+      </div>
+
+      {/* Performance */}
+      <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+        <div className="border-b px-3 py-2.5 sm:px-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
+          <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Performance</h4>
+        </div>
+        <table className="w-full text-sm">
+          <tbody>
+            <StatRow label="YTD" value={fPct(fund.ytd)} />
+            <StatRow label="1 Year" value={fPct(fund.oneYear)} highlight />
+            <StatRow label="3 Year (ann.)" value={fPct(fund.threeYear)} />
+            <StatRow label="Since Common Inception" value={fPct(fund.commonInception)} highlight />
+          </tbody>
+        </table>
+      </div>
+
+      {/* Sector & Credit Side by Side */}
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+        <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+          <div className="border-b px-3 py-2.5 sm:px-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
+            <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Sector Allocation</h4>
+          </div>
+          <div className="p-3 sm:p-4">
+            <SectorPieChart data={sectorData} ticker={fund.ticker} mode="internal" />
+          </div>
+          <div className="border-t" style={{ borderColor: "#f1f5f9" }}>
+            <table className="w-full text-sm">
+              <tbody>
+                {sectorData.map((s, i) => (
+                  <tr key={s.name} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: "1px solid #f1f5f9" }}>
+                    <td className="px-2.5 py-1.5 text-[12px] sm:px-4 sm:text-[13px]" style={{ color: "#64748b" }}>{s.name}</td>
+                    <td className="px-2.5 py-1.5 text-right font-mono text-[12px] sm:px-4 sm:text-[13px]" style={{ color: "#334155" }}>{(s.value * 100).toFixed(1)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+          <div className="border-b px-3 py-2.5 sm:px-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
+            <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Credit Quality</h4>
+          </div>
+          <div className="p-3 sm:p-4">
+            <SectorPieChart data={creditData} ticker={fund.ticker} subtitle={"Avg Credit Quality: " + avgCredit} mode="internal" />
+          </div>
+          <div className="border-t" style={{ borderColor: "#f1f5f9" }}>
+            <table className="w-full text-sm">
+              <tbody>
+                {creditData.map((c, i) => (
+                  <tr key={c.name} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: "1px solid #f1f5f9" }}>
+                    <td className="px-2.5 py-1.5 text-[12px] sm:px-4 sm:text-[13px]" style={{ color: "#64748b" }}>{c.name}</td>
+                    <td className="px-2.5 py-1.5 text-right font-mono text-[12px] sm:px-4 sm:text-[13px]" style={{ color: "#334155" }}>{(c.value * 100).toFixed(1)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* GPT Insights */}
+      <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+        <div className="border-b px-3 py-2.5 sm:px-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
+          <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>
+            Fund Analysis
+            {loading && <Loader2 className="ml-2 inline-block h-3 w-3 animate-spin" style={{ color: "#94a3b8" }} />}
+          </h4>
+        </div>
+        <div className="p-4 sm:p-5">
+          {loading && !insights && (
+            <div className="flex items-center gap-2 py-6 text-sm" style={{ color: "#94a3b8" }}>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Analyzing {fund.ticker}...
+            </div>
+          )}
+          {insights && (
+            <div className="space-y-5">
+              <InsightSection title="Performance Drivers" items={insights.performanceDrivers} color="#0f3d6b" />
+              <InsightSection title="Tailwinds" items={insights.tailwinds} color="#16a34a" />
+              <InsightSection title="Headwinds" items={insights.headwinds} color="#dc2626" />
+              {insights.positioning && (
+                <div>
+                  <h4 className="mb-2 text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Positioning Summary</h4>
+                  <p className="text-sm leading-relaxed" style={{ color: "#334155" }}>{insights.positioning}</p>
+                </div>
+              )}
+            </div>
+          )}
+          {!loading && !insights && (
+            <p className="py-4 text-center text-sm" style={{ color: "#94a3b8" }}>Analysis unavailable</p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}

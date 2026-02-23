@@ -14,8 +14,9 @@ import { runAnalysis } from "@/lib/analysis-engine"
 import { buildWarRoom } from "@/lib/competitor-pitch"
 import { CompetitorWarRoom } from "@/components/competitor-war-room"
 import { FundChat } from "@/components/fund-chat"
+import { FundLookup } from "@/components/fund-lookup"
 import type { FundData, AnalysisMode, AnalysisResult, WarRoom, YahooAnalytics } from "@/lib/fund-types"
-import { Upload, X, Loader2, ArrowRightLeft } from "lucide-react"
+import { Upload, X, Loader2, ArrowRightLeft, Search, BarChart3 } from "lucide-react"
 
 function NegTable({ rows, tickerA, tickerB, label, viewMode }: {
   rows: { label: string; a: string; b: string; nA: number | null; nB: number | null }[]
@@ -101,6 +102,8 @@ export default function Page() {
   const [polishing, setPolishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showUpload, setShowUpload] = useState(false)
+  const [section, setSection] = useState<"comparison" | "lookup">("comparison")
+  const [lookupTicker, setLookupTicker] = useState("")
 
   useEffect(() => {
     fetch("/api/funds")
@@ -226,7 +229,7 @@ export default function Page() {
           <div className="flex items-center gap-2 sm:gap-4">
             <img src="/images/angel-oak-logo.svg" alt="Angel Oak Capital Advisors" className="h-[28px] w-auto sm:h-[34px]" />
             <div className="hidden sm:block" style={{ width: 1, height: 24, backgroundColor: "rgba(255,255,255,0.2)" }} />
-            <span className="hidden text-sm font-semibold tracking-tight sm:inline" style={{ color: "rgba(255,255,255,0.9)" }}>Fund Comparison</span>
+            <span className="hidden text-sm font-semibold tracking-tight sm:inline" style={{ color: "rgba(255,255,255,0.9)" }}>Fund Analytics</span>
           </div>
           <div className="flex flex-col items-end gap-0.5">
             <button onClick={() => setShowUpload(!showUpload)} className="flex min-h-[44px] items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors" style={{ color: "rgba(255,255,255,0.7)" }}>
@@ -240,6 +243,34 @@ export default function Page() {
         </div>
       </header>
 
+      {/* Section Nav */}
+      <div className="border-b" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+        <div className="mx-auto flex max-w-6xl px-3 sm:px-6">
+          <button
+            onClick={() => setSection("comparison")}
+            className="flex min-h-[44px] items-center gap-1.5 border-b-2 px-4 py-2.5 text-[12px] font-semibold uppercase tracking-wider transition-colors sm:text-[13px]"
+            style={{
+              borderColor: section === "comparison" ? "#0f3d6b" : "transparent",
+              color: section === "comparison" ? "#0f3d6b" : "#94a3b8",
+            }}
+          >
+            <BarChart3 className="h-3.5 w-3.5" />
+            Fund Comparison
+          </button>
+          <button
+            onClick={() => setSection("lookup")}
+            className="flex min-h-[44px] items-center gap-1.5 border-b-2 px-4 py-2.5 text-[12px] font-semibold uppercase tracking-wider transition-colors sm:text-[13px]"
+            style={{
+              borderColor: section === "lookup" ? "#0f3d6b" : "transparent",
+              color: section === "lookup" ? "#0f3d6b" : "#94a3b8",
+            }}
+          >
+            <Search className="h-3.5 w-3.5" />
+            Fund Lookup
+          </button>
+        </div>
+      </div>
+
       {showUpload && (
         <div className="border-b px-3 py-5 sm:px-6" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
           <div className="mx-auto max-w-sm">
@@ -248,6 +279,8 @@ export default function Page() {
         </div>
       )}
 
+      {/* ===== FUND COMPARISON SECTION ===== */}
+      {section === "comparison" && (
       <div className="mx-auto max-w-6xl px-3 sm:px-6">
         <div className="flex flex-col gap-3 border-b py-4 sm:flex-row sm:items-end sm:gap-4 sm:py-5" style={{ borderColor: "#e2e8f0" }}>
           <div className="min-w-0 flex-1">
@@ -385,12 +418,37 @@ export default function Page() {
             )}
 
             <div className="pt-4 text-center" style={{ borderTop: "1px solid #e2e8f0" }}>
-              <img src="/images/logo.png" alt="Angel Oak Capital Advisors" className="mx-auto opacity-40" style={{ width: 120, height: "auto" }} />
+              <img src="/images/angel-oak-logo.svg" alt="Angel Oak Capital Advisors" className="mx-auto opacity-20 brightness-0" style={{ width: 120, height: "auto" }} />
               <p className="mt-2 text-[10px]" style={{ color: "#94a3b8" }}>For informational purposes only. Past performance is not indicative of future results.</p>
             </div>
           </div>
         )}
       </div>
+      )}
+
+      {/* ===== FUND LOOKUP SECTION ===== */}
+      {section === "lookup" && (
+      <div className="mx-auto max-w-6xl px-3 sm:px-6">
+        <div className="border-b py-4 sm:py-5" style={{ borderColor: "#e2e8f0" }}>
+          <div className="max-w-sm">
+            <TickerInput label="Look Up Fund" value={lookupTicker} onChange={setLookupTicker} options={tickers} />
+          </div>
+        </div>
+
+        {!lookupTicker && (
+          <div className="flex flex-col items-center justify-center py-20 text-center sm:py-28">
+            <Search className="h-8 w-8" style={{ color: "#e2e8f0" }} />
+            <p className="mt-4 text-sm" style={{ color: "#94a3b8" }}>Search for a fund to view its profile</p>
+          </div>
+        )}
+
+        {lookupTicker && (() => {
+          const fund = funds.find(f => f.ticker === lookupTicker)
+          if (!fund) return null
+          return <FundLookup fund={fund} />
+        })()}
+      </div>
+      )}
     </main>
   )
 }
