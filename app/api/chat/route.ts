@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { generateText } from 'ai'
 
 export const maxDuration = 60
 
@@ -32,7 +32,7 @@ Behavior:
 - If a thesis lacks asymmetry, say so clearly.
 - If entry point limits upside, explain why.
 - If the logic is strong, validate it briefly.
-- If it's flawed, explain the flaw concisely.
+- If it is flawed, explain the flaw concisely.
 - Ask clarifying questions only when necessary -- not as a reflex.
 
 CRITICAL RULE -- STAY ON TOPIC:
@@ -47,41 +47,27 @@ export async function POST(req: Request) {
   try {
     const body = await req.json()
     const userMessages: { role: string; content: string }[] = body.messages || []
-    const fundContext: string = body.fundContext || ""
+    const fundContext: string = body.fundContext || ''
 
     const systemContent = fundContext
-      ? SYSTEM_PROMPT + "\n\nCURRENT FUND COMPARISON DATA:\n" + fundContext
+      ? SYSTEM_PROMPT + '\n\nCURRENT FUND COMPARISON DATA:\n' + fundContext
       : SYSTEM_PROMPT
 
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemContent },
-          ...userMessages.map(m => ({ role: m.role, content: m.content })),
-        ],
-        temperature: 0.2,
-        max_tokens: 800,
-      }),
+    const { text } = await generateText({
+      model: 'openai/gpt-4o-mini',
+      system: systemContent,
+      messages: userMessages.map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      })),
+      temperature: 0.2,
+      maxOutputTokens: 800,
     })
 
-    if (!res.ok) {
-      const errBody = await res.text()
-      console.error("[v0] OpenAI API error:", res.status, errBody)
-      return NextResponse.json({ error: `OpenAI error: ${res.status}` }, { status: 500 })
-    }
-
-    const data = await res.json()
-    const text = data.choices?.[0]?.message?.content || "No response generated."
-    return NextResponse.json({ content: text })
+    return Response.json({ content: text || 'No response generated.' })
   } catch (err: unknown) {
-    console.error("[v0] Chat error:", err)
-    const message = err instanceof Error ? err.message : "Unknown error"
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error('[v0] Chat error:', err)
+    const message = err instanceof Error ? err.message : 'Unknown error'
+    return Response.json({ error: message }, { status: 500 })
   }
 }
