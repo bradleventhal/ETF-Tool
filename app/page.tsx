@@ -247,17 +247,6 @@ export default function Page() {
       <div className="border-b" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
         <div className="mx-auto flex max-w-6xl px-3 sm:px-6">
           <button
-            onClick={() => setSection("comparison")}
-            className="flex min-h-[44px] items-center gap-1.5 border-b-2 px-4 py-2.5 text-[12px] font-semibold uppercase tracking-wider transition-colors sm:text-[13px]"
-            style={{
-              borderColor: section === "comparison" ? "#0f3d6b" : "transparent",
-              color: section === "comparison" ? "#0f3d6b" : "#94a3b8",
-            }}
-          >
-            <BarChart3 className="h-3.5 w-3.5" />
-            Fund Comparison
-          </button>
-          <button
             onClick={() => setSection("lookup")}
             className="flex min-h-[44px] items-center gap-1.5 border-b-2 px-4 py-2.5 text-[12px] font-semibold uppercase tracking-wider transition-colors sm:text-[13px]"
             style={{
@@ -267,6 +256,17 @@ export default function Page() {
           >
             <Search className="h-3.5 w-3.5" />
             Fund Lookup
+          </button>
+          <button
+            onClick={() => setSection("comparison")}
+            className="flex min-h-[44px] items-center gap-1.5 border-b-2 px-4 py-2.5 text-[12px] font-semibold uppercase tracking-wider transition-colors sm:text-[13px]"
+            style={{
+              borderColor: section === "comparison" ? "#0f3d6b" : "transparent",
+              color: section === "comparison" ? "#0f3d6b" : "#94a3b8",
+            }}
+          >
+            <BarChart3 className="h-3.5 w-3.5" />
+            Fund Comparison
           </button>
         </div>
       </div>
