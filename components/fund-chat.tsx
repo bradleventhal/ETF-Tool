@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useRef, useEffect, useMemo, useCallback } from "react"
+import { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import type { AnalysisResult } from "@/lib/fund-types"
 import { MessageSquare, Send, ChevronDown } from "lucide-react"
 
@@ -8,54 +8,6 @@ interface ChatMessage {
   id: string
   role: "user" | "assistant"
   content: string
-}
-
-/** Render markdown-lite: **bold**, - bullets, numbered lists, line breaks */
-function renderMarkdown(text: string) {
-  const lines = text.split("\n")
-  const elements: React.ReactNode[] = []
-  let listItems: React.ReactNode[] = []
-  let listType: "ul" | "ol" | null = null
-
-  const flushList = () => {
-    if (listItems.length > 0) {
-      if (listType === "ol") {
-        elements.push(<ol key={`ol-${elements.length}`} className="my-1.5 list-decimal space-y-0.5 pl-5">{listItems}</ol>)
-      } else {
-        elements.push(<ul key={`ul-${elements.length}`} className="my-1.5 list-disc space-y-0.5 pl-5">{listItems}</ul>)
-      }
-      listItems = []
-      listType = null
-    }
-  }
-
-  const inlineBold = (str: string) => {
-    const parts = str.split(/\*\*(.+?)\*\*/g)
-    return parts.map((part, i) => i % 2 === 1 ? <strong key={i}>{part}</strong> : part)
-  }
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    const bulletMatch = line.match(/^\s*[-*]\s+(.+)/)
-    const numberedMatch = line.match(/^\s*\d+[.)]\s+(.+)/)
-
-    if (bulletMatch) {
-      if (listType !== "ul") { flushList(); listType = "ul" }
-      listItems.push(<li key={`li-${i}`}>{inlineBold(bulletMatch[1])}</li>)
-    } else if (numberedMatch) {
-      if (listType !== "ol") { flushList(); listType = "ol" }
-      listItems.push(<li key={`li-${i}`}>{inlineBold(numberedMatch[1])}</li>)
-    } else {
-      flushList()
-      if (line.trim() === "") {
-        elements.push(<br key={`br-${i}`} />)
-      } else {
-        elements.push(<p key={`p-${i}`} className="my-1">{inlineBold(line)}</p>)
-      }
-    }
-  }
-  flushList()
-  return <>{elements}</>
 }
 
 function buildFundContext(result: AnalysisResult): string {
