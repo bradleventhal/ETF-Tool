@@ -7,63 +7,54 @@ function nz(v: number | null): number { return v == null || isNaN(v) ? 0 : v }
 function fPct(v: number | null, d = 2): string { return v == null || isNaN(v) || v === 0 ? "\u2014" : (v * 100).toFixed(d) + "%" }
 function fNum(v: number | null, d = 2): string { return v == null || isNaN(v) ? "\u2014" : v.toFixed(d) }
 
-/** Attempt to scrape commentary/insights from the fund company's website */
+/** Fetch fund profile + commentary via multiple public sources */
 async function fetchCommentary(ticker: string, fundName: string): Promise<string | null> {
-  // Known fund family commentary URLs
-  const commentaryUrls: string[] = []
+  const snippets: string[] = []
 
-  const nameLower = fundName.toLowerCase()
-  if (nameLower.includes("angel oak")) {
-    commentaryUrls.push(
-      `https://www.angeloakcapital.com/strategies`,
-      `https://www.angeloakcapital.com/insights`,
-    )
-  } else if (nameLower.includes("pimco")) {
-    commentaryUrls.push(`https://www.pimco.com/us/en/investments/mutual-funds/${ticker.toLowerCase()}`)
-  } else if (nameLower.includes("blackrock") || nameLower.includes("ishares")) {
-    commentaryUrls.push(`https://www.blackrock.com/us/individual/products/fund-details/${ticker.toLowerCase()}`)
-  } else if (nameLower.includes("vanguard")) {
-    commentaryUrls.push(`https://investor.vanguard.com/investment-products/mutual-funds/profile/${ticker.toLowerCase()}`)
-  } else if (nameLower.includes("fidelity")) {
-    commentaryUrls.push(`https://fundresearch.fidelity.com/mutual-funds/summary/${ticker}`)
-  } else if (nameLower.includes("jpmorgan") || nameLower.includes("jp morgan")) {
-    commentaryUrls.push(`https://am.jpmorgan.com/us/en/asset-management/adv/products/fund-details/${ticker.toLowerCase()}`)
-  } else if (nameLower.includes("lord abbett")) {
-    commentaryUrls.push(`https://www.lordabbett.com/en-us/financial-advisor/investments/mutual-funds/${ticker.toLowerCase()}.html`)
-  } else if (nameLower.includes("doubleline")) {
-    commentaryUrls.push(`https://doubleline.com/funds/`)
-  }
-
-  // Also try Morningstar analysis page as a universal fallback
-  commentaryUrls.push(`https://www.morningstar.com/funds/xnas/${ticker.toLowerCase()}/quote`)
-
-  for (const url of commentaryUrls) {
-    try {
-      const res = await fetch(url, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          "Accept": "text/html",
-        },
-        signal: AbortSignal.timeout(5000),
-      })
-      if (!res.ok) continue
+  // 1. Try Yahoo Finance fund profile page (usually has a description + holdings summary)
+  try {
+    const yahooUrl = `https://finance.yahoo.com/quote/${encodeURIComponent(ticker)}/profile/`
+    const res = await fetch(yahooUrl, {
+      headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+      signal: AbortSignal.timeout(5000),
+    })
+    if (res.ok) {
       const html = await res.text()
-
-      // Strip HTML tags and extract readable text
-      const text = html
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-        .replace(/<[^>]+>/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-
-      // Take first 4000 chars of meaningful content
-      if (text.length > 200) {
-        return text.slice(0, 4000)
-      }
-    } catch {
-      continue
+      const text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "").replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+      if (text.length > 300) snippets.push("YAHOO PROFILE:\n" + text.slice(0, 2000))
     }
+  } catch { /* skip */ }
+
+  // 2. Try MarketWatch fund page
+  try {
+    const mwUrl = `https://www.marketwatch.com/investing/fund/${ticker.toLowerCase()}`
+    const res = await fetch(mwUrl, {
+      headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+      signal: AbortSignal.timeout(5000),
+    })
+    if (res.ok) {
+      const html = await res.text()
+      const text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "").replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+      if (text.length > 300) snippets.push("MARKETWATCH:\n" + text.slice(0, 2000))
+    }
+  } catch { /* skip */ }
+
+  // 3. Try ETF.com for ETFs
+  try {
+    const etfUrl = `https://www.etf.com/${ticker.toUpperCase()}`
+    const res = await fetch(etfUrl, {
+      headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+      signal: AbortSignal.timeout(5000),
+    })
+    if (res.ok) {
+      const html = await res.text()
+      const text = html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "").replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+      if (text.length > 300) snippets.push("ETF.COM:\n" + text.slice(0, 2000))
+    }
+  } catch { /* skip */ }
+
+  if (snippets.length > 0) {
+    return snippets.join("\n\n---\n\n")
   }
   return null
 }
