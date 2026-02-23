@@ -94,7 +94,7 @@ export function PerformanceChart({ tickerA, tickerB }: Props) {
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={data} barCategoryGap="30%">
+            <BarChart data={data} barCategoryGap="30%" barGap={4} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
               <XAxis dataKey="period" tick={{ fontSize: 12, fill: "#475569", fontWeight: 600 }} axisLine={{ stroke: "#cbd5e1" }} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v.toFixed(1)}%`} width={48} />
@@ -106,10 +106,26 @@ export function PerformanceChart({ tickerA, tickerB }: Props) {
               />
               <Legend wrapperStyle={{ fontSize: 12, paddingTop: 12, color: "#475569" }} />
               <Bar dataKey="fundA" name={tickerA} fill={navy} radius={[3, 3, 0, 0]}>
-                <LabelList dataKey="fundA" position="top" formatter={(v: number) => `${v.toFixed(1)}%`} style={{ fontSize: 10, fill: "#475569", fontWeight: 600 }} />
+                <LabelList dataKey="fundA" position="top" offset={8} formatter={(v: number) => `${v.toFixed(1)}%`}
+                  style={{ fontSize: 10, fill: navy, fontWeight: 700 }}
+                  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+                  content={({ x, y, width, value }: any) => (
+                    <text x={(x ?? 0) + (width ?? 0) / 2} y={(y ?? 0) - 6} textAnchor="middle" fontSize={10} fontWeight={700} fill={navy}>
+                      {`${Number(value).toFixed(1)}%`}
+                    </text>
+                  )}
+                />
               </Bar>
               <Bar dataKey="fundB" name={tickerB} fill={steel} radius={[3, 3, 0, 0]}>
-                <LabelList dataKey="fundB" position="top" formatter={(v: number) => `${v.toFixed(1)}%`} style={{ fontSize: 10, fill: "#94a3b8", fontWeight: 600 }} />
+                <LabelList dataKey="fundB" position="top" offset={8} formatter={(v: number) => `${v.toFixed(1)}%`}
+                  style={{ fontSize: 10, fill: steel, fontWeight: 700 }}
+                  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+                  content={({ x, y, width, value }: any) => (
+                    <text x={(x ?? 0) + (width ?? 0) / 2} y={(y ?? 0) - 6} textAnchor="middle" fontSize={10} fontWeight={700} fill={steel}>
+                      {`${Number(value).toFixed(1)}%`}
+                    </text>
+                  )}
+                />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
