@@ -119,22 +119,19 @@ function TickerDot(props: any) {
   )
 }
 
-/* ── Toggle chip (light bg with colored left border when active, not filled dark) ── */
+/* ── Toggle chip ── */
 function Chip({ label, active, count, onClick }: { label: string; active: boolean; count?: number; onClick: () => void }) {
   return (
     <button onClick={onClick}
-      className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-all"
+      className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-all"
       style={{
-        backgroundColor: active ? "#f0f7ff" : "#fff",
-        color: active ? PRIMARY : "#94a3b8",
-        border: `1px solid ${active ? "#bbd4ee" : "#e2e8f0"}`,
-        borderLeft: active ? `3px solid ${PRIMARY}` : `1px solid #e2e8f0`,
-        textDecoration: active ? "none" : "line-through",
+        backgroundColor: active ? PRIMARY : "#f1f5f9",
+        color: active ? "#fff" : "#94a3b8",
       }}
     >
       {label}
       {count !== undefined && (
-        <span className="text-[9px] font-bold tabular-nums" style={{ color: active ? "#3b82f6" : "#cbd5e1" }}>{count}</span>
+        <span className="text-[9px] font-bold tabular-nums" style={{ opacity: 0.7 }}>{count}</span>
       )}
     </button>
   )
@@ -285,8 +282,13 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: PRIMARY }}>Fund Universe Map</h3>
-        <span className="text-[11px] font-semibold tabular-nums" style={{ color: DOT_DEFAULT }}>
-          {sortedData.length} of {funds.length} funds plotted
+        <span className="text-[11px] font-semibold tabular-nums" style={{ color: sortedData.length === funds.length ? "#94a3b8" : DOT_DEFAULT }}>
+          {sortedData.length === funds.length
+            ? `${funds.length} funds`
+            : `${sortedData.length} of ${funds.length} funds`}
+          {sortedData.length < funds.length && !hasActiveFilters && (
+            <span className="ml-1 font-normal" style={{ color: "#94a3b8" }}>(some lack data for these axes)</span>
+          )}
         </span>
       </div>
 
@@ -381,126 +383,112 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
 
       {/* ═══ FILTER PANEL ═══ */}
       {showFilters && (
-        <div className="mb-4 space-y-3">
-          {/* Category filters row */}
-          <div className="rounded-lg border p-3" style={{ borderColor: "#e9edf2", backgroundColor: "#fafbfc" }}>
-            <div className="grid gap-4 sm:grid-cols-[1fr_1fr]">
-              {/* Morningstar Category */}
-              <div>
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#475569" }}>Category</span>
-                  <button onClick={() => setMstarCats(allMstarSelected ? new Set() : new Set(MSTAR_CATEGORIES))}
-                    className="text-[10px] font-medium" style={{ color: PRIMARY }}>{allMstarSelected ? "Deselect all" : "Select all"}</button>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {MSTAR_CATEGORIES.map(c => (
-                    <Chip key={c} label={c} active={mstarCats.has(c)} count={mstarCatCounts[c] || 0}
-                      onClick={() => { const s = new Set(mstarCats); s.has(c) ? s.delete(c) : s.add(c); setMstarCats(s) }} />
-                  ))}
-                </div>
-              </div>
-              {/* Duration + Credit side by side */}
-              <div className="space-y-3">
-                <div>
-                  <div className="mb-1.5 flex items-center gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#475569" }}>Duration Bucket</span>
-                    <button onClick={() => setDurationCats(allDurSelected ? new Set() : new Set(DURATION_CATEGORIES.map(c => c.label)))}
-                      className="text-[10px] font-medium" style={{ color: PRIMARY }}>{allDurSelected ? "Deselect" : "All"}</button>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {DURATION_CATEGORIES.map(c => (
-                      <Chip key={c.label} label={`${c.label} ${c.max === 100 ? "6y+" : `<${c.max}y`}`} active={durationCats.has(c.label)}
-                        onClick={() => { const s = new Set(durationCats); s.has(c.label) ? s.delete(c.label) : s.add(c.label); setDurationCats(s) }} />
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <div className="mb-1.5 flex items-center gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#475569" }}>Credit Quality</span>
-                    <button onClick={() => setCreditCats(allCreditSelected ? new Set() : new Set(CREDIT_CATS))}
-                      className="text-[10px] font-medium" style={{ color: PRIMARY }}>{allCreditSelected ? "Deselect" : "All"}</button>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {CREDIT_CATS.map(c => (
-                      <Chip key={c} label={c} active={creditCats.has(c)}
-                        onClick={() => { const s = new Set(creditCats); s.has(c) ? s.delete(c) : s.add(c); setCreditCats(s) }} />
-                    ))}
-                  </div>
-                </div>
-              </div>
+        <div className="mb-4 overflow-hidden rounded-lg border" style={{ borderColor: "#e2e8f0" }}>
+          {/* Filter header */}
+          <div className="flex items-center justify-between px-3 py-2" style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid #e9edf2" }}>
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#475569" }}>Filters</span>
+            {hasActiveFilters && (
+              <button onClick={clearFilters} className="text-[10px] font-semibold" style={{ color: "#dc2626" }}>Reset all</button>
+            )}
+          </div>
+
+          {/* Row 1: Category */}
+          <div className="flex items-start gap-3 border-b px-3 py-2" style={{ borderColor: "#f1f5f9" }}>
+            <div className="flex w-[70px] shrink-0 items-center gap-1 pt-0.5">
+              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Category</span>
+              <button onClick={() => setMstarCats(allMstarSelected ? new Set() : new Set(MSTAR_CATEGORIES))}
+                className="text-[9px]" style={{ color: PRIMARY }}>{allMstarSelected ? "clear" : "all"}</button>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {MSTAR_CATEGORIES.map(c => (
+                <Chip key={c} label={c} active={mstarCats.has(c)} count={mstarCatCounts[c] || 0}
+                  onClick={() => { const s = new Set(mstarCats); s.has(c) ? s.delete(c) : s.add(c); setMstarCats(s) }} />
+              ))}
             </div>
           </div>
 
-          {/* Numeric filters row */}
-          <div className="rounded-lg border p-3" style={{ borderColor: "#e9edf2", backgroundColor: "#fafbfc" }}>
-            <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
-              {/* Yield range */}
-              <div>
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider" style={{ color: "#475569" }}>Yield %</span>
-                <div className="flex items-center gap-1">
-                  <input type="number" value={yieldMin} onChange={e => setYieldMin(e.target.value)} placeholder="Min"
-                    className="h-7 w-[60px] rounded border px-1.5 text-[11px] tabular-nums" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.5" />
-                  <span className="text-[10px]" style={{ color: "#94a3b8" }}>to</span>
-                  <input type="number" value={yieldMax} onChange={e => setYieldMax(e.target.value)} placeholder="Max"
-                    className="h-7 w-[60px] rounded border px-1.5 text-[11px] tabular-nums" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.5" />
-                </div>
-              </div>
-              {/* Duration range */}
-              <div>
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider" style={{ color: "#475569" }}>Duration (yrs)</span>
-                <div className="flex items-center gap-1">
-                  <input type="number" value={durationMin} onChange={e => setDurationMin(e.target.value)} placeholder="Min"
-                    className="h-7 w-[60px] rounded border px-1.5 text-[11px] tabular-nums" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.5" />
-                  <span className="text-[10px]" style={{ color: "#94a3b8" }}>to</span>
-                  <input type="number" value={durationMax} onChange={e => setDurationMax(e.target.value)} placeholder="Max"
-                    className="h-7 w-[60px] rounded border px-1.5 text-[11px] tabular-nums" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.5" />
-                </div>
-              </div>
-              {/* Expense max */}
-              <div>
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider" style={{ color: "#475569" }}>Expense %</span>
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px]" style={{ color: "#94a3b8" }}>max</span>
-                  <input type="number" value={expenseMax} onChange={e => setExpenseMax(e.target.value)} placeholder="e.g. 1"
-                    className="h-7 w-[60px] rounded border px-1.5 text-[11px] tabular-nums" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.1" />
-                </div>
-              </div>
-              {/* Sharpe min */}
-              <div>
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider" style={{ color: "#475569" }}>Sharpe</span>
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px]" style={{ color: "#94a3b8" }}>min</span>
-                  <input type="number" value={sharpeMin} onChange={e => setSharpeMin(e.target.value)} placeholder="e.g. 0.5"
-                    className="h-7 w-[60px] rounded border px-1.5 text-[11px] tabular-nums" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.1" />
-                </div>
-              </div>
-              {/* StdDev max */}
-              <div>
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider" style={{ color: "#475569" }}>Std Dev</span>
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px]" style={{ color: "#94a3b8" }}>max</span>
-                  <input type="number" value={stdDevMax} onChange={e => setStdDevMax(e.target.value)} placeholder="e.g. 5"
-                    className="h-7 w-[60px] rounded border px-1.5 text-[11px] tabular-nums" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.25" />
-                </div>
-              </div>
-              {/* Star rating */}
-              <div>
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider" style={{ color: "#475569" }}>Min Stars</span>
-                <div className="flex h-7 items-center gap-0.5">
-                  {[1, 2, 3, 4, 5].map(s => (
-                    <button key={s} onClick={() => setStarMin(s === starMin ? 0 : s)}
-                      className="text-base leading-none transition-all" style={{ color: s <= starMin ? "#f59e0b" : "#d1d5db" }}
-                      aria-label={`${s} stars minimum`}
-                    >{"★"}</button>
-                  ))}
-                </div>
-              </div>
-              {/* Clear all */}
-              {hasActiveFilters && (
-                <button onClick={clearFilters} className="h-7 rounded-md px-2.5 text-[10px] font-semibold" style={{ color: PRIMARY, backgroundColor: "#f0f7ff", border: `1px solid ${PRIMARY}` }}>
-                  Clear all
-                </button>
-              )}
+          {/* Row 2: Duration */}
+          <div className="flex items-center gap-3 border-b px-3 py-2" style={{ borderColor: "#f1f5f9" }}>
+            <div className="flex w-[70px] shrink-0 items-center gap-1">
+              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Duration</span>
+              <button onClick={() => setDurationCats(allDurSelected ? new Set() : new Set(DURATION_CATEGORIES.map(c => c.label)))}
+                className="text-[9px]" style={{ color: PRIMARY }}>{allDurSelected ? "clear" : "all"}</button>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {DURATION_CATEGORIES.map(c => (
+                <Chip key={c.label} label={`${c.label} ${c.max === 100 ? "6y+" : `<${c.max}y`}`} active={durationCats.has(c.label)}
+                  onClick={() => { const s = new Set(durationCats); s.has(c.label) ? s.delete(c.label) : s.add(c.label); setDurationCats(s) }} />
+              ))}
+            </div>
+          </div>
+
+          {/* Row 3: Credit */}
+          <div className="flex items-center gap-3 border-b px-3 py-2" style={{ borderColor: "#f1f5f9" }}>
+            <div className="flex w-[70px] shrink-0 items-center gap-1">
+              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Credit</span>
+              <button onClick={() => setCreditCats(allCreditSelected ? new Set() : new Set(CREDIT_CATS))}
+                className="text-[9px]" style={{ color: PRIMARY }}>{allCreditSelected ? "clear" : "all"}</button>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {CREDIT_CATS.map(c => (
+                <Chip key={c} label={c} active={creditCats.has(c)}
+                  onClick={() => { const s = new Set(creditCats); s.has(c) ? s.delete(c) : s.add(c); setCreditCats(s) }} />
+              ))}
+            </div>
+          </div>
+
+          {/* Row 4: Numeric ranges + stars (all inline) */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2" style={{ backgroundColor: "#fafbfc" }}>
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Yield</span>
+              <input type="number" value={yieldMin} onChange={e => setYieldMin(e.target.value)} placeholder="min"
+                className="h-6 w-[48px] rounded border px-1 text-center text-[10px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.5" />
+              <span className="text-[9px]" style={{ color: "#cbd5e1" }}>-</span>
+              <input type="number" value={yieldMax} onChange={e => setYieldMax(e.target.value)} placeholder="max"
+                className="h-6 w-[48px] rounded border px-1 text-center text-[10px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.5" />
+              <span className="text-[9px]" style={{ color: "#94a3b8" }}>%</span>
+            </div>
+            <div className="h-4 w-px" style={{ backgroundColor: "#e2e8f0" }} />
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Dur</span>
+              <input type="number" value={durationMin} onChange={e => setDurationMin(e.target.value)} placeholder="min"
+                className="h-6 w-[48px] rounded border px-1 text-center text-[10px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.5" />
+              <span className="text-[9px]" style={{ color: "#cbd5e1" }}>-</span>
+              <input type="number" value={durationMax} onChange={e => setDurationMax(e.target.value)} placeholder="max"
+                className="h-6 w-[48px] rounded border px-1 text-center text-[10px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.5" />
+              <span className="text-[9px]" style={{ color: "#94a3b8" }}>yrs</span>
+            </div>
+            <div className="h-4 w-px" style={{ backgroundColor: "#e2e8f0" }} />
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Exp</span>
+              <span className="text-[9px]" style={{ color: "#94a3b8" }}>{"<"}</span>
+              <input type="number" value={expenseMax} onChange={e => setExpenseMax(e.target.value)} placeholder="max"
+                className="h-6 w-[48px] rounded border px-1 text-center text-[10px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.1" />
+              <span className="text-[9px]" style={{ color: "#94a3b8" }}>%</span>
+            </div>
+            <div className="h-4 w-px" style={{ backgroundColor: "#e2e8f0" }} />
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>Sharpe</span>
+              <span className="text-[9px]" style={{ color: "#94a3b8" }}>{">"}</span>
+              <input type="number" value={sharpeMin} onChange={e => setSharpeMin(e.target.value)} placeholder="min"
+                className="h-6 w-[48px] rounded border px-1 text-center text-[10px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.1" />
+            </div>
+            <div className="h-4 w-px" style={{ backgroundColor: "#e2e8f0" }} />
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] font-semibold" style={{ color: "#64748b" }}>StdDev</span>
+              <span className="text-[9px]" style={{ color: "#94a3b8" }}>{"<"}</span>
+              <input type="number" value={stdDevMax} onChange={e => setStdDevMax(e.target.value)} placeholder="max"
+                className="h-6 w-[48px] rounded border px-1 text-center text-[10px] tabular-nums outline-none focus:border-[#0f3d6b]" style={{ borderColor: "#e2e8f0", color: "#334155" }} step="0.25" />
+            </div>
+            <div className="h-4 w-px" style={{ backgroundColor: "#e2e8f0" }} />
+            <div className="flex items-center gap-0.5">
+              <span className="mr-0.5 text-[10px] font-semibold" style={{ color: "#64748b" }}>Stars</span>
+              {[1, 2, 3, 4, 5].map(s => (
+                <button key={s} onClick={() => setStarMin(s === starMin ? 0 : s)}
+                  className="text-sm leading-none transition-all" style={{ color: s <= starMin ? "#f59e0b" : "#d1d5db" }}
+                  aria-label={`${s} stars minimum`}
+                >{"★"}</button>
+              ))}
             </div>
           </div>
         </div>

@@ -18,7 +18,7 @@ import { ElevatorPitch } from "@/components/elevator-pitch"
 import { FundLookup } from "@/components/fund-lookup"
 import { FundUniverseMap } from "@/components/fund-universe-map"
 import type { FundData, AnalysisMode, AnalysisResult, WarRoom, YahooAnalytics } from "@/lib/fund-types"
-import { Upload, X, Loader2, ArrowRightLeft, Search, BarChart3, Crosshair } from "lucide-react"
+import { Upload, X, Loader2, ArrowRightLeft, Search, BarChart3, Crosshair, Star } from "lucide-react"
 
 function NegTable({ rows, tickerA, tickerB, label, viewMode }: {
   rows: { label: string; a: string; b: string; nA: number | null; nB: number | null }[]
@@ -106,6 +106,7 @@ export default function Page() {
   const [polishing, setPolishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showUpload, setShowUpload] = useState(false)
+  const [refreshingRatings, setRefreshingRatings] = useState(false)
   const [section, setSection] = useState<"comparison" | "lookup" | "map">("lookup")
   const [lookupTicker, setLookupTicker] = useState("")
 
@@ -123,6 +124,20 @@ export default function Page() {
   }, [])
 
   const tickers = useMemo(() => funds.map((f) => ({ ticker: f.ticker, name: f.name })), [funds])
+
+  const refreshRatings = useCallback(async () => {
+    setRefreshingRatings(true)
+    try {
+      const res = await fetch("/api/refresh-ratings", { method: "POST" })
+      if (res.ok) {
+        // Reload funds with updated ratings
+        const r = await fetch("/api/funds")
+        const json = await r.json()
+        if (json.funds?.length) setFunds(json.funds)
+      }
+    } catch { /* ignore */ }
+    setRefreshingRatings(false)
+  }, [])
 
   const handleFileLoaded = useCallback(async (buffer: ArrayBuffer, fileName: string) => {
     try {
@@ -236,9 +251,21 @@ export default function Page() {
           <div className="flex items-center gap-2 sm:gap-4">
             <img src="/images/angel-oak-logo.svg" alt="Angel Oak Capital Advisors" className="h-[28px] w-auto sm:h-[34px]" />
             <div className="hidden sm:block" style={{ width: 1, height: 24, backgroundColor: "rgba(255,255,255,0.2)" }} />
-            <span className="hidden text-sm font-semibold tracking-tight sm:inline" style={{ color: "rgba(255,255,255,0.9)" }}>Fund Analytics</span>
+            <span className="hidden text-sm font-semibold tracking-tight sm:inline" style={{ color: "rgba(255,255,255,0.9)" }}>
+              {section === "lookup" ? "Fund Lookup" : section === "comparison" ? "Fund Comparison" : "Fund Map"}
+            </span>
           </div>
-          <div className="flex flex-col items-end gap-0.5">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={refreshRatings}
+              disabled={refreshingRatings || funds.length === 0}
+              className="flex min-h-[44px] items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-40"
+              style={{ color: "rgba(255,255,255,0.7)" }}
+              title="Fetch real Morningstar star ratings from Yahoo Finance for all funds"
+            >
+              {refreshingRatings ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Star className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">{refreshingRatings ? "Fetching..." : "Refresh Ratings"}</span>
+            </button>
             <button onClick={() => setShowUpload(!showUpload)} className="flex min-h-[44px] items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors" style={{ color: "rgba(255,255,255,0.7)" }}>
               {showUpload ? <X className="h-3.5 w-3.5" /> : <Upload className="h-3.5 w-3.5" />}
               {showUpload ? "Close" : "Update Data"}
