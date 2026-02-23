@@ -94,10 +94,10 @@ export function PerformanceChart({ tickerA, tickerB }: Props) {
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={data} barCategoryGap="30%" barGap={4} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
+            <BarChart data={data} barCategoryGap="20%" barGap={4} margin={{ top: 24, right: 5, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
               <XAxis dataKey="period" tick={{ fontSize: 12, fill: "#475569", fontWeight: 600 }} axisLine={{ stroke: "#cbd5e1" }} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v.toFixed(1)}%`} width={48} />
+              <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${Math.round(v)}%`} width={36} domain={[0, (dataMax: number) => { const nice = [5, 10, 15, 20, 25, 30, 40, 50, 75, 100]; return nice.find(n => n >= dataMax * 1.1) ?? Math.ceil(dataMax / 10) * 10 }]} />
               <Tooltip
                 formatter={(value: number) => [`${value.toFixed(2)}%`]}
                 contentStyle={{ backgroundColor: "#fff", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: 12, padding: "8px 14px", color: "#1e293b", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
@@ -106,25 +106,31 @@ export function PerformanceChart({ tickerA, tickerB }: Props) {
               />
               <Legend wrapperStyle={{ fontSize: 12, paddingTop: 12, color: "#475569" }} />
               <Bar dataKey="fundA" name={tickerA} fill={navy} radius={[3, 3, 0, 0]}>
-                <LabelList dataKey="fundA" position="top" offset={8} formatter={(v: number) => `${v.toFixed(1)}%`}
-                  style={{ fontSize: 10, fill: navy, fontWeight: 700 }}
+                <LabelList dataKey="fundA" position="top"
                   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-                  content={({ x, y, width, value }: any) => (
-                    <text x={(x ?? 0) + (width ?? 0) / 2} y={(y ?? 0) - 6} textAnchor="middle" fontSize={10} fontWeight={700} fill={navy}>
-                      {`${Number(value).toFixed(1)}%`}
-                    </text>
-                  )}
+                  content={({ x, y, width, value }: any) => {
+                    const bx = (x ?? 0) + (width ?? 0) / 2
+                    const by = Math.min((y ?? 0) - 8, (y ?? 0) - 8)
+                    return (
+                      <text key={`a-${value}`} x={bx} y={by} textAnchor="middle" fontSize={11} fontWeight={700} fill={navy}>
+                        {`${Number(value).toFixed(1)}%`}
+                      </text>
+                    )
+                  }}
                 />
               </Bar>
               <Bar dataKey="fundB" name={tickerB} fill={steel} radius={[3, 3, 0, 0]}>
-                <LabelList dataKey="fundB" position="top" offset={8} formatter={(v: number) => `${v.toFixed(1)}%`}
-                  style={{ fontSize: 10, fill: steel, fontWeight: 700 }}
+                <LabelList dataKey="fundB" position="top"
                   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-                  content={({ x, y, width, value }: any) => (
-                    <text x={(x ?? 0) + (width ?? 0) / 2} y={(y ?? 0) - 6} textAnchor="middle" fontSize={10} fontWeight={700} fill={steel}>
-                      {`${Number(value).toFixed(1)}%`}
-                    </text>
-                  )}
+                  content={({ x, y, width, value }: any) => {
+                    const bx = (x ?? 0) + (width ?? 0) / 2
+                    const by = Math.min((y ?? 0) - 8, (y ?? 0) - 8)
+                    return (
+                      <text key={`b-${value}`} x={bx} y={by} textAnchor="middle" fontSize={11} fontWeight={700} fill={steel}>
+                        {`${Number(value).toFixed(1)}%`}
+                      </text>
+                    )
+                  }}
                 />
               </Bar>
             </BarChart>

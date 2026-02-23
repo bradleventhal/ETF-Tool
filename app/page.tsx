@@ -449,7 +449,7 @@ export default function Page() {
               subtitleA={"Avg Credit Quality: " + result.avgCreditA} subtitleB={"Avg Credit Quality: " + result.avgCreditB}
               rows={result.creditQuality} rowLabel="Rating" viewMode="internal" />
 
-            <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[1fr_2fr]">
               <PerformanceChart tickerA={result.tickerA} tickerB={result.tickerB} />
               <GrowthChart tickerA={result.tickerA} tickerB={result.tickerB} mode="internal" />
             </div>

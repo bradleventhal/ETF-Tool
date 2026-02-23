@@ -180,7 +180,7 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
     { name: "Corporate Credit", value: nz(fund.corporateCredit) },
     { name: "Government/Cash", value: nz(fund.governmentCash) },
     { name: "Other", value: nz(fund.other) },
-  ].filter(d => d.value > 0.005)
+  ].filter(d => d.value > 0.005).map(d => ({ ...d, value: Math.round(d.value * 1000) / 10 }))
 
   const creditData = [
     { name: "AAA", value: nz(fund.aaa) },
@@ -191,7 +191,7 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
     { name: "B", value: nz(fund.b) },
     { name: "CCC", value: nz(fund.ccc) },
     { name: "Below CCC", value: nz(fund.belowCcc) },
-  ].filter(d => d.value > 0.005)
+  ].filter(d => d.value > 0.005).map(d => ({ ...d, value: Math.round(d.value * 1000) / 10 }))
 
   const dur = nz(fund.duration)
   const avgCredit = avgCreditQuality(fund)
@@ -346,7 +346,7 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
                 {sectorData.map((s, i) => (
                   <tr key={s.name} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: "1px solid #f1f5f9" }}>
                     <td className="px-2.5 py-1.5 text-[12px] sm:px-4 sm:text-[13px]" style={{ color: "#64748b" }}>{s.name}</td>
-                    <td className="px-2.5 py-1.5 text-right font-mono text-[12px] sm:px-4 sm:text-[13px]" style={{ color: "#334155" }}>{(s.value * 100).toFixed(1)}%</td>
+                    <td className="px-2.5 py-1.5 text-right font-mono text-[12px] sm:px-4 sm:text-[13px]" style={{ color: "#334155" }}>{s.value.toFixed(1)}%</td>
                   </tr>
                 ))}
               </tbody>
@@ -367,7 +367,7 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
                 {creditData.map((c, i) => (
                   <tr key={c.name} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: "1px solid #f1f5f9" }}>
                     <td className="px-2.5 py-1.5 text-[12px] sm:px-4 sm:text-[13px]" style={{ color: "#64748b" }}>{c.name}</td>
-                    <td className="px-2.5 py-1.5 text-right font-mono text-[12px] sm:px-4 sm:text-[13px]" style={{ color: "#334155" }}>{(c.value * 100).toFixed(1)}%</td>
+                    <td className="px-2.5 py-1.5 text-right font-mono text-[12px] sm:px-4 sm:text-[13px]" style={{ color: "#334155" }}>{c.value.toFixed(1)}%</td>
                   </tr>
                 ))}
               </tbody>

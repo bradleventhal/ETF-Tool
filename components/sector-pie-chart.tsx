@@ -55,7 +55,7 @@ export function SectorPieChart({ data, ticker, subtitle, mode = "internal" }: Pr
               const display = original ? original.value : chartData[index].value
               return (
                 <text x={x} y={y} fill="#334155" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={isMobile ? 10 : 12} fontWeight={600}>
-                  {`${(display * 100).toFixed(1)}%`}
+                  {`${display.toFixed(1)}%`}
                 </text>
               )
             }}
@@ -69,7 +69,7 @@ export function SectorPieChart({ data, ticker, subtitle, mode = "internal" }: Pr
             formatter={(value: number, name: string) => {
               const original = sorted.find(d => d.name === name)
               const displayVal = original ? original.value : value
-              return [`${(displayVal * 100).toFixed(1)}%`, name]
+              return [`${displayVal.toFixed(1)}%`, name]
             }}
             contentStyle={{
               backgroundColor: "#fff",
