@@ -16,8 +16,9 @@ import { CompetitorWarRoom } from "@/components/competitor-war-room"
 import { FundChat } from "@/components/fund-chat"
 import { ElevatorPitch } from "@/components/elevator-pitch"
 import { FundLookup } from "@/components/fund-lookup"
+import { FundUniverseMap } from "@/components/fund-universe-map"
 import type { FundData, AnalysisMode, AnalysisResult, WarRoom, YahooAnalytics } from "@/lib/fund-types"
-import { Upload, X, Loader2, ArrowRightLeft, Search, BarChart3 } from "lucide-react"
+import { Upload, X, Loader2, ArrowRightLeft, Search, BarChart3, Crosshair } from "lucide-react"
 
 function NegTable({ rows, tickerA, tickerB, label, viewMode }: {
   rows: { label: string; a: string; b: string; nA: number | null; nB: number | null }[]
@@ -103,7 +104,7 @@ export default function Page() {
   const [polishing, setPolishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showUpload, setShowUpload] = useState(false)
-  const [section, setSection] = useState<"comparison" | "lookup">("lookup")
+  const [section, setSection] = useState<"comparison" | "lookup" | "map">("lookup")
   const [lookupTicker, setLookupTicker] = useState("")
 
   useEffect(() => {
@@ -269,6 +270,17 @@ export default function Page() {
             <BarChart3 className="h-3.5 w-3.5" />
             Fund Comparison
           </button>
+          <button
+            onClick={() => setSection("map")}
+            className="flex min-h-[44px] items-center gap-1.5 border-b-2 px-4 py-2.5 text-[12px] font-semibold uppercase tracking-wider transition-colors sm:text-[13px]"
+            style={{
+              borderColor: section === "map" ? "#0f3d6b" : "transparent",
+              color: section === "map" ? "#0f3d6b" : "#94a3b8",
+            }}
+          >
+            <Crosshair className="h-3.5 w-3.5" />
+            Fund Map
+          </button>
         </div>
       </div>
 
@@ -426,6 +438,20 @@ export default function Page() {
             </div>
           </div>
         )}
+      </div>
+      )}
+
+      {/* ===== FUND MAP SECTION ===== */}
+      {section === "map" && (
+      <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6 sm:py-6">
+        <FundUniverseMap
+          funds={funds}
+          highlightTicker={tickerA || undefined}
+          onSelectFund={(t) => {
+            setLookupTicker(t)
+            setSection("lookup")
+          }}
+        />
       </div>
       )}
 

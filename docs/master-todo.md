@@ -16,7 +16,7 @@
 11. "What If" Scenario Engine (spread/rate shocks)
 
 ## LONG TERM:
-12. Fund Universe Positioning Map (scatter plot of ALL funds)
+12. ~~Fund Universe Positioning Map (scatter plot of ALL funds)~~ -- DONE
 13. Bloomberg integration (auto-pull data)
 14. PPT export
 15. Market regime settings panel
