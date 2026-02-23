@@ -203,8 +203,16 @@ export default function Page() {
     } else { setResult(null); setWarRoom(null) }
   }, [tickerA, tickerB, mode, funds])
 
-  // Swap utility (can be re-added if needed)
-  // const swapTickers = () => { setTickerA(tickerB); setTickerB(tickerA) }
+  const swapTickers = useCallback(() => {
+    const prevA = tickerA
+    const prevB = tickerB
+    setTickerA(prevB)
+    setTickerB(prevA)
+    // Ensure the swapped tickers are in the competitor list
+    if (prevA && !competitors.includes(prevA)) {
+      setCompetitors(prev => [...prev.slice(0, 4), prevA])
+    }
+  }, [tickerA, tickerB, competitors])
 
   if (loading) {
     return (
@@ -335,9 +343,18 @@ export default function Page() {
               <TickerInput label="Our Fund" value={tickerA} onChange={(v) => { setTickerA(v); if (v && competitors.length > 0 && !tickerB) setTickerB(competitors[0]) }} options={tickers} placeholder="Select fund..." />
             </div>
 
-            {/* VS divider */}
+            {/* Swap / VS button */}
             <div className="flex items-end pb-2">
-              <span className="text-[11px] font-bold" style={{ color: "#cbd5e1" }}>vs</span>
+              <button
+                onClick={swapTickers}
+                disabled={!tickerA || !tickerB}
+                className="flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-bold transition-all hover:border-[#0f3d6b] hover:bg-[#f0f7ff] disabled:cursor-not-allowed disabled:opacity-30"
+                style={{ borderColor: "#e2e8f0", color: "#64748b" }}
+                title="Swap our fund and competitor"
+              >
+                <ArrowRightLeft className="h-3 w-3" />
+                <span className="hidden sm:inline">Swap</span>
+              </button>
             </div>
 
             {/* Competitors section */}

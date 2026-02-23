@@ -353,7 +353,7 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
         )}
         {!loading && !recLoading && !error && data.length > 0 && (
           <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={data} margin={{ top: 5, right: 90, left: 0, bottom: 0 }}>
+            <AreaChart data={data} margin={{ top: 5, right: 95, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id={`fillA_${tickerA}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={navy} stopOpacity={0.15} />
@@ -382,42 +382,45 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
                 labelStyle={{ color: "#64748b", fontSize: 11, fontWeight: 600, marginBottom: 4 }}
               />
               <Area type="monotone" dataKey={`${tickerA}_dollar`} name={`${tickerA}_dollar`} stroke={navy} strokeWidth={1.5} fill={`url(#fillA_${tickerA})`}
+                isAnimationActive={false}
                 activeDot={{ r: 3, fill: navy, stroke: "#fff", strokeWidth: 2 }}
                 /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
                 dot={(dotProps: any) => {
                   const { cx, cy, index } = dotProps
-                  if (index !== data.length - 1) return <g key={index} />
+                  if (index !== data.length - 1) return <circle key={index} r={0} />
                   const pctLabel = `${(totalA ?? 0) >= 0 ? "+" : ""}${(totalA ?? 0).toFixed(2)}%`
-                  const badgeY = cy - 13
-                  badgeAPixelY.current = badgeY // store for B overlap check
+                  const badgeY = cy - 14
+                  badgeAPixelY.current = cy // store pixel Y for B overlap check
                   return (
                     <g key="endA">
-                      <circle cx={cx} cy={cy} r={3.5} fill={navy} stroke="#fff" strokeWidth={2} />
-                      <rect x={cx + 8} y={badgeY} width={76} height={24} rx={5} fill={navy} />
-                      <text x={cx + 46} y={badgeY + 16} fontSize={12} fontWeight={700} fontFamily="ui-monospace, monospace" fill="#fff" textAnchor="middle">{pctLabel}</text>
+                      <circle cx={cx} cy={cy} r={4} fill={navy} stroke="#fff" strokeWidth={2} />
+                      <rect x={cx + 6} y={badgeY} width={80} height={26} rx={5} fill={navy} />
+                      <text x={cx + 46} y={badgeY + 17.5} fontSize={13} fontWeight={700} fontFamily="ui-monospace, monospace" fill="#fff" textAnchor="middle">{pctLabel}</text>
                     </g>
                   )
                 }}
               />
               {tickerA !== tickerB && (
                 <Area type="monotone" dataKey={`${tickerB}_dollar`} name={`${tickerB}_dollar`} stroke={red} strokeWidth={1.5} fill={`url(#fillB_${tickerB})`}
+                  isAnimationActive={false}
                   activeDot={{ r: 3, fill: red, stroke: "#fff", strokeWidth: 2 }}
                   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
                   dot={(dotProps: any) => {
                     const { cx, cy, index } = dotProps
-                    if (index !== data.length - 1) return <g key={index} />
+                    if (index !== data.length - 1) return <circle key={index} r={0} />
                     const pctLabel = `${(totalB ?? 0) >= 0 ? "+" : ""}${(totalB ?? 0).toFixed(2)}%`
-                    let badgeY = cy - 13
-                    // Prevent overlap with A badge: if within 28px, push down
-                    const aBadgeY = badgeAPixelY.current
-                    if (Math.abs(badgeY - aBadgeY) < 28) {
-                      badgeY = aBadgeY + 30 // push below A badge
+                    let badgeY = cy - 12
+                    // Prevent overlap: if B badge would overlap A badge vertically, push it below
+                    const aCy = badgeAPixelY.current
+                    if (Math.abs(cy - aCy) < 30) {
+                      // Place below the lower of the two dots
+                      badgeY = Math.max(cy, aCy) + 8
                     }
                     return (
                       <g key="endB">
-                        <circle cx={cx} cy={cy} r={3.5} fill={red} stroke="#fff" strokeWidth={2} />
-                        <rect x={cx + 8} y={badgeY} width={76} height={24} rx={5} fill={red} />
-                        <text x={cx + 46} y={badgeY + 16} fontSize={12} fontWeight={700} fontFamily="ui-monospace, monospace" fill="#fff" textAnchor="middle">{pctLabel}</text>
+                        <circle cx={cx} cy={cy} r={4} fill={red} stroke="#fff" strokeWidth={2} />
+                        <rect x={cx + 6} y={badgeY} width={80} height={26} rx={5} fill={red} />
+                        <text x={cx + 46} y={badgeY + 17.5} fontSize={13} fontWeight={700} fontFamily="ui-monospace, monospace" fill="#fff" textAnchor="middle">{pctLabel}</text>
                       </g>
                     )
                   }}
