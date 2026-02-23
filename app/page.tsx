@@ -102,7 +102,7 @@ export default function Page() {
   const [polishing, setPolishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showUpload, setShowUpload] = useState(false)
-  const [section, setSection] = useState<"comparison" | "lookup">("comparison")
+  const [section, setSection] = useState<"comparison" | "lookup">("lookup")
   const [lookupTicker, setLookupTicker] = useState("")
 
   useEffect(() => {

@@ -325,7 +325,16 @@ export function FundLookup({ fund, allTickers }: { fund: FundData; allTickers?: 
             </div>
           )}
           {!loading && !insights && (
-            <p className="py-4 text-center text-sm" style={{ color: "#94a3b8" }}>Analysis unavailable</p>
+            <div className="flex flex-col items-center gap-3 py-6">
+              <p className="text-sm" style={{ color: "#94a3b8" }}>Analysis unavailable -- GPT may be loading</p>
+              <button
+                onClick={fetchInsights}
+                className="rounded px-4 py-2 text-[12px] font-semibold transition-colors"
+                style={{ backgroundColor: "#0f3d6b", color: "#fff" }}
+              >
+                Retry Analysis
+              </button>
+            </div>
           )}
         </div>
       </div>
