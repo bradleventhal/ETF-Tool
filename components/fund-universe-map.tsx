@@ -55,7 +55,6 @@ const findAxis = (key: string) => AXIS_OPTIONS.findIndex(a => a.key === key)
 /* ── Presets ── */
 const PRESETS = [
   { label: "Yield vs Duration", x: "duration", y: "ytwYtm", insight: "Shows yield pickup per unit of interest rate risk -- are you getting paid enough for the duration you're taking?" },
-  { label: "Yield vs Risk", x: "stdDev", y: "ytwYtm", insight: "Maps yield against volatility -- funds in the upper-left quadrant deliver the most yield per unit of risk." },
   { label: "Credit vs Yield", x: "credit", y: "ytwYtm", insight: "Reveals whether higher yield comes from credit risk -- funds to the left offer higher quality at comparable yields." },
 ]
 
