@@ -552,9 +552,8 @@ export default function Page() {
       </div>
       )}
 
-      {/* ===== FUND MAP SECTION ===== */}
-      {section === "map" && (
-      <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6 sm:py-6">
+      {/* ===== FUND MAP SECTION (always mounted to preserve state) ===== */}
+      <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6 sm:py-6" style={{ display: section === "map" ? undefined : "none" }}>
         <FundUniverseMap
           funds={funds}
           highlightTicker={undefined}
@@ -565,7 +564,6 @@ export default function Page() {
           }}
         />
       </div>
-      )}
 
       {/* ===== FUND LOOKUP SECTION ===== */}
       {section === "lookup" && (
@@ -577,7 +575,7 @@ export default function Page() {
             </div>
             {cameFromMap && (
               <button
-                onClick={() => { setSection("map"); setCameFromMap(false) }}
+                onClick={() => setSection("map")}
                 className="mb-0.5 flex h-10 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-semibold transition-all hover:bg-[#f0f7ff]"
                 style={{ borderColor: "#e2e8f0", color: "#0f3d6b" }}
               >
