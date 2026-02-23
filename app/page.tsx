@@ -157,7 +157,14 @@ export default function Page() {
             })
               .then(r => r.ok ? r.json() : null)
               .then(gptWarRoom => {
-                if (gptWarRoom && !gptWarRoom.error && gptWarRoom.competitorArguments) {
+                if (
+                  gptWarRoom &&
+                  !gptWarRoom.error &&
+                  Array.isArray(gptWarRoom.competitorArguments) &&
+                  Array.isArray(gptWarRoom.rebuttals) &&
+                  gptWarRoom.overallDifficulty &&
+                  gptWarRoom.competitorArguments.every((a: Record<string, unknown>) => a.id && a.metric && a.argument)
+                ) {
                   setWarRoom(gptWarRoom)
                 }
               })
