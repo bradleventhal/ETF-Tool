@@ -9,7 +9,7 @@ Rules:
 - End with a positioning statement that gives the advisor a reason to act.
 - No filler. No "in today's market" generic openers.
 - Tone: confident, direct, not salesy. Like you're talking to a sharp advisor who's heard it all.
-- Do NOT mention the competitor by name in the pitch. Frame it as "vs the fund they're currently using" or similar.
+- ALWAYS use actual ticker symbols and fund names. Never say "our fund", "their fund", "the competitor", or "the fund they're currently using". Use the real tickers (e.g. "UYLD" and "VNLA").
 
 Also generate 3 VARIATIONS of the pitch for different client scenarios:
 1. For an advisor moving clients OUT OF MONEY MARKETS / CASH
