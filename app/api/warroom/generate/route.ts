@@ -93,12 +93,15 @@ KEY DIMENSIONS TO EVALUATE (prioritize based on magnitude):
 RULES:
 1. Surface EVERY metric where the competitor has a material advantage. Do NOT limit to 2 or 3. If they have 6 angles, show all 6. If they only have 1 or 2, explicitly note in the difficultySummary: "The competitor has limited ammunition — [metric] is likely their only/primary angle." This helps our rep know when the competitor is grasping at straws vs when they have real firepower. Count the angles for the rep.
 2. Difficulty rating is RELATIVE to this specific comparison. The biggest delta = hardest, smallest = easiest. One "Very Difficult" argument pulls the overall rating up regardless of how many easy ones exist.
-3. If duration is short (<1yr), historical stress arguments are easier to counter. If longer, they're harder.
-4. Never defend 2022 or any stress period directly — acknowledge briefly, pivot to recovery and current opportunity.
-5. Use the Yahoo stress period data to cite REAL drawdown numbers and dates. Do not fabricate. Each stress period is classified as "Broad" (both funds dropped — likely a macro event like rate shock, spread widening, liquidity event) or "Idiosyncratic" (only one fund dropped — likely fund-specific: sector concentration, credit event, positioning). USE YOUR MACRO KNOWLEDGE to explain WHY each stress event happened (e.g. "April 2025 tariff-driven corporate spread widening", "Q1 2022 onset of Fed hiking cycle", "March 2020 COVID liquidity seizure"). This context is the whole point.
-6. Each rebuttal gets a punchy one-liner the rep can use — sounds like a real person talking. Think "apples to apples" type lines.
-7. If virtually no material differences exist, say so clearly: "This comes down to relationship and service."
-8. If competitor has zero material advantages: return isLayup=true with a confident (not dismissive) message.
+3. If both funds are in the SAME Morningstar category (e.g. both ultrashort), treat small duration/risk differences as DE MINIMIS. A 0.1yr duration difference between two ultrashort funds is NOT a material argument -- a real competitor wouldn't lead with that. Focus on what actually differentiates: allocation, sector exposure, yield, performance.
+4. SHARPE RATIO is supplementary, NOT a lead argument. It can be mentioned as supporting evidence within another rebuttal but should never be the primary argument or a standalone section unless the difference is extreme (>0.5). Competitors don't lead meetings with Sharpe ratios.
+5. If duration is short (<1yr), historical stress arguments are easier to counter. If longer, they're harder.
+6. Never defend a stress period directly — acknowledge briefly with real numbers, pivot to recovery and current opportunity.
+7. Use the Yahoo stress period data to cite REAL drawdown numbers and dates. Do not fabricate. Each stress period is classified as "Broad" (both funds dropped — likely a macro event like rate shock, spread widening, liquidity event) or "Idiosyncratic" (only one fund dropped — likely fund-specific: sector concentration, credit event, positioning). USE YOUR MACRO KNOWLEDGE to explain WHY each stress event happened (e.g. "April 2025 tariff-driven corporate spread widening", "Q1 2022 onset of Fed hiking cycle", "March 2020 COVID liquidity seizure"). This context is the whole point.
+8. ALWAYS use actual ticker symbols (e.g. "UYLD", "VNLA") in arguments and rebuttals. NEVER write "our fund" or "your fund" or "Fund A" or "Fund B". Use the real tickers throughout.
+9. Each rebuttal gets a punchy one-liner the rep can use — sounds like a real person talking. Think "apples to apples" type lines. One-liners ONLY go on rebuttals, NOT on competitor arguments.
+10. If virtually no material differences exist, say so clearly: "This comes down to relationship and service."
+11. If competitor has zero material advantages: return isLayup=true with a confident (not dismissive) message.
 
 OUTPUT FORMAT: Return valid JSON matching this exact structure:
 {
@@ -112,11 +115,10 @@ OUTPUT FORMAT: Return valid JSON matching this exact structure:
       "id": "unique_id",
       "metric": "Metric Name",
       "difficulty": "Easy" | "Moderate" | "Difficult" | "Very Difficult",
-      "argument": "What the competitor wholesaler would actually say — specific, pointed, uses real numbers from the data",
+      "argument": "What the competitor wholesaler would actually say — specific, pointed, uses real tickers and numbers from the data",
       "theirValue": "their actual value",
       "ourValue": "our actual value",
-      "deltaBps": number or null,
-      "oneLiner": "A punchy one-liner the competitor might drop"
+      "deltaBps": number or null
     }
   ],
   "rebuttals": [

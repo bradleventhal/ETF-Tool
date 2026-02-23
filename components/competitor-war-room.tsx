@@ -124,11 +124,6 @@ export function CompetitorWarRoom({ warRoom, competitorTicker, ourTicker, polish
                   <p className="text-sm leading-relaxed italic" style={{ color: "#7f1d1d" }}>
                     &ldquo;{arg.argument}&rdquo;
                   </p>
-                  {arg.oneLiner && (
-                    <p className="mt-2 rounded px-2.5 py-1.5 text-[11px] font-medium" style={{ backgroundColor: "#fef2f2", color: "#991b1b", borderLeft: "2px solid #fca5a5" }}>
-                      One-liner: &ldquo;{arg.oneLiner}&rdquo;
-                    </p>
-                  )}
                 </div>
               ))}
             </div>

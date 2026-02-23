@@ -55,32 +55,27 @@ function buildFundContext(result: AnalysisResult): string {
 }
 
 function generateAnticipatedQuestions(result: AnalysisResult): string[] {
+  // These should be PRACTICAL / SITUATIONAL questions a rep would ask
+  // NOT the same things already covered in the war room (arguments, rebuttals, metrics)
   const questions: string[] = []
-  const yieldA = result.keyStats.find(r => r.label === "30-Day SEC Yield")
-  const durA = result.keyStats.find(r => r.label === "Duration")
-  const expA = result.keyStats.find(r => r.label === "Expense Ratio")
 
-  if (yieldA && yieldA.nA != null && yieldA.nB != null) {
-    if (yieldA.nB > yieldA.nA) {
-      questions.push(`Why does ${result.tickerB} have a higher yield than us, and how do I address that?`)
-    } else {
-      questions.push(`Our yield advantage over ${result.tickerB} — what's driving it and how sustainable is it?`)
-    }
+  // Pitch framing — different from rebuttals
+  questions.push(`Give me a 30-second elevator pitch for ${result.tickerA} over ${result.tickerB} for a conservative income client.`)
+
+  // Client-type specific
+  questions.push(`How should I position ${result.tickerA} for an advisor moving clients out of money markets?`)
+
+  // Allocation context
+  const secA = result.sectorAllocation.find(r => r.label === "Securitized")
+  const corpA = result.sectorAllocation.find(r => r.label === "Corporate Credit")
+  if (secA && secA.nA != null && secA.nA > 0.20) {
+    questions.push(`An advisor says "I don't understand securitized credit." How do I explain our allocation simply?`)
+  } else if (corpA && corpA.nA != null && corpA.nA > 0.30) {
+    questions.push(`What's the case for our corporate allocation vs a more diversified approach?`)
   }
 
-  if (durA && durA.nA != null && durA.nB != null && Math.abs(durA.nA - durA.nB) > 0.3) {
-    questions.push(`How does the duration difference between these two funds affect positioning in the current rate environment?`)
-  }
-
-  if (expA && expA.nA != null && expA.nB != null && expA.nB < expA.nA) {
-    questions.push(`${result.tickerB} has a lower expense ratio. How do I counter that in a meeting?`)
-  }
-
-  questions.push(`Give me a 30-second pitch for ${result.tickerA} over ${result.tickerB} for an income-focused client.`)
-
-  if (result.reversePitch) {
-    questions.push(`What are the top 3 pushbacks I should expect and how do I handle them?`)
-  }
+  // Forward-looking
+  questions.push(`Given where rates and spreads are today, which fund is better positioned for the next 12 months?`)
 
   return questions.slice(0, 4)
 }
