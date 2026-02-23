@@ -445,7 +445,7 @@ export default function Page() {
         {lookupTicker && (() => {
           const fund = funds.find(f => f.ticker === lookupTicker)
           if (!fund) return null
-          return <FundLookup fund={fund} />
+          return <FundLookup fund={fund} allTickers={tickers.map(t => t.ticker)} />
         })()}
       </div>
       )}

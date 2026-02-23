@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { SectorPieChart } from "@/components/sector-pie-chart"
-import { Loader2 } from "lucide-react"
+import { GrowthChart } from "@/components/growth-chart"
+import { Loader2, X, Plus } from "lucide-react"
 import type { FundData } from "@/lib/fund-types"
 
 function nz(v: number | null): number { return v == null || isNaN(v) ? 0 : v }
@@ -66,9 +67,35 @@ function InsightSection({ title, items, color }: { title: string; items: string[
   )
 }
 
-export function FundLookup({ fund }: { fund: FundData }) {
+function StarRating({ rating }: { rating: number | null }) {
+  if (!rating || rating < 1 || rating > 5) return null
+  return (
+    <div className="flex items-center gap-0.5">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <svg key={i} className="h-3.5 w-3.5" viewBox="0 0 20 20" fill={i < rating ? "#f59e0b" : "#e2e8f0"}>
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+        </svg>
+      ))}
+      <span className="ml-1 text-[10px] font-medium" style={{ color: "#94a3b8" }}>Morningstar</span>
+    </div>
+  )
+}
+
+export function FundLookup({ fund, allTickers }: { fund: FundData; allTickers?: string[] }) {
   const [insights, setInsights] = useState<FundInsights | null>(null)
   const [loading, setLoading] = useState(false)
+  const [mstarRating, setMstarRating] = useState<number | null>(null)
+  const [compareTicker, setCompareTicker] = useState("")
+  const [compareSearch, setCompareSearch] = useState("")
+
+  // Fetch Morningstar rating
+  useEffect(() => {
+    setMstarRating(null)
+    fetch(`/api/morningstar?ticker=${fund.ticker}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.morningstarRating) setMstarRating(data.morningstarRating) })
+      .catch(() => {})
+  }, [fund.ticker])
 
   const fetchInsights = useCallback(() => {
     setLoading(true)
@@ -89,6 +116,11 @@ export function FundLookup({ fund }: { fund: FundData }) {
   }, [fund])
 
   useEffect(() => { fetchInsights() }, [fetchInsights])
+
+  // Filter tickers for compare search
+  const filteredTickers = (allTickers || []).filter(t =>
+    t !== fund.ticker && t.toLowerCase().includes(compareSearch.toLowerCase())
+  ).slice(0, 6)
 
   const sectorData = [
     { name: "Non-Agency RMBS", value: nz(fund.nonAgencyRmbs) },
@@ -125,11 +157,11 @@ export function FundLookup({ fund }: { fund: FundData }) {
             <h2 className="text-lg font-bold tracking-tight sm:text-xl" style={{ color: "#0f3d6b" }}>{fund.ticker}</h2>
             <p className="mt-0.5 text-sm" style={{ color: "#64748b" }}>{fund.name}</p>
           </div>
-          <div className="text-right">
+          <div className="flex flex-col items-end gap-1.5">
+            <StarRating rating={mstarRating} />
             <span className="rounded px-2 py-0.5 text-[11px] font-bold uppercase" style={{ backgroundColor: "#0f3d6b", color: "#fff" }}>
               {durCategory(dur)}
             </span>
-            <p className="mt-1 text-[10px]" style={{ color: "#94a3b8" }}>Duration: {fNum(fund.duration)} yrs</p>
           </div>
         </div>
       </div>
@@ -166,6 +198,57 @@ export function FundLookup({ fund }: { fund: FundData }) {
             <StatRow label="Since Common Inception" value={fPct(fund.commonInception)} highlight />
           </tbody>
         </table>
+      </div>
+
+      {/* Interactive Growth Chart */}
+      <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+        <div className="flex items-center justify-between border-b px-3 py-2.5 sm:px-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
+          <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Growth Chart</h4>
+          {!compareTicker && (
+            <div className="relative">
+              <div className="flex items-center gap-1.5">
+                <Plus className="h-3 w-3" style={{ color: "#94a3b8" }} />
+                <input
+                  type="text"
+                  value={compareSearch}
+                  onChange={e => setCompareSearch(e.target.value)}
+                  placeholder="Add fund to compare..."
+                  className="w-[140px] border-b bg-transparent py-0.5 text-[11px] font-medium outline-none placeholder:text-[11px] sm:w-[180px]"
+                  style={{ borderColor: "#e2e8f0", color: "#334155" }}
+                />
+              </div>
+              {compareSearch && filteredTickers.length > 0 && (
+                <div className="absolute right-0 top-full z-10 mt-1 max-h-[160px] w-[180px] overflow-y-auto rounded border shadow-lg" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+                  {filteredTickers.map(t => (
+                    <button
+                      key={t}
+                      onClick={() => { setCompareTicker(t); setCompareSearch("") }}
+                      className="block w-full px-3 py-2 text-left text-[12px] font-medium transition-colors hover:bg-[#f0f7ff]"
+                      style={{ color: "#334155" }}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {compareTicker && (
+            <button
+              onClick={() => setCompareTicker("")}
+              className="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium" style={{ backgroundColor: "#fee2e2", color: "#dc2626" }}
+            >
+              {compareTicker} <X className="h-2.5 w-2.5" />
+            </button>
+          )}
+        </div>
+        <div className="p-0">
+          {compareTicker ? (
+            <GrowthChart tickerA={fund.ticker} tickerB={compareTicker} mode="internal" />
+          ) : (
+            <GrowthChart tickerA={fund.ticker} tickerB={fund.ticker} mode="internal" />
+          )}
+        </div>
       </div>
 
       {/* Sector & Credit Side by Side */}
