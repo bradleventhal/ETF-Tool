@@ -26,12 +26,37 @@ function avgCreditQuality(d: FundData): string {
   if (avg <= 7.5) return "CCC"; return "Below CCC"
 }
 
-function durCategory(d: number): string {
-  if (d < 1) return "Ultrashort"
-  if (d < 2) return "Short"
-  if (d < 5) return "Intermediate"
-  if (d < 7) return "Core/Core Plus"
-  return "Long Duration"
+function fundCategory(name: string, dur: number): string {
+  const n = name.toLowerCase()
+  // Check name for category keywords first
+  if (n.includes("ultra") && (n.includes("short") || n.includes("shrt"))) return "Ultrashort Bond"
+  if (n.includes("money market") || n.includes("mm ")) return "Money Market"
+  if (n.includes("floating") || n.includes("float") || n.includes("bank loan") || n.includes("leveraged loan") || n.includes("senior loan")) return "Bank Loan"
+  if (n.includes("high yield") || n.includes("high-yield") || n.includes("hi yield") || n.includes("hy ")) return "High Yield Bond"
+  if (n.includes("multi") && n.includes("sector")) return "Multisector Bond"
+  if (n.includes("core plus") || n.includes("core-plus")) return "Core Plus Bond"
+  if (n.includes("core bond") || n.includes("core fixed")) return "Core Bond"
+  if (n.includes("short") && (n.includes("term") || n.includes("duration") || n.includes("bond"))) return "Short-Term Bond"
+  if (n.includes("intermediate") && (n.includes("term") || n.includes("bond") || n.includes("core"))) return "Intermediate-Term Bond"
+  if (n.includes("long") && (n.includes("term") || n.includes("duration"))) return "Long-Term Bond"
+  if (n.includes("muni") || n.includes("municipal") || n.includes("tax") && n.includes("exempt")) return "Municipal Bond"
+  if (n.includes("treasury") || n.includes("govt") || n.includes("government")) return "Government Bond"
+  if (n.includes("mortgage") || n.includes("mbs") || n.includes("securitized")) return "Securitized Bond"
+  if (n.includes("corporate") || n.includes("investment grade") || n.includes("ig ")) return "Corporate Bond"
+  if (n.includes("strategic") && n.includes("credit")) return "Nontraditional Bond"
+  if (n.includes("total return") || n.includes("aggregate")) return "Intermediate Core Bond"
+  if (n.includes("flexible") || n.includes("unconstrained") || n.includes("absolute")) return "Nontraditional Bond"
+  if (n.includes("convertible")) return "Convertible Bond"
+  if (n.includes("emerging") || n.includes("em debt") || n.includes("em bond")) return "Emerging Markets Bond"
+  if (n.includes("global") || n.includes("world") || n.includes("international")) return "Global Bond"
+  if (n.includes("inflation") || n.includes("tips") || n.includes("real return")) return "Inflation-Protected Bond"
+  if (n.includes("income") && n.includes("credit")) return "Multisector Bond"
+  // Fall back to duration-based
+  if (dur < 1) return "Ultrashort Bond"
+  if (dur < 2) return "Short-Term Bond"
+  if (dur < 5) return "Intermediate-Term Bond"
+  if (dur < 7) return "Core Plus Bond"
+  return "Long-Term Bond"
 }
 
 interface FundInsights {
@@ -178,7 +203,7 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
           <div className="flex flex-col items-end gap-1.5">
             <StarRating rating={mstarRating} />
             <span className="rounded px-2 py-0.5 text-[11px] font-bold uppercase" style={{ backgroundColor: "#0f3d6b", color: "#fff" }}>
-              {durCategory(dur)}
+              {fundCategory(fund.name, dur)}
             </span>
             {onCompare && (
               <button

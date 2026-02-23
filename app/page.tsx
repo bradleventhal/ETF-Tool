@@ -146,6 +146,8 @@ export default function Page() {
       const fA = funds.find((f) => f.ticker === tickerA)
       const fB = funds.find((f) => f.ticker === tickerB)
       if (fA && fB) {
+        // Always ensure tickerB is in the competitors list
+        setCompetitors(prev => prev.includes(tickerB) ? prev : [...prev.slice(0, 4), tickerB])
         setError(null)
         setResult(runAnalysis(fA, fB, mode))
         if (mode === "internal") {
