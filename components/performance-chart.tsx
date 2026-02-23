@@ -85,19 +85,19 @@ export function PerformanceChart({ tickerA, tickerB }: Props) {
       </div>
       <div className="px-4 py-6">
         {loading ? (
-          <div className="flex h-[280px] items-center justify-center">
+          <div className="flex h-[220px] items-center justify-center">
             <p className="text-sm" style={{ color: "#94a3b8" }}>Loading performance data...</p>
           </div>
         ) : data.length === 0 ? (
-          <div className="flex h-[280px] items-center justify-center">
+          <div className="flex h-[220px] items-center justify-center">
             <p className="text-sm" style={{ color: "#94a3b8" }}>No performance data available</p>
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={data} barCategoryGap="20%" barGap={4} margin={{ top: 24, right: 5, left: -10, bottom: 0 }}>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={data} barCategoryGap="30%" barGap={6} margin={{ top: 28, right: 20, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
               <XAxis dataKey="period" tick={{ fontSize: 12, fill: "#475569", fontWeight: 600 }} axisLine={{ stroke: "#cbd5e1" }} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${Math.round(v)}%`} width={36} domain={[0, (dataMax: number) => { const nice = [5, 10, 15, 20, 25, 30, 40, 50, 75, 100]; return nice.find(n => n >= dataMax * 1.1) ?? Math.ceil(dataMax / 10) * 10 }]} />
+              <YAxis tick={{ fontSize: 11, fill: "#64748b" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${Math.round(v)}%`} width={40} domain={[0, (dataMax: number) => { const nice = [5, 10, 15, 20, 25, 30, 40, 50, 75, 100]; return nice.find(n => n >= dataMax * 1.15) ?? Math.ceil(dataMax / 10) * 10 }]} />
               <Tooltip
                 formatter={(value: number) => [`${value.toFixed(2)}%`]}
                 contentStyle={{ backgroundColor: "#fff", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: 12, padding: "8px 14px", color: "#1e293b", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
