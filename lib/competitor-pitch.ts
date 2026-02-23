@@ -94,19 +94,22 @@ function findCompetitorAdvantages(us: FundData, them: FundData, yahoo?: YahooAna
     advantages.push({ id: "duration", metric: "Duration", magnitude: Math.min(durDelta * 12, 100), theirValue: nz(them.duration).toFixed(2) + " yrs", ourValue: nz(us.duration).toFixed(2) + " yrs", deltaBps: 0, category: "risk" })
   }
 
-  // Historical spread stress: ONLY show 2022 argument if Yahoo confirms both funds existed in 2022
-  // No fallback -- if we don't have real drawdown data, we don't make the claim
-  if (yahoo && yahoo.drawdown2022A != null && yahoo.drawdown2022B != null) {
-    const ddA = Math.abs(yahoo.drawdown2022A)
-    const ddB = Math.abs(yahoo.drawdown2022B)
-    if (ddA > ddB + 1 && secPct(us) > 0.10) {
-      const durFactor = nz(us.duration) < 1 ? 0.4 : nz(us.duration) < 2 ? 0.7 : 1.0
-      advantages.push({
-        id: "2022_stress", metric: "2022 Securitized Drawdown", magnitude: Math.min(55 * durFactor, 100),
-        theirValue: `-${ddB.toFixed(1)}% max drawdown`,
-        ourValue: `-${ddA.toFixed(1)}% max drawdown`,
-        deltaBps: 0, category: "spread_history"
-      })
+  // Allocation differences — these matter a LOT even if yield/performance are similar
+  const secUs = nz(us.securitized) * 100, secThem = nz(them.securitized) * 100
+  const corpUs = nz(us.corporateCredit) * 100, corpThem = nz(them.corporateCredit) * 100
+  const govUs = nz(us.governmentCash) * 100, govThem = nz(them.governmentCash) * 100
+
+  // Flag allocation differences > 10%
+  if (Math.abs(secUs - secThem) > 10 || Math.abs(corpUs - corpThem) > 10 || Math.abs(govUs - govThem) > 10) {
+    // Their higher allocation in a sector could be positioned as an advantage
+    if (corpThem > corpUs + 10) {
+      advantages.push({ id: "alloc_corp", metric: "Corporate Allocation", magnitude: Math.min((corpThem - corpUs) * 1.5, 100), theirValue: `${corpThem.toFixed(0)}% corporate`, ourValue: `${corpUs.toFixed(0)}% corporate`, deltaBps: 0, category: "allocation" })
+    }
+    if (secThem > secUs + 10) {
+      advantages.push({ id: "alloc_sec", metric: "Securitized Allocation", magnitude: Math.min((secThem - secUs) * 1.5, 100), theirValue: `${secThem.toFixed(0)}% securitized`, ourValue: `${secUs.toFixed(0)}% securitized`, deltaBps: 0, category: "allocation" })
+    }
+    if (govThem > govUs + 10) {
+      advantages.push({ id: "alloc_gov", metric: "Government/Cash Allocation", magnitude: Math.min((govThem - govUs) * 1.5, 100), theirValue: `${govThem.toFixed(0)}% govt/cash`, ourValue: `${govUs.toFixed(0)}% govt/cash`, deltaBps: 0, category: "allocation" })
     }
   }
 
@@ -231,13 +234,20 @@ const ARG_TEMPLATES: Record<string, string[]> = {
     "Duration comparison: {their} vs {our}. Less rate exposure with comparable income.",
     "{their} vs {our} duration. In a rate-volatile environment, shorter wins.",
   ],
-  "2022_stress": [
-    "2022 max drawdown: {our} vs our {their}. Fed hiked 425bps — securitized-heavy portfolios took the hit.",
-    "The 2022 rate shock: your fund drew down {our}, ours drew down {their}. Securitized concentration was the driver.",
-    "425bps of hikes in 2022 hit securitized credit hardest. Your drawdown: {our}. Ours: {their}.",
-    "2022 drawdown data — {our} vs {their}. Securitized concentration at those levels is measurable rate risk.",
-    "2022 stress test: securitized-heavy portfolio at {our} vs our {their} drawdown. The gap is meaningful.",
-    "Rate shock exposure in 2022: {our} drawdown on securitized concentration vs {their} for our corporate-focused approach.",
+  alloc_corp: [
+    "Corporate allocation: {their} vs {our}. More corporate exposure provides broader investment-grade liquidity.",
+    "{their} corporate vs {our}. Higher allocation to a deep, liquid market with well-understood risk.",
+    "Corporate focus at {their} vs {our}. IG corporates are the most liquid part of the FI market.",
+  ],
+  alloc_sec: [
+    "Securitized allocation: {their} vs {our}. More diversification across asset-backed sectors.",
+    "{their} securitized vs {our}. Broader exposure across ABS, MBS, CMBS — different risk drivers than corporates.",
+    "Securitized focus at {their} vs {our}. Diversified cash flow streams from consumer and real estate sectors.",
+  ],
+  alloc_gov: [
+    "Government/cash allocation: {their} vs {our}. Higher liquidity buffer and lower credit risk.",
+    "{their} govt/cash vs {our}. More dry powder and risk-free ballast in the portfolio.",
+    "Government allocation at {their} vs {our}. Maximum safety and liquidity.",
   ],
 }
 
@@ -406,21 +416,19 @@ function generateRebuttal(adv: RawAdvantage & { tier?: DifficultyTier }, us: Fun
       break
     }
     case "3y_perf": {
-      // Use real Yahoo 3Y return data if available
-      if (yahoo && yahoo.returnsA["3y"] != null && yahoo.returnsB["3y"] != null) {
-        const retA3 = yahoo.returnsA["3y"]!
-        const retB3 = yahoo.returnsB["3y"]!
-        bullets.push(`3Y total return: us ${retA3.toFixed(2)}% vs them ${retB3.toFixed(2)}%. The gap is ${Math.abs(retA3 - retB3).toFixed(2)}%.`)
+      // Use Yahoo period returns if available
+      if (yahoo && yahoo.periodReturns) {
+        const pr3 = yahoo.periodReturns.find(p => p.label === "3Y")
+        if (pr3) bullets.push(`3Y total return (Yahoo): ${us.ticker} ${pr3.returnA.toFixed(2)}% vs ${them.ticker} ${pr3.returnB.toFixed(2)}%.`)
+        if (yahoo.bestPeriodForA && yahoo.bestPeriodForA.spread > 0) {
+          bullets.push(`Best period for ${us.ticker}: ${yahoo.bestPeriodForA.label} — outperforms by ${yahoo.bestPeriodForA.spread.toFixed(2)}%.`)
+        }
       }
       const has3YHistory = us.threeYear != null && us.threeYear !== 0
       if (has3YHistory) {
-        bullets.push("The 3Y period includes 2022's rate shock — a once-in-a-cycle event. 2023-2024 recovery followed.")
+        bullets.push("The 3Y window may include stress events — the full cycle matters more than any single period.")
       } else {
         bullets.push("Shorter track record reflects a different market entry point — not a performance deficit.")
-      }
-      // Inject best period if we outperform
-      if (yahoo && yahoo.bestPeriodSpread > 0) {
-        bullets.push(`${yahoo.bestPeriodLabel}: we outperform by ${yahoo.bestPeriodSpread.toFixed(2)}%.`)
       }
       if (secPct(us) > 0.15) bullets.push(`Current securitized spreads wide vs IG corporates — attractive relative value.`)
       if (durShort) bullets.push(`At ${nz(us.duration).toFixed(2)} years duration, rate-driven drawdowns structurally limited.`)
@@ -431,20 +439,19 @@ function generateRebuttal(adv: RawAdvantage & { tier?: DifficultyTier }, us: Fun
       break
     }
     case "1y_perf": {
-      // Use real Yahoo 1Y/3Y data if available
-      if (yahoo && yahoo.returnsA["3y"] != null && yahoo.returnsB["3y"] != null) {
-        const spread3 = yahoo.returnsA["3y"]! - yahoo.returnsB["3y"]!
-        if (spread3 > 0) bullets.push(`Over 3 years (Yahoo data), we outperform by ${spread3.toFixed(2)}% — the longer horizon favors our approach.`)
+      // Use Yahoo period returns if available
+      if (yahoo && yahoo.periodReturns) {
+        const pr3 = yahoo.periodReturns.find(p => p.label === "3Y")
+        if (pr3 && pr3.spread < 0) bullets.push(`Over 3 years, ${us.ticker} outperforms by ${Math.abs(pr3.spread).toFixed(2)}% — the longer horizon favors our approach.`)
+        if (yahoo.bestPeriodForA && yahoo.bestPeriodForA.spread > 0) {
+          bullets.push(`Best period for ${us.ticker}: ${yahoo.bestPeriodForA.label} — outperforms by ${yahoo.bestPeriodForA.spread.toFixed(2)}%.`)
+        }
       } else if ((nz(us.threeYear) - nz(them.threeYear)) * 100 > 0) {
         bullets.push(`Over 3 years, we've outperformed — the longer time horizon favors our approach.`)
       }
       const secYieldAdv = (nz(us.secYield) - nz(them.secYield)) * 10000
       if (secYieldAdv > 10) bullets.push(`Current SEC yield advantage of ${Math.round(secYieldAdv)}bps supports stronger forward income.`)
-      if (yahoo && yahoo.bestPeriodSpread > 0) {
-        bullets.push(`${yahoo.bestPeriodLabel}: we outperform by ${yahoo.bestPeriodSpread.toFixed(2)}%.`)
-      } else {
-        bullets.push("Current portfolio positioning and sector allocation suggest improving relative performance.")
-      }
+      bullets.push("Current portfolio positioning and sector allocation suggest improving relative performance.")
       break
     }
     case "std_dev": {
@@ -474,30 +481,23 @@ function generateRebuttal(adv: RawAdvantage & { tier?: DifficultyTier }, us: Fun
       bullets.push("Duration is actively managed and reflects our current rate outlook — it's not a passive bet.")
       break
     }
-    case "2022_stress": {
-      // Use real Yahoo drawdown/recovery data if available
-      if (yahoo && yahoo.drawdown2022A != null) {
-        const ddA = Math.abs(yahoo.drawdown2022A)
-        const ddB = yahoo.drawdown2022B != null ? Math.abs(yahoo.drawdown2022B) : null
-        bullets.push(`2022 was a rate-driven event (Fed hiked 425bps), not credit deterioration. Our max drawdown was -${ddA.toFixed(1)}%${ddB != null ? ` vs their -${ddB.toFixed(1)}%` : ""}.`)
-        if (yahoo.recovery2022A) {
-          const recoveryDate = new Date(yahoo.recovery2022A + "T00:00:00")
-          const troughDate = yahoo.trough2022A ? new Date(yahoo.trough2022A + "T00:00:00") : null
-          const months = troughDate ? Math.round((recoveryDate.getTime() - troughDate.getTime()) / (30 * 24 * 60 * 60 * 1000)) : null
-          bullets.push(`Full recovery achieved by ${recoveryDate.toLocaleDateString("en-US", { month: "short", year: "numeric" })}${months ? ` — ${months} months from trough` : ""}. Staying invested was rewarded.`)
-        }
-        // Add since-CI return if available
-        if (yahoo.returnsA.ci != null && yahoo.returnsB.ci != null) {
-          const spread = (yahoo.returnsA.ci - yahoo.returnsB.ci).toFixed(2)
-          const ciDate = new Date(yahoo.commonInceptionDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" })
-          if (parseFloat(spread) > 0) bullets.push(`Since common inception (${ciDate}), we've outperformed by ${spread}% total return — the full cycle favors us.`)
-        }
-      } else {
-        bullets.push("2022 was a rate-driven event (Fed hiked 425bps), not credit deterioration — fundamentals held and recovery followed in 2023-2024.")
-        bullets.push("Securitized credit was among the top performers in 2023-2024 as spreads compressed — the recovery more than rewarded staying invested.")
-      }
-      if (durShort) bullets.push(`At ${nz(us.duration).toFixed(2)} years duration, rate-driven sell-offs are structurally limited.`)
-      else bullets.push("Current securitized spreads remain wide vs IG corporates — the sell-off created the entry point we're capturing now.")
+    case "alloc_corp": {
+      if (secPct(us) > 0.15) bullets.push(`Our securitized allocation provides diversification away from corporate spread risk — different risk drivers, different return streams.`)
+      bullets.push("Corporate concentration means more exposure to single-name credit events and IG spread widening.")
+      bullets.push("Our allocation is deliberate — diversified across sectors with structural protections.")
+      break
+    }
+    case "alloc_sec": {
+      bullets.push("Securitized credit offers diversified cash flows backed by consumer and real estate fundamentals — not single-issuer corporate risk.")
+      if (nz(us.secYield) > nz(them.secYield)) bullets.push(`Our securitized-heavy approach delivers ${Math.round((nz(us.secYield) - nz(them.secYield)) * 10000)}bps more yield.`)
+      bullets.push("Senior tranches in ABS and agency MBS carry structural subordination that IG corporates don't offer.")
+      break
+    }
+    case "alloc_gov": {
+      bullets.push("Government-heavy allocation sacrifices yield for safety that most income clients don't need in an ultrashort vehicle.")
+      const yieldGap = (nz(us.secYield) - nz(them.secYield)) * 10000
+      if (yieldGap > 10) bullets.push(`That safety comes at a cost: ${Math.round(yieldGap)}bps less yield. Clients are paying for protection they may not need.`)
+      bullets.push("Our allocation deploys cash more efficiently across spread sectors while maintaining short duration and high credit quality.")
       break
     }
   }
@@ -508,7 +508,6 @@ function generateRebuttal(adv: RawAdvantage & { tier?: DifficultyTier }, us: Fun
   else if (adv.id === "sec_yield" && igPct(us) > igPct(them) + 0.05) confidence = "Airtight"
   else if (adv.id === "3y_perf" && (nz(them.threeYear) - nz(us.threeYear)) * 100 > 3) confidence = "Use With Caution"
   else if (adv.id === "1y_perf" && (nz(them.oneYear) - nz(us.oneYear)) * 100 > 3) confidence = "Use With Caution"
-  else if (adv.id === "2022_stress" && nz(us.duration) > 3) confidence = "Use With Caution"
   else if (adv.id === "credit" && igPct(them) - igPct(us) > 0.20) confidence = "Use With Caution"
   // If we have clear offsetting advantages, upgrade to Airtight
   const yieldWin = (nz(us.secYield) - nz(them.secYield)) * 10000 > 20
@@ -565,16 +564,6 @@ export function buildWarRoom(us: FundData, them: FundData, yahoo?: YahooAnalytic
   const counterStr = ourWins.length > 0 ? ` but your ${ourWins.join(", ")} give${ourWins.length === 1 ? "s" : ""} you strong counters` : ""
   const difficultySummary = `${overall} — their ${hardestStr} edge is real${counterStr}.`
 
-  // Check if all differentials are within a tight band
-  const magnitudes = ranked.map(r => r.magnitude)
-  const maxDiff = Math.max(...magnitudes) - Math.min(...magnitudes)
-  const allSmall = Math.max(...magnitudes) < 20
-  const tightBand = allSmall && maxDiff < 10
-
-  const finalSummary = tightBand
-    ? "The data doesn't separate these funds materially. This comes down to relationship and service — lead with that."
-    : difficultySummary
-
   // Generate arguments and rebuttals
   const competitorArguments: CompetitorArgument[] = ranked.map(adv => ({
     id: adv.id,
@@ -589,8 +578,8 @@ export function buildWarRoom(us: FundData, them: FundData, yahoo?: YahooAnalytic
   const rebuttals: Rebuttal[] = ranked.map(adv => generateRebuttal(adv as any, us, them, yahoo))
 
   return {
-    overallDifficulty: tightBand ? "Easy" : overall,
-    difficultySummary: finalSummary,
+    overallDifficulty: overall,
+    difficultySummary,
     isLayup: false,
     layupMessage: null,
     marketContext: MARKET_CONTEXT,
