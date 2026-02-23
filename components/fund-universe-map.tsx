@@ -175,7 +175,7 @@ function Chip({ label, active, count, onClick }: { label: string; active: boolea
 }
 
 /* ═══════════════════════════════════════ MAIN COMPONENT ═══════════════════════════════════════ */
-export default function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props) {
+export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props) {
   const [presetIdx, setPresetIdx] = useState(0)
   const [xIdx, setXIdx] = useState(findAxis("duration"))
   const [yIdx, setYIdx] = useState(findAxis("ytwYtm"))
