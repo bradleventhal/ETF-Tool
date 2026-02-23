@@ -368,37 +368,48 @@ export default function Page() {
                     value={addingComp}
                     onChange={e => setAddingComp(e.target.value.toUpperCase())}
                     onKeyDown={e => {
-                      if (e.key === "Enter" && addingComp && !competitors.includes(addingComp) && addingComp !== tickerA) {
-                        const newComps = [...competitors, addingComp]
-                        setCompetitors(newComps)
-                        setTickerB(addingComp)
-                        setAddingComp("")
+                      if (e.key === "Enter" && addingComp) {
+                        const match = tickers.find(t =>
+                          t.ticker !== tickerA && !competitors.includes(t.ticker) &&
+                          (t.ticker.toUpperCase().includes(addingComp) || t.name.toUpperCase().includes(addingComp))
+                        )
+                        if (match) {
+                          setCompetitors(prev => [...prev.slice(0, 4), match.ticker])
+                          setTickerB(match.ticker)
+                          setAddingComp("")
+                        }
                       }
+                      if (e.key === "Escape") setAddingComp("")
                     }}
-                    placeholder="+ Add"
-                    className="w-[70px] rounded-full border bg-transparent px-2.5 py-1 text-center text-[11px] font-medium outline-none placeholder:text-[11px] focus:border-[#0f3d6b] focus:ring-1 focus:ring-[#0f3d6b]"
+                    onBlur={() => setTimeout(() => setAddingComp(""), 150)}
+                    placeholder="+ Add competitor"
+                    className="w-[130px] rounded-full border bg-transparent px-3 py-1 text-[11px] font-medium outline-none placeholder:text-[11px] focus:border-[#0f3d6b] focus:ring-1 focus:ring-[#0f3d6b]"
                     style={{ borderColor: "#e2e8f0", color: "#334155" }}
                   />
-                  {addingComp && (
-                    <div className="absolute left-0 top-full z-20 mt-1 max-h-[140px] w-[160px] overflow-y-auto rounded border shadow-lg" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+                  {addingComp.length > 0 && (
+                    <div className="absolute left-0 top-full z-20 mt-1 max-h-[180px] w-[220px] overflow-y-auto rounded border shadow-lg" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
                       {tickers
-                        .filter(t => t.ticker !== tickerA && !competitors.includes(t.ticker) && t.ticker.includes(addingComp))
-                        .slice(0, 6)
+                        .filter(t => t.ticker !== tickerA && !competitors.includes(t.ticker) &&
+                          (t.ticker.toUpperCase().includes(addingComp) || t.name.toUpperCase().includes(addingComp)))
+                        .slice(0, 8)
                         .map(t => (
                           <button
                             key={t.ticker}
                             onClick={() => {
-                              const newComps = [...competitors, t.ticker]
-                              setCompetitors(newComps)
+                              setCompetitors(prev => [...prev.slice(0, 4), t.ticker])
                               setTickerB(t.ticker)
                               setAddingComp("")
                             }}
                             className="block w-full px-3 py-2 text-left text-[11px] font-medium transition-colors hover:bg-[#f0f7ff]"
                             style={{ color: "#334155" }}
                           >
-                            <span className="font-bold">{t.ticker}</span> <span style={{ color: "#94a3b8" }}>{t.name.slice(0, 30)}</span>
+                            <span className="font-bold">{t.ticker}</span> <span style={{ color: "#94a3b8" }}>{t.name.slice(0, 35)}</span>
                           </button>
                         ))}
+                      {tickers.filter(t => t.ticker !== tickerA && !competitors.includes(t.ticker) &&
+                        (t.ticker.toUpperCase().includes(addingComp) || t.name.toUpperCase().includes(addingComp))).length === 0 && (
+                        <div className="px-3 py-2 text-[11px]" style={{ color: "#94a3b8" }}>No matching funds</div>
+                      )}
                     </div>
                   )}
                 </div>
