@@ -100,6 +100,7 @@ export default function Page() {
   const [mode, setMode] = useState<AnalysisMode>("internal")
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [warRoom, setWarRoom] = useState<WarRoom | null>(null)
+  const [polishing, setPolishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showUpload, setShowUpload] = useState(false)
 
@@ -134,22 +135,49 @@ export default function Page() {
         setResult(runAnalysis(fA, fB, mode))
         // Fetch Yahoo analytics for war room
         if (mode === "internal") {
+          setPolishing(true)
           fetch(`/api/growth/analytics?tickerA=${tickerA}&tickerB=${tickerB}`)
             .then(r => r.json())
             .then((yahoo: YahooAnalytics) => {
-              console.log("[v0] Yahoo analytics:", JSON.stringify({ ci: yahoo.commonInceptionDate, dd2022A: yahoo.drawdown2022A, dd2022B: yahoo.drawdown2022B, bestPeriod: yahoo.bestPeriodLabel, bestSpread: yahoo.bestPeriodSpread }))
-              if (!yahoo.commonInceptionDate) {
-                setWarRoom(buildWarRoom(fA, fB))
-              } else {
-                setWarRoom(buildWarRoom(fA, fB, yahoo))
-              }
+              const templateWarRoom = yahoo.commonInceptionDate
+                ? buildWarRoom(fA, fB, yahoo)
+                : buildWarRoom(fA, fB)
+              // Show template immediately
+              setWarRoom(templateWarRoom)
+              // Fire GPT polish call in background
+              return fetch("/api/warroom/polish", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ warRoom: templateWarRoom, fundA: fA, fundB: fB, yahoo }),
+              })
+                .then(r => r.json())
+                .then(polished => {
+                  if (polished.error) return
+                  // Merge polished content back into war room
+                  const merged = { ...templateWarRoom }
+                  if (polished.competitorArguments) {
+                    merged.competitorArguments = templateWarRoom.competitorArguments.map(arg => {
+                      const p = polished.competitorArguments.find((pa: any) => pa.id === arg.id)
+                      return p ? { ...arg, argument: p.argument, oneLiner: p.oneLiner } : arg
+                    })
+                  }
+                  if (polished.rebuttals) {
+                    merged.rebuttals = templateWarRoom.rebuttals.map(reb => {
+                      const p = polished.rebuttals.find((pr: any) => pr.id === reb.argumentId)
+                      return p ? { ...reb, opener: p.opener, bullets: p.bullets || reb.bullets, oneLiner: p.oneLiner } : reb
+                    })
+                  }
+                  setWarRoom(merged)
+                })
+                .catch(() => { /* polish failed, keep template version */ })
             })
-            .catch((err) => {
-              console.log("[v0] Yahoo analytics fetch failed:", err)
+            .catch(() => {
               setWarRoom(buildWarRoom(fA, fB))
             })
+            .finally(() => setPolishing(false))
         } else {
           setWarRoom(null)
+          setPolishing(false)
         }
       }
     } else { setResult(null); setWarRoom(null) }
@@ -309,7 +337,7 @@ export default function Page() {
               </div>
             )}
 
-            {warRoom && <CompetitorWarRoom warRoom={warRoom} competitorTicker={result.tickerB} ourTicker={result.tickerA} />}
+            {warRoom && <CompetitorWarRoom warRoom={warRoom} competitorTicker={result.tickerB} ourTicker={result.tickerA} polishing={polishing} />}
 
             <FundChat result={result} />
 

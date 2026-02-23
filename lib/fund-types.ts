@@ -98,6 +98,7 @@ export interface CompetitorArgument {
   theirValue: string
   ourValue: string
   deltaBps?: number
+  oneLiner?: string
 }
 
 export interface Rebuttal {
@@ -106,6 +107,7 @@ export interface Rebuttal {
   opener: string
   bullets: string[]
   confidence: ConfidenceTag
+  oneLiner?: string
 }
 
 export interface WarRoom {

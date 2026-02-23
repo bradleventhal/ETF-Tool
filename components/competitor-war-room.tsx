@@ -42,10 +42,11 @@ function ConfidenceBadge({ tag }: { tag: ConfidenceTag }) {
   )
 }
 
-export function CompetitorWarRoom({ warRoom, competitorTicker, ourTicker }: {
+export function CompetitorWarRoom({ warRoom, competitorTicker, ourTicker, polishing }: {
   warRoom: WarRoom
   competitorTicker: string
   ourTicker: string
+  polishing?: boolean
 }) {
   const [pitchOpen, setPitchOpen] = useState(false)
   const [rebuttalsOpen, setRebuttalsOpen] = useState(false)
@@ -64,6 +65,14 @@ export function CompetitorWarRoom({ warRoom, competitorTicker, ourTicker }: {
           <p className="mt-2 text-[10px] italic" style={{ color: "#94a3b8" }}>{warRoom.marketContext}</p>
         </div>
       </div>
+
+      {/* Polish loading indicator */}
+      {polishing && (
+        <div className="flex items-center gap-2 rounded border px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f8fafc" }}>
+          <div className="h-2 w-2 animate-pulse rounded-full" style={{ backgroundColor: "#0f3d6b" }} />
+          <span className="text-[11px] font-medium" style={{ color: "#64748b" }}>Enriching with market context...</span>
+        </div>
+      )}
 
       {/* Layup — no sections needed */}
       {warRoom.isLayup && warRoom.layupMessage && (
@@ -115,6 +124,11 @@ export function CompetitorWarRoom({ warRoom, competitorTicker, ourTicker }: {
                   <p className="text-sm leading-relaxed italic" style={{ color: "#7f1d1d" }}>
                     &ldquo;{arg.argument}&rdquo;
                   </p>
+                  {arg.oneLiner && (
+                    <p className="mt-2 rounded px-2.5 py-1.5 text-[11px] font-medium" style={{ backgroundColor: "#fef2f2", color: "#991b1b", borderLeft: "2px solid #fca5a5" }}>
+                      One-liner: &ldquo;{arg.oneLiner}&rdquo;
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -170,6 +184,11 @@ export function CompetitorWarRoom({ warRoom, competitorTicker, ourTicker }: {
                       </li>
                     ))}
                   </ul>
+                  {reb.oneLiner && (
+                    <p className="mt-2.5 rounded px-2.5 py-1.5 text-[11px] font-medium" style={{ backgroundColor: "#eff6ff", color: "#1e40af", borderLeft: "2px solid #93c5fd" }}>
+                      Drop this line: &ldquo;{reb.oneLiner}&rdquo;
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
