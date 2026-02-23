@@ -32,57 +32,76 @@ async function fetchPdfText(url: string): Promise<string | null> {
   }
 }
 
-/** Find and extract text from the fund's quarterly commentary PDF */
+/** Search the web for a fund's quarterly commentary PDF, download it, and extract text.
+ *  Works for ANY fund -- uses DuckDuckGo to find the PDF. */
 async function fetchCommentary(ticker: string, fundName: string): Promise<string | null> {
-  const nameLower = fundName.toLowerCase()
+  // Step 1: Search DuckDuckGo for the fund's commentary PDF
+  const queries = [
+    `${ticker} ${fundName} quarterly commentary filetype:pdf`,
+    `${ticker} fund commentary pdf`,
+    `${fundName} quarterly report pdf`,
+  ]
 
-  // Build list of known PDF URLs based on fund family
-  const pdfUrls: string[] = []
+  const pdfUrlsFound: string[] = []
 
-  if (nameLower.includes("angel oak")) {
-    // Angel Oak hosts PDFs at wp-content/uploads with fund name patterns
-    const fundSlug = nameLower.includes("ultrashort") && nameLower.includes("etf") ? "UltraShort-Income-ETF"
-      : nameLower.includes("ultrashort") ? "UltraShort-Income-Fund"
-      : nameLower.includes("multi-strategy") || nameLower.includes("multistrategy") ? "Multi-Strategy-Income-Fund"
-      : nameLower.includes("strategic credit") ? "Strategic-Credit-Fund"
-      : nameLower.includes("income etf") ? "Income-ETF"
-      : nameLower.includes("high yield") ? "High-Yield-Opportunities-ETF"
-      : nameLower.includes("mortgage") ? "Mortgage-Backed-Securities-ETF"
-      : nameLower.includes("total return") ? "Total-Return-ETF"
-      : null
+  for (const query of queries) {
+    try {
+      const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`
+      const res = await fetch(searchUrl, {
+        headers: {
+          "User-Agent": UA,
+          "Accept": "text/html",
+        },
+        signal: AbortSignal.timeout(8000),
+      })
+      if (!res.ok) continue
+      const html = await res.text()
 
-    if (fundSlug) {
-      // Try recent quarterly commentary patterns
-      const quarters = ["Q4-2025", "Q3-2025", "Q2-2025", "Q1-2025", "Q4-2024", "Q3-2024"]
-      for (const q of quarters) {
-        pdfUrls.push(`https://angeloakcapital.com/wp-content/uploads/Angel-Oak-${fundSlug}-Commentary-${q}.pdf`)
-        pdfUrls.push(`https://angeloakcapital.com/wp-content/uploads/AOCA-${fundSlug}-Commentary-${q}.pdf`)
-        pdfUrls.push(`https://angeloakcapital.com/wp-content/uploads/${fundSlug}-Commentary-${q}.pdf`)
+      // Extract all URLs from search results
+      const allUrls = [...html.matchAll(/href=["'](https?:\/\/[^"'\s]+)["']/gi)]
+      for (const match of allUrls) {
+        const url = decodeURIComponent(match[1])
+        // Direct PDF links
+        if (url.toLowerCase().endsWith(".pdf")) {
+          if (!pdfUrlsFound.includes(url)) pdfUrlsFound.push(url)
+        }
       }
-    }
-    // Also try market outlook
-    pdfUrls.push("https://angeloakcapital.com/wp-content/uploads/AOCA-2025-Mid-Year-Outlook.pdf")
-  } else if (nameLower.includes("pimco")) {
-    pdfUrls.push(`https://www.pimco.com/handlers/PIMCOFundFactSheetHandler.ashx?ticker=${ticker}`)
+
+      // Also extract uddg redirect URLs (DuckDuckGo wraps links)
+      const uddgUrls = [...html.matchAll(/uddg=([^&"']+)/gi)]
+      for (const match of uddgUrls) {
+        const url = decodeURIComponent(match[1])
+        if (url.toLowerCase().endsWith(".pdf")) {
+          if (!pdfUrlsFound.includes(url)) pdfUrlsFound.push(url)
+        }
+        // Also check non-PDF pages that might host PDFs (fund company pages)
+        if (!url.toLowerCase().endsWith(".pdf") && (
+          url.includes("commentary") || url.includes("quarterly") || url.includes("report") || url.includes("insights")
+        )) {
+          if (!pdfUrlsFound.includes(url)) pdfUrlsFound.push(url)
+        }
+      }
+
+      // If we found PDF URLs, stop searching
+      if (pdfUrlsFound.filter(u => u.endsWith(".pdf")).length >= 2) break
+    } catch { continue }
   }
 
-  // Try each PDF URL
-  for (const url of pdfUrls) {
+  // Step 2: Try each found PDF URL
+  const directPdfs = pdfUrlsFound.filter(u => u.toLowerCase().endsWith(".pdf"))
+  const webPages = pdfUrlsFound.filter(u => !u.toLowerCase().endsWith(".pdf"))
+
+  // Try direct PDFs first (up to 5)
+  for (const url of directPdfs.slice(0, 5)) {
     const text = await fetchPdfText(url)
     if (text) {
       console.log("[v0] Found PDF commentary at:", url, "- length:", text.length)
-      return text.slice(0, 6000) // First 6000 chars should capture the meat
+      return text.slice(0, 6000)
     }
   }
 
-  // Fallback: try to find the fund's fact sheet / profile page on the company website
-  const fallbackUrls: string[] = []
-  if (nameLower.includes("angel oak")) {
-    fallbackUrls.push("https://angeloakcapital.com/quarterly-fund-commentaries")
-  }
-  fallbackUrls.push(`https://www.etf.com/${ticker.toUpperCase()}`)
-
-  for (const url of fallbackUrls) {
+  // Step 3: If no direct PDFs worked, scrape the web pages for PDF links
+  for (const url of webPages.slice(0, 3)) {
     try {
       const res = await fetch(url, {
         headers: { "User-Agent": UA },
@@ -91,17 +110,17 @@ async function fetchCommentary(ticker: string, fundName: string): Promise<string
       if (!res.ok) continue
       const html = await res.text()
 
-      // Look for PDF links in the page
+      // Find PDF links on the page
       const pdfLinks = [...html.matchAll(/href=["'](https?:\/\/[^"']+\.pdf)["']/gi)]
       for (const match of pdfLinks.slice(0, 3)) {
         const pdfText = await fetchPdfText(match[1])
         if (pdfText) {
-          console.log("[v0] Found PDF via link scrape:", match[1])
+          console.log("[v0] Found PDF via page scrape:", match[1])
           return pdfText.slice(0, 6000)
         }
       }
 
-      // Also check for relative PDF links
+      // Check relative PDF links too
       const relPdfLinks = [...html.matchAll(/href=["'](\/[^"']+\.pdf)["']/gi)]
       const baseUrl = new URL(url).origin
       for (const match of relPdfLinks.slice(0, 3)) {
