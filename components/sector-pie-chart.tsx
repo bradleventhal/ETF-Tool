@@ -35,30 +35,31 @@ export function SectorPieChart({ data, ticker, subtitle, mode = "internal" }: Pr
     <div className="flex flex-col items-center">
       <p className="mb-0.5 text-center font-mono text-xs font-bold tracking-wider" style={{ color: "#0f3d6b" }}>{ticker}</p>
       {subtitle && <p className="mb-2 text-center text-[10px] font-medium" style={{ color: "#64748b" }}>{subtitle}</p>}
-      <ResponsiveContainer width="100%" height={isMobile ? 170 : 240}>
-        <PieChart margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+      <ResponsiveContainer width="100%" height={isMobile ? 200 : 240}>
+        <PieChart margin={isMobile ? { top: 20, right: 30, bottom: 20, left: 30 } : { top: 15, right: 5, bottom: 5, left: 5 }}>
           <Pie
             data={chartData}
             cx="50%"
             cy="50%"
-            innerRadius={isMobile ? 30 : 45}
-            outerRadius={isMobile ? 55 : 75}
+            innerRadius={isMobile ? 28 : 45}
+            outerRadius={isMobile ? 50 : 75}
             paddingAngle={2}
             dataKey="value"
             stroke="none"
-            label={isMobile ? false : ({ cx, cy, midAngle, outerRadius: oR, index }) => {
+            label={({ cx, cy, midAngle, outerRadius: oR, index }) => {
               const RADIAN = Math.PI / 180
-              const radius = oR + 16
+              const radius = oR + (isMobile ? 12 : 16)
               const x = cx + radius * Math.cos(-midAngle * RADIAN)
               const y = cy + radius * Math.sin(-midAngle * RADIAN)
               const original = sorted[index]
               const display = original ? original.value : chartData[index].value
               return (
-                <text x={x} y={y} fill="#334155" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={12} fontWeight={600}>
-                  {`${display.toFixed(1)}%`}
+                <text x={x} y={y} fill="#334155" textAnchor={x > cx ? "start" : "end"} dominantBaseline="central" fontSize={isMobile ? 10 : 12} fontWeight={600}>
+                  {`${display.toFixed(isMobile ? 0 : 1)}%`}
                 </text>
               )
             }}
+            labelLine={{ stroke: "#94a3b8", strokeWidth: 1 }}
           >
             {chartData.map((_, idx) => (
               <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
@@ -88,7 +89,7 @@ export function SectorPieChart({ data, ticker, subtitle, mode = "internal" }: Pr
           <div key={d.name} className="flex items-center gap-1">
             <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
             <span className="whitespace-nowrap text-[10px]" style={{ color: "#475569" }}>
-              {d.name}{isMobile ? ` ${d.value.toFixed(0)}%` : ""}
+              {d.name}
             </span>
           </div>
         ))}
