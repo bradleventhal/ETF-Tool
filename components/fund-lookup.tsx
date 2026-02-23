@@ -84,7 +84,7 @@ function StarRating({ rating }: { rating: number | null }) {
   )
 }
 
-export function FundLookup({ fund, allTickers }: { fund: FundData; allTickers?: string[] }) {
+export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; allTickers?: string[]; onCompare?: (competitorTicker: string) => void }) {
   const [insights, setInsights] = useState<FundInsights | null>(null)
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
@@ -180,6 +180,16 @@ export function FundLookup({ fund, allTickers }: { fund: FundData; allTickers?: 
             <span className="rounded px-2 py-0.5 text-[11px] font-bold uppercase" style={{ backgroundColor: "#0f3d6b", color: "#fff" }}>
               {durCategory(dur)}
             </span>
+            {onCompare && (
+              <button
+                onClick={() => onCompare(fund.ticker)}
+                className="mt-1 flex items-center gap-1 rounded border px-2.5 py-1 text-[11px] font-semibold transition-colors hover:bg-white"
+                style={{ borderColor: "#0f3d6b", color: "#0f3d6b" }}
+              >
+                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M4 4l17 17" /></svg>
+                Compare
+              </button>
+            )}
           </div>
         </div>
       </div>
