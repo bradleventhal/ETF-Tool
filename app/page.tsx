@@ -598,10 +598,18 @@ export default function Page() {
         {lookupTicker && (() => {
           const fund = funds.find(f => f.ticker === lookupTicker)
           if (!fund) return null
-          return <FundLookup fund={fund} allTickers={tickers} onCompare={(competitor) => {
-            setTickerB(competitor)
-            if (!competitors.includes(competitor)) setCompetitors(prev => [...prev.slice(0, 4), competitor])
-            setTickerA("")
+          const ANGEL_OAK_TICKERS = new Set(["ANGIX", "CARY", "UYLD", "AOUIX", "ASCIX", "TRBF", "AOHY", "MBS", "FINS"])
+          return <FundLookup fund={fund} allTickers={tickers} onCompare={(ticker) => {
+            if (ANGEL_OAK_TICKERS.has(ticker)) {
+              // Angel Oak fund goes into "Our Fund" slot
+              setTickerA(ticker)
+              setTickerB("")
+            } else {
+              // Non-Angel Oak fund goes into competitors
+              setTickerB(ticker)
+              if (!competitors.includes(ticker)) setCompetitors(prev => [...prev.slice(0, 4), ticker])
+              setTickerA("")
+            }
             setSection("comparison")
           }} />
         })()}
