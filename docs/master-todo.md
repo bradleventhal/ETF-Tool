@@ -4,9 +4,9 @@
 1. ~~Competitor pitch + rebuttals section~~ -- DONE
 2. ~~Contextual GPT chat + anticipated questions below takeaway/rebuttals~~ -- DONE
 3. ~~Header cleanup~~ -- DONE
-4. Separate sections for fund discovery vs comparison
+4. ~~Separate sections for fund discovery vs comparison~~ -- DONE
 5. ~~GPT system prompt lockdown (tone, personality, no soft language)~~ -- DONE
-6. Fix data persistence (Supabase upload works -- 97 funds in DB -- but env vars don't load in dev server, so main page still uses IndexedDB/file upload)
+6. ~~Fix data persistence (Supabase)~~ -- DONE
 
 ## SHORT TERM:
 7. GPT "Elevator Pitch" Generator (one-click, tailored to client type)
