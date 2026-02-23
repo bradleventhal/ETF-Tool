@@ -238,7 +238,7 @@ export function FundChat({ result }: FundChatProps) {
                   border: isUser ? "none" : "1px solid #e2e8f0",
                 }}
               >
-                <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</div>
+                <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content.split(/\*\*(.+?)\*\*/g).map((part, i) => i % 2 === 1 ? <strong key={i}>{part}</strong> : part)}</div>
               </div>
             </div>
           )
