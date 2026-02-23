@@ -423,7 +423,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
 
       {/* Chart */}
       <div className="px-2 py-4 sm:px-4">
-        {sortedData.length < 2 ? (
+        {sortedData.length < 1 ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Search className="h-8 w-8" style={{ color: "#e2e8f0" }} />
             <p className="mt-3 text-sm font-medium" style={{ color: "#94a3b8" }}>
