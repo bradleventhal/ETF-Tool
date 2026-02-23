@@ -116,9 +116,19 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
 
   // Recommendation + Common Inception
   const [recDate, setRecDate] = useState<string | null>(null)
+  const [recLabel, setRecLabel] = useState<string | null>(null)
   const [recLoading, setRecLoading] = useState(false)
   const [ciDate, setCiDate] = useState<string | null>(null)
   const recFetched = useRef(false)
+
+  // Map recommend label to a preset if possible
+  const labelToPreset = (label: string): Preset | null => {
+    if (label === "YTD") return "YTD"
+    if (label === "1Y") return "1Y"
+    if (label === "3Y") return "3Y"
+    if (label === "Common Inception") return "CI"
+    return null
+  }
 
   // Fetch recommendation on mount (once) -- also gets common inception date
   useEffect(() => {
@@ -130,12 +140,20 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
       .then(json => {
         if (json.commonInceptionDate) setCiDate(json.commonInceptionDate)
         if (json.recommended) setRecDate(json.recommended)
+        if (json.label) setRecLabel(json.label)
 
         if (mode === "advisor" && json.recommended) {
-          // Advisor mode: auto-select the most favorable timeframe
-          setCustomStart(json.recommended)
-          setCustomEnd(todayStr())
-          setUseCustom(true)
+          // Advisor mode: map to a preset if possible, otherwise use custom silently
+          const matchedPreset = json.label ? labelToPreset(json.label) : null
+          if (matchedPreset) {
+            setPreset(matchedPreset)
+            setUseCustom(false)
+          } else {
+            // Can't map to preset -- use custom date but we'll hide the picker in advisor mode
+            setCustomStart(json.recommended)
+            setCustomEnd(todayStr())
+            setUseCustom(true)
+          }
         } else if (mode === "internal" && json.commonInceptionDate) {
           // Internal mode: default to common inception
           setPreset("CI")
@@ -218,21 +236,33 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
               </button>
             )
           })}
-          <button
-            onClick={() => { setUseCustom(true); if (!customStart) setCustomStart(dateMinusYears(1)) }}
-            className="rounded px-2.5 py-1 text-[11px] font-semibold transition-colors"
-            style={{
-              backgroundColor: useCustom ? navy : "transparent",
-              color: useCustom ? "#fff" : "#64748b",
-            }}
-          >
-            Custom
-          </button>
+          {/* In advisor mode: if using a custom date, show the label as a clean "preset" button.
+              In internal mode: show the full Custom button with date pickers. */}
+          {mode === "advisor" && useCustom && recLabel && (
+            <button
+              className="rounded px-2.5 py-1 text-[11px] font-semibold"
+              style={{ backgroundColor: navy, color: "#fff" }}
+            >
+              {recLabel}
+            </button>
+          )}
+          {mode === "internal" && (
+            <button
+              onClick={() => { setUseCustom(true); if (!customStart) setCustomStart(dateMinusYears(1)) }}
+              className="rounded px-2.5 py-1 text-[11px] font-semibold transition-colors"
+              style={{
+                backgroundColor: useCustom ? navy : "transparent",
+                color: useCustom ? "#fff" : "#64748b",
+              }}
+            >
+              Custom
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Custom date row */}
-      {useCustom && (
+      {/* Custom date row -- only shown in internal mode */}
+      {useCustom && mode === "internal" && (
         <div className="flex flex-wrap items-center gap-5 border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#fafbfc" }}>
           <SegmentedDateInput label="Start" value={customStart} onChange={setCustomStart} />
           <div className="h-px w-3" style={{ backgroundColor: "#cbd5e1" }} />
