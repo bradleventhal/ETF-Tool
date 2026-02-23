@@ -85,136 +85,189 @@ function isRealCommentary(text: string): boolean {
   return hits >= 3
 }
 
-/** Search for any fund's quarterly commentary PDF. Purely search-driven -- no hardcoded fund families. */
+/** Extract all PDF URLs from an HTML page -- checks href, src, embed, JS redirects */
+function extractPdfUrls(html: string, baseUrl: string): string[] {
+  const urls: string[] = []
+  const seen = new Set<string>()
+  const addUrl = (raw: string) => {
+    try {
+      const full = raw.startsWith("http") ? raw : new URL(raw, baseUrl).href
+      if (!seen.has(full)) { seen.add(full); urls.push(full) }
+    } catch { /* bad URL */ }
+  }
+
+  // href="...pdf"
+  for (const m of html.matchAll(/href=["']((?:https?:\/\/)?[^"']+\.pdf)["']/gi)) addUrl(m[1])
+  // src="...pdf" (embed, iframe, object)
+  for (const m of html.matchAll(/src=["']((?:https?:\/\/)?[^"']+\.pdf)["']/gi)) addUrl(m[1])
+  // JS: window.location.replace('...pdf') or window.location = '...pdf'
+  for (const m of html.matchAll(/location(?:\.replace)?\s*\(\s*['"]([^'"]+\.pdf)['"]\s*\)/gi)) addUrl(m[1])
+  // Direct link in quotes ending in .pdf
+  for (const m of html.matchAll(/['"]((https?:\/\/)[^'"]+\.pdf)['"]/gi)) addUrl(m[1])
+
+  return urls
+}
+
+/** Try to find and fetch the commentary PDF for any fund.
+ *  Strategy: derive the fund company domain from the fund name, crawl their site for commentary links. */
 async function fetchCommentary(ticker: string, fundName: string): Promise<CommentaryResult> {
   console.log("[v0] Searching commentary for:", ticker, fundName)
 
-  // Use multiple search engines / approaches in parallel
-  const queries = [
-    `"${ticker}" quarterly commentary filetype:pdf`,
-    `"${fundName}" quarterly commentary pdf`,
-    `"${ticker}" portfolio manager commentary pdf`,
-    `"${ticker}" quarterly report commentary`,
+  // Step 1: Derive the company domain from the fund name
+  // Common patterns: "Angel Oak UltraShort Income ETF" -> "angeloakcapital.com"
+  //                  "PIMCO Enhanced Short Maturity" -> "pimco.com"
+  //                  "Vanguard Short-Term Bond ETF" -> "vanguard.com"
+  // We try to guess the domain and then crawl common commentary paths
+
+  // Extract the company name (everything before common fund-type words)
+  const fundWords = fundName.split(/\s+/)
+  const stopWords = ["fund", "etf", "trust", "portfolio", "bond", "income", "credit",
+    "short", "ultra", "ultrashort", "long", "high", "low", "total", "return",
+    "enhanced", "strategic", "multi", "core", "plus", "select", "active",
+    "flexible", "dynamic", "floating", "rate", "term", "maturity", "duration",
+    "yield", "opportunities", "securitized", "mortgage", "corporate", "government"]
+  
+  let companyWords: string[] = []
+  for (const w of fundWords) {
+    if (stopWords.includes(w.toLowerCase().replace(/[-]/g, ""))) break
+    companyWords.push(w)
+  }
+  if (companyWords.length === 0) companyWords = fundWords.slice(0, 2)
+  const companyName = companyWords.join(" ")
+  console.log("[v0] Derived company name:", companyName)
+
+  // Generate possible domains
+  const slug = companyWords.map(w => w.toLowerCase().replace(/[^a-z0-9]/g, "")).join("")
+  const slugDash = companyWords.map(w => w.toLowerCase().replace(/[^a-z0-9]/g, "")).join("-")
+  const possibleDomains = [
+    `${slug}.com`,
+    `${slugDash}.com`,
+    `${slug}capital.com`,
+    `${slug}funds.com`,
+    `${slug}investments.com`,
+    `www.${slug}.com`,
+  ]
+  // Remove duplicates
+  const domains = [...new Set(possibleDomains)]
+  console.log("[v0] Trying domains:", domains)
+
+  // Common paths where fund companies host commentary
+  const commentaryPaths = [
+    "/quarterly-fund-commentaries",
+    "/insights",
+    "/commentary",
+    "/resources/commentary",
+    "/fund-commentary",
+    "/quarterly-commentary",
+    "/market-insights",
+    "/investment-insights",
+    "/resources",
+    "/etf/commentary",
   ]
 
   const pdfUrls: string[] = []
-  const pageUrls: string[] = []
+  const redirectPages: string[] = []
 
-  // Search DuckDuckGo and Google (via scrape) for PDF commentary
-  for (const query of queries) {
-    // DuckDuckGo HTML search
-    try {
-      const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`
-      console.log("[v0] DDG search:", query)
-      const res = await fetch(ddgUrl, {
-        headers: { "User-Agent": UA, "Accept": "text/html" },
-        signal: AbortSignal.timeout(8000),
-      })
-      if (res.ok) {
+  // Step 2: Crawl each domain for commentary pages
+  for (const domain of domains) {
+    for (const path of commentaryPaths) {
+      const url = `https://${domain}${path}`
+      try {
+        const res = await fetch(url, {
+          headers: { "User-Agent": UA },
+          signal: AbortSignal.timeout(6000),
+          redirect: "follow",
+        })
+        if (!res.ok) continue
         const html = await res.text()
-        // Extract result URLs from DuckDuckGo's uddg redirects
-        const matches = [...html.matchAll(/uddg=([^&"']+)/gi)]
-        console.log("[v0] DDG results:", matches.length)
-        for (const m of matches) {
+        console.log("[v0] Found page:", url, "length:", html.length)
+
+        // Extract PDF links from the page
+        const pdfs = extractPdfUrls(html, url)
+        for (const p of pdfs) {
+          if (!pdfUrls.includes(p)) pdfUrls.push(p)
+        }
+
+        // Also find links that contain "commentary" -- these might be redirect pages
+        const commentaryLinks = [...html.matchAll(/href=["']([^"']+)["'][^>]*>[^<]*(?:commentary|quarterly)[^<]*/gi)]
+        for (const m of commentaryLinks) {
           try {
-            const url = decodeURIComponent(m[1])
-            const lower = url.toLowerCase()
-            if (lower.endsWith(".pdf")) {
-              if (!pdfUrls.includes(url)) pdfUrls.push(url)
-            } else if (lower.includes("commentary") || lower.includes("quarterly") || lower.includes("insights")) {
-              if (!pageUrls.includes(url)) pageUrls.push(url)
+            const linkUrl = m[1].startsWith("http") ? m[1] : new URL(m[1], url).href
+            // Only follow links that could be about THIS fund
+            const linkLower = linkUrl.toLowerCase()
+            const tickerLower = ticker.toLowerCase()
+            const nameWords = fundName.toLowerCase().split(/\s+/)
+            // Check if the link URL seems relevant to this fund
+            if (linkLower.includes(tickerLower) ||
+                nameWords.some(w => w.length > 4 && linkLower.includes(w)) ||
+                linkLower.includes("commentary")) {
+              if (!redirectPages.includes(linkUrl)) redirectPages.push(linkUrl)
             }
           } catch { /* bad URL */ }
         }
-      }
-    } catch { /* skip */ }
 
-    // Google lite search
-    try {
-      const gUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=10`
-      const res = await fetch(gUrl, {
-        headers: { "User-Agent": UA, "Accept": "text/html" },
-        signal: AbortSignal.timeout(8000),
-      })
-      if (res.ok) {
-        const html = await res.text()
-        // Google wraps URLs in /url?q= redirects
-        const matches = [...html.matchAll(/\/url\?q=(https?[^&"]+)/gi)]
-        console.log("[v0] Google results:", matches.length)
-        for (const m of matches) {
-          try {
-            const url = decodeURIComponent(m[1])
-            const lower = url.toLowerCase()
-            if (lower.endsWith(".pdf")) {
-              if (!pdfUrls.includes(url)) pdfUrls.push(url)
-            } else if (lower.includes("commentary") || lower.includes("quarterly") || lower.includes("insights")) {
-              if (!pageUrls.includes(url)) pageUrls.push(url)
-            }
-          } catch { /* bad URL */ }
-        }
-      }
-    } catch { /* skip */ }
-
-    if (pdfUrls.length >= 3) break
+        // If we found results, stop trying more paths on this domain
+        if (pdfUrls.length > 0 || redirectPages.length > 0) break
+      } catch { continue }
+    }
+    // Stop trying domains if we found something
+    if (pdfUrls.length > 0 || redirectPages.length > 0) break
   }
 
-  // Sort PDFs: prioritize URLs with "commentary" or "quarter" in them
+  console.log("[v0] Direct PDFs:", pdfUrls.length, "Redirect pages:", redirectPages.length)
+
+  // Step 3: Follow redirect pages -- these often have embedded PDFs in <embed> or JS
+  for (const url of redirectPages.slice(0, 6)) {
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": UA },
+        signal: AbortSignal.timeout(8000),
+        redirect: "follow",
+      })
+      if (!res.ok) continue
+      const ct = res.headers.get("content-type") || ""
+
+      // If the redirect resolved directly to a PDF
+      if (ct.includes("pdf")) {
+        const buffer = Buffer.from(await res.arrayBuffer())
+        const text = await parsePdf(buffer)
+        if (text && isRealCommentary(text)) {
+          const preview = text.slice(0, 300).replace(/\s+/g, " ").trim()
+          const domain = new URL(url).hostname.replace("www.", "").replace("go.", "")
+          return { text: text.slice(0, 6000), sourceUrl: url, preview }
+        }
+        continue
+      }
+
+      // Otherwise parse HTML for embedded PDF links
+      const html = await res.text()
+      const embeddedPdfs = extractPdfUrls(html, url)
+      console.log("[v0] Redirect page", url, "has", embeddedPdfs.length, "embedded PDFs")
+      for (const pdfUrl of embeddedPdfs) {
+        if (!pdfUrls.includes(pdfUrl)) pdfUrls.unshift(pdfUrl) // high priority
+      }
+    } catch { continue }
+  }
+
+  // Step 4: Download and validate all found PDFs
+  // Prioritize URLs with ticker or "commentary" in them
+  const tickerLower = ticker.toLowerCase()
   pdfUrls.sort((a, b) => {
     const aL = a.toLowerCase()
     const bL = b.toLowerCase()
-    const aScore = (aL.includes("comment") ? 0 : 2) + (aL.includes("quarter") ? 0 : 1)
-    const bScore = (bL.includes("comment") ? 0 : 2) + (bL.includes("quarter") ? 0 : 1)
+    const aScore = (aL.includes(tickerLower) ? 0 : 3) + (aL.includes("comment") ? 0 : 2) + (aL.includes("quarter") ? 0 : 1)
+    const bScore = (bL.includes(tickerLower) ? 0 : 3) + (bL.includes("comment") ? 0 : 2) + (bL.includes("quarter") ? 0 : 1)
     return aScore - bScore
   })
 
-  console.log("[v0] Found", pdfUrls.length, "PDF URLs,", pageUrls.length, "page URLs")
-
-  // Try direct PDF downloads -- validate each is real commentary
-  for (const url of pdfUrls.slice(0, 6)) {
+  console.log("[v0] Total PDF URLs to try:", pdfUrls.length)
+  for (const url of pdfUrls.slice(0, 8)) {
     const text = await fetchPdfText(url)
     if (text && isRealCommentary(text)) {
       console.log("[v0] Validated commentary from:", url)
       const preview = text.slice(0, 300).replace(/\s+/g, " ").trim()
       return { text: text.slice(0, 6000), sourceUrl: url, preview }
-    } else if (text) {
-      console.log("[v0] PDF not real commentary:", url)
     }
-  }
-
-  // Scrape pages for PDF links, then download and validate
-  for (const url of pageUrls.slice(0, 4)) {
-    try {
-      const res = await fetch(url, {
-        headers: { "User-Agent": UA },
-        signal: AbortSignal.timeout(6000),
-      })
-      if (!res.ok) continue
-      const html = await res.text()
-
-      // Find all PDF links (absolute + relative)
-      const allLinks = [
-        ...([...html.matchAll(/href=["'](https?:\/\/[^"']+\.pdf)["']/gi)].map(m => m[1])),
-        ...([...html.matchAll(/href=["'](\/[^"']+\.pdf)["']/gi)].map(m => {
-          try { return new URL(m[1], url).href } catch { return "" }
-        })),
-      ].filter(Boolean)
-
-      // Prioritize links with "commentary" in the URL
-      allLinks.sort((a, b) => {
-        const aHas = a.toLowerCase().includes("comment") ? 0 : 1
-        const bHas = b.toLowerCase().includes("comment") ? 0 : 1
-        return aHas - bHas
-      })
-
-      for (const pdfUrl of allLinks.slice(0, 4)) {
-        const pdfText = await fetchPdfText(pdfUrl)
-        if (pdfText && isRealCommentary(pdfText)) {
-          console.log("[v0] Commentary via page scrape:", pdfUrl)
-          const preview = pdfText.slice(0, 300).replace(/\s+/g, " ").trim()
-          return { text: pdfText.slice(0, 6000), sourceUrl: pdfUrl, preview }
-        }
-      }
-    } catch { continue }
   }
 
   console.log("[v0] No commentary found for", ticker)
