@@ -1,4 +1,4 @@
-import OpenAI from "openai"
+import { generateText } from "ai"
 import type { FundData } from "@/lib/fund-types"
 
 export const maxDuration = 60
@@ -210,19 +210,15 @@ export async function POST(req: Request) {
       userContent += `\n\nFUND COMPANY COMMENTARY (scraped from their website -- use this heavily):\n${commentary}`
     }
 
-    const openai = new OpenAI()
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userContent },
-      ],
+    const result = await generateText({
+      model: "openai/gpt-4o-mini",
+      system: SYSTEM_PROMPT,
+      messages: [{ role: "user", content: userContent }],
       temperature: 0.3,
-      max_tokens: 1500,
+      maxOutputTokens: 1500,
     })
 
-    const text = completion.choices[0]?.message?.content || ""
+    const text = result.text || ""
 
     const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()
     const parsed = JSON.parse(cleaned)
