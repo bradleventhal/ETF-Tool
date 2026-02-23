@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect, useMemo, useCallback } from "react"
+import React, { useState, useRef, useEffect, useMemo, useCallback } from "react"
 import type { AnalysisResult } from "@/lib/fund-types"
 import { MessageSquare, Send, ChevronDown } from "lucide-react"
 
