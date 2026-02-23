@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, ReferenceLine
+  LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, ReferenceLine, ReferenceDot
 } from "recharts"
 
-interface GrowthPoint { date: string; [ticker: string]: string | number }
 interface ChartPoint { date: string; [key: string]: string | number }
 const BASE = 10000
 function pctToDollar(pct: number): number { return Math.round(BASE * (1 + pct / 100)) }
@@ -221,9 +220,8 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
 
   return (
     <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-      {/* Header */}
-      <div className="flex items-center justify-between border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f8fafc" }}>
-        <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Growth of $10,000</h4>
+      {/* Period presets */}
+      <div className="flex items-center justify-end border-b px-4 py-2" style={{ borderColor: "#e2e8f0", backgroundColor: "#f8fafc" }}>
         <div className="flex items-center gap-1">
           {PRESETS.map(p => {
             const isCIDisabled = p === "CI" && !ciDate
@@ -285,22 +283,22 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
         </div>
       )}
 
-      {/* Legend */}
+      {/* Legend -- % growth is primary, dollar is secondary */}
       <div className="px-4 pt-3 pb-1">
         {totalA != null && totalB != null && (
-          <div className="mb-2 flex items-center gap-5 text-xs">
-            <span style={{ color: navy }}>
-              <span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: navy }} />
-              <span className="font-bold">{tickerA}</span>
-              <span className="ml-1.5 font-mono font-semibold">${pctToDollar(totalA).toLocaleString()}</span>
-              <span className="ml-1 font-mono text-[10px]" style={{ color: "#64748b" }}>({totalA >= 0 ? "+" : ""}{totalA.toFixed(2)}%)</span>
-            </span>
-            <span style={{ color: red }}>
-              <span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: red }} />
-              <span className="font-bold">{tickerB}</span>
-              <span className="ml-1.5 font-mono font-semibold">${pctToDollar(totalB).toLocaleString()}</span>
-              <span className="ml-1 font-mono text-[10px]" style={{ color: "#64748b" }}>({totalB >= 0 ? "+" : ""}{totalB.toFixed(2)}%)</span>
-            </span>
+          <div className="mb-2 flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: navy }} />
+              <span className="text-sm font-bold" style={{ color: navy }}>{tickerA}</span>
+              <span className="font-mono text-lg font-bold" style={{ color: navy }}>{totalA >= 0 ? "+" : ""}{totalA.toFixed(2)}%</span>
+              <span className="font-mono text-[11px]" style={{ color: "#94a3b8" }}>${pctToDollar(totalA).toLocaleString()}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: red }} />
+              <span className="text-sm font-bold" style={{ color: red }}>{tickerB}</span>
+              <span className="font-mono text-lg font-bold" style={{ color: red }}>{totalB >= 0 ? "+" : ""}{totalB.toFixed(2)}%</span>
+              <span className="font-mono text-[11px]" style={{ color: "#94a3b8" }}>${pctToDollar(totalB).toLocaleString()}</span>
+            </div>
           </div>
         )}
       </div>
@@ -319,7 +317,7 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
         )}
         {!loading && !recLoading && !error && data.length > 0 && (
           <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+            <LineChart data={data} margin={{ top: 5, right: 65, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
               <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#94a3b8" }} tickFormatter={formatDateLabel} interval={tickInterval} axisLine={{ stroke: "#cbd5e1" }} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmtDollar(v)} width={52} domain={["dataMin - 200", "dataMax + 200"]} />
@@ -337,6 +335,35 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
               />
               <Line type="monotone" dataKey={`${tickerA}_dollar`} name={`${tickerA}_dollar`} stroke={navy} dot={false} strokeWidth={2} activeDot={{ r: 4, fill: navy, stroke: "#fff", strokeWidth: 2 }} />
               <Line type="monotone" dataKey={`${tickerB}_dollar`} name={`${tickerB}_dollar`} stroke={red} dot={false} strokeWidth={2} activeDot={{ r: 4, fill: red, stroke: "#fff", strokeWidth: 2 }} />
+              {/* End-of-line % badges like Morningstar */}
+              {data.length > 0 && totalA != null && (() => {
+                const last = data[data.length - 1]
+                const lastDateStr = last.date as string
+                const lastValA = last[`${tickerA}_dollar`] as number
+                const lastValB = last[`${tickerB}_dollar`] as number
+                const labelA = `${totalA >= 0 ? "+" : ""}${totalA.toFixed(1)}%`
+                const labelB = `${totalB >= 0 ? "+" : ""}${totalB.toFixed(1)}%`
+                return (
+                  <>
+                    <ReferenceDot x={lastDateStr} y={lastValA} r={0} stroke="none">
+                      <g>
+                        <rect x={8} y={-10} width={labelA.length * 7.5 + 10} height={20} rx={4} fill={navy} />
+                        <text x={13} y={4} fontSize={11} fontWeight={700} fontFamily="ui-monospace, monospace" fill="#fff">
+                          {labelA}
+                        </text>
+                      </g>
+                    </ReferenceDot>
+                    <ReferenceDot x={lastDateStr} y={lastValB} r={0} stroke="none">
+                      <g>
+                        <rect x={8} y={-10} width={labelB.length * 7.5 + 10} height={20} rx={4} fill={red} />
+                        <text x={13} y={4} fontSize={11} fontWeight={700} fontFamily="ui-monospace, monospace" fill="#fff">
+                          {labelB}
+                        </text>
+                      </g>
+                    </ReferenceDot>
+                  </>
+                )
+              })()}
             </LineChart>
           </ResponsiveContainer>
         )}

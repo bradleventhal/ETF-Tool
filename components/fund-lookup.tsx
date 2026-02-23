@@ -130,11 +130,9 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
     })
       .then(async r => {
         const text = await r.text()
-        console.log("[v0] fund-lookup response status:", r.status, "body:", text.slice(0, 500))
         try { return JSON.parse(text) } catch { return { error: "Bad JSON: " + text.slice(0, 200) } }
       })
       .then(data => {
-        console.log("[v0] fund-lookup parsed data:", data)
         if (data?.error) {
           setErrorMsg(data.error)
         } else if (data?.performanceDrivers) {
