@@ -5,35 +5,35 @@ export async function GET(req: NextRequest) {
   if (!ticker) return NextResponse.json({ error: "ticker required" }, { status: 400 })
 
   try {
-    // Try v6 quote endpoint first (includes fund-specific fields)
-    const url = `https://query2.finance.yahoo.com/v6/finance/quoteSummary/${encodeURIComponent(ticker)}?modules=defaultKeyStatistics,fundProfile`
-    const res = await fetch(url, {
+    // Scrape Morningstar search page to get the star rating
+    const searchUrl = `https://www.morningstar.com/search?query=${encodeURIComponent(ticker)}`
+    const res = await fetch(searchUrl, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml",
       },
     })
-    if (!res.ok) {
-      // Fallback: try v8 finance/quote
-      const url2 = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?range=1d&interval=1d&includePrePost=false`
-      const res2 = await fetch(url2, { headers: { "User-Agent": "Mozilla/5.0" } })
-      if (!res2.ok) throw new Error("Both endpoints failed")
-      // v8 doesn't have morningstar data, return null
-      return NextResponse.json({ ticker, morningstarRating: null, morningstarRiskRating: null, category: null })
-    }
-    const json = await res.json()
-    const stats = json?.quoteSummary?.result?.[0]?.defaultKeyStatistics
-    const profile = json?.quoteSummary?.result?.[0]?.fundProfile
 
-    const rating = stats?.morningStarOverallRating?.raw ?? null
-    const riskRating = stats?.morningStarRiskRating?.raw ?? null
-    const category = profile?.categoryName ?? stats?.categoryName ?? null
+    if (!res.ok) throw new Error(`Morningstar returned ${res.status}`)
+    const html = await res.text()
 
-    console.log("[v0] Morningstar lookup for", ticker, "- rating:", rating, "category:", category)
+    // Look for star rating pattern in the HTML -- Morningstar embeds it as aria-label or data attributes
+    const ratingMatch = html.match(/rating["\s]*[:=]\s*(\d)/i)
+      || html.match(/(\d)\s*star/i)
+      || html.match(/mstar-rating["\s:]+(\d)/i)
+      || html.match(/"starRating"\s*:\s*(\d)/i)
+      || html.match(/"performanceRating"\s*:\s*(\d)/i)
 
-    return NextResponse.json({ ticker, morningstarRating: rating, morningstarRiskRating: riskRating, category })
+    const rating = ratingMatch ? parseInt(ratingMatch[1]) : null
+    const validRating = rating && rating >= 1 && rating <= 5 ? rating : null
+
+    // Also try to extract category
+    const catMatch = html.match(/"categoryName"\s*:\s*"([^"]+)"/i)
+    const category = catMatch ? catMatch[1] : null
+
+    return NextResponse.json({ ticker, morningstarRating: validRating, category })
   } catch (err) {
     console.error("[v0] Morningstar fetch error:", err)
-    return NextResponse.json({ ticker, morningstarRating: null, morningstarRiskRating: null, category: null })
+    return NextResponse.json({ ticker, morningstarRating: null, category: null })
   }
 }

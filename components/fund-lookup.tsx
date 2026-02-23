@@ -38,6 +38,7 @@ interface FundInsights {
   performanceDrivers: string[]
   tailwinds: string[]
   headwinds: string[]
+  hasCommentary?: boolean
   positioning: string
 }
 
@@ -298,11 +299,16 @@ export function FundLookup({ fund, allTickers }: { fund: FundData; allTickers?: 
 
       {/* GPT Insights */}
       <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-        <div className="border-b px-3 py-2.5 sm:px-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
+        <div className="flex items-center justify-between border-b px-3 py-2.5 sm:px-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
           <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>
             Fund Analysis
             {loading && <Loader2 className="ml-2 inline-block h-3 w-3 animate-spin" style={{ color: "#94a3b8" }} />}
           </h4>
+          {insights?.hasCommentary && (
+            <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "#dcfce7", color: "#16a34a" }}>
+              Sourced from commentary
+            </span>
+          )}
         </div>
         <div className="p-4 sm:p-5">
           {loading && !insights && (
