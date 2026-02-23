@@ -69,11 +69,14 @@ export async function POST(req: Request) {
       )
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-      return Response.json({ error: "OPENAI_API_KEY is not configured" }, { status: 500 })
+    const apiKey = process.env.OPENAI_API_KEY
+    console.log("[v0] OPENAI_API_KEY present:", !!apiKey, "length:", apiKey?.length ?? 0)
+
+    if (!apiKey) {
+      return Response.json({ error: "OPENAI_API_KEY is not configured. Please add it in project settings." }, { status: 500 })
     }
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    const openai = new OpenAI({ apiKey })
 
     const body = await req.json()
     const userMessages: { role: string; content: string }[] = body.messages || []
