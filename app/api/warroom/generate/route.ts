@@ -1,4 +1,3 @@
-import OpenAI from "openai"
 import { NextResponse } from "next/server"
 import type { FundData, YahooAnalytics } from "@/lib/fund-types"
 
@@ -134,8 +133,6 @@ CRITICAL RULES:
 
 export async function POST(req: Request) {
   try {
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "" })
-
     const { fundA, fundB, yahoo } = (await req.json()) as {
       fundA: FundData
       fundB: FundData
@@ -149,20 +146,34 @@ export async function POST(req: Request) {
     const deltas = computeDeltas(fundA, fundB)
     const dataPayload = buildDataPayload(fundA, fundB, yahoo, deltas)
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: `Generate the war room briefing for ${fundA.ticker} (our fund) vs ${fundB.ticker} (competitor).\n\nDATA:\n${dataPayload}`,
-        },
-      ],
-      temperature: 0.3,
-      max_tokens: 2500,
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          {
+            role: "user",
+            content: `Generate the war room briefing for ${fundA.ticker} (our fund) vs ${fundB.ticker} (competitor).\n\nDATA:\n${dataPayload}`,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 2500,
+      }),
     })
 
-    const raw = completion.choices[0]?.message?.content || ""
+    if (!res.ok) {
+      const errBody = await res.text()
+      console.error("[v0] OpenAI API error:", res.status, errBody)
+      return NextResponse.json({ error: `OpenAI error: ${res.status}` }, { status: 500 })
+    }
+
+    const completion = await res.json()
+    const raw = completion.choices?.[0]?.message?.content || ""
 
     // Parse JSON from response (strip code fences if present)
     const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim()
