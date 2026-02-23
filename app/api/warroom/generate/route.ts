@@ -1,9 +1,8 @@
-import OpenAI from "openai"
+import { generateText } from "ai"
 import type { FundData, YahooAnalytics, WarRoom } from "@/lib/fund-types"
 
 export const maxDuration = 30
 
-// Build a compact data payload for GPT (minimize tokens)
 function buildDataPayload(fundA: FundData, fundB: FundData, yahoo: YahooAnalytics | null, deltas: Record<string, any>) {
   return JSON.stringify({
     ourFund: fundA.ticker,
@@ -23,11 +22,8 @@ function buildDataPayload(fundA: FundData, fundB: FundData, yahoo: YahooAnalytic
   })
 }
 
-// Compute all deltas between both funds
 function computeDeltas(us: FundData, them: FundData) {
   const deltas: Record<string, any> = {}
-
-  // Performance & risk metrics — these have clear directionality
   const directionalMetrics: { key: keyof FundData; label: string; unit: string; higherBetter: boolean }[] = [
     { key: "secYield", label: "SEC Yield", unit: "%", higherBetter: true },
     { key: "distributionYield", label: "Distribution Yield", unit: "%", higherBetter: true },
@@ -40,8 +36,6 @@ function computeDeltas(us: FundData, them: FundData) {
     { key: "threeYear", label: "3Y Return", unit: "%", higherBetter: true },
     { key: "commonInception", label: "Common Inception Return", unit: "%", higherBetter: true },
   ]
-
-  // Allocation & sector metrics — NO directionality. GPT decides what matters.
   const neutralMetrics: { key: keyof FundData; label: string; unit: string }[] = [
     { key: "securitized", label: "Securitized Allocation", unit: "%" },
     { key: "corporateCredit", label: "Corporate Credit Allocation", unit: "%" },
@@ -59,7 +53,6 @@ function computeDeltas(us: FundData, them: FundData) {
     { key: "b", label: "B Allocation", unit: "%" },
     { key: "ccc", label: "CCC Allocation", unit: "%" },
   ]
-
   for (const m of directionalMetrics) {
     const ours = us[m.key] as number | null
     const theirs = them[m.key] as number | null
@@ -70,7 +63,6 @@ function computeDeltas(us: FundData, them: FundData) {
     if (Math.abs(delta) < 0.001) continue
     deltas[m.key] = { metric: m.label, ours, theirs, delta, unit: m.unit, type: "directional", higherIsBetter: m.higherBetter }
   }
-
   for (const m of neutralMetrics) {
     const ours = us[m.key] as number | null
     const theirs = them[m.key] as number | null
@@ -163,31 +155,27 @@ export async function POST(req: Request) {
       return Response.json({ error: "fundA and fundB required" }, { status: 400 })
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-      return Response.json({ error: "OPENAI_API_KEY is not configured" }, { status: 500 })
-    }
-
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
     const deltas = computeDeltas(fundA, fundB)
     const dataPayload = buildDataPayload(fundA, fundB, yahoo, deltas)
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+    const result = await generateText({
+      model: "openai/gpt-4o-mini",
+      system: SYSTEM_PROMPT,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: `Generate the war room briefing for ${fundA.ticker} (our fund) vs ${fundB.ticker} (competitor).\n\nDATA:\n${dataPayload}` },
+        {
+          role: "user" as const,
+          content: `Generate the war room briefing for ${fundA.ticker} (our fund) vs ${fundB.ticker} (competitor).\n\nDATA:\n${dataPayload}`,
+        },
       ],
       temperature: 0.3,
-      max_tokens: 2500,
+      maxOutputTokens: 2500,
     })
 
-    const raw = completion.choices[0]?.message?.content || ""
+    const raw = result.text || ""
 
-    // Parse JSON from response (handle possible markdown fences)
     let jsonStr = raw.trim()
-    if (jsonStr.startsWith("```")) {
-      jsonStr = jsonStr.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "")
+    if (jsonStr.startsWith("\`\`\`")) {
+      jsonStr = jsonStr.replace(/^\`\`\`(?:json)?\n?/, "").replace(/\n?\`\`\`$/, "")
     }
 
     let warRoom: WarRoom
