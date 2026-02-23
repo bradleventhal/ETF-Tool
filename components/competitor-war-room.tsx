@@ -62,6 +62,11 @@ export function CompetitorWarRoom({ warRoom, competitorTicker, ourTicker, polish
             <DifficultyBadge tier={warRoom.overallDifficulty} />
           </div>
           <p className="text-sm leading-relaxed" style={{ color: "#334155" }}>{warRoom.difficultySummary}</p>
+          {warRoom.leadWith && (
+            <p className="mt-2 text-sm font-semibold" style={{ color: "#0f3d6b" }}>
+              Lead with: <span className="font-normal">{warRoom.leadWith}</span>
+            </p>
+          )}
           <p className="mt-2 text-[10px] italic" style={{ color: "#94a3b8" }}>{warRoom.marketContext}</p>
         </div>
       </div>

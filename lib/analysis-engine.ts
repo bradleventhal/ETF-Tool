@@ -118,20 +118,7 @@ function buildNarrative(a: FundData, b: FundData, tA: string, tB: string, mode: 
       tkLines.push(`3Y performance is closely matched: ${thrD > 0 ? tA : tB} ahead by ${Math.abs(thrD).toFixed(1)}%.`)
     }
 
-    // ---- LEAD WITH / PUSHBACKS ----
-    const leads: string[] = []
-    if (hiYield && hi === tA) leads.push("yield advantage")
-    if (hiCred === tA) leads.push("higher credit quality")
-    if (loDur === tA) leads.push("shorter duration")
-    else if (durComp) leads.push("comparable duration")
-    if (leads.length > 0) tkLines.push(`Lead with: ${leads.join(", ")}.`)
-
-    if (relExpBps > 5) {
-      tkLines.push(`Likely Pushbacks: ${relExpBps}bps higher expense ratio (${fPct(a.expense)} vs ${fPct(b.expense)}) \u2014 counter with net-of-fee performance${perf3 ? ` showing ${Math.abs(thrD).toFixed(1)}% 3Y outperformance` : ""}.`)
-    }
-    if (perfNeg && hi === tA && !perf3) {
-      tkLines.push(`Likely Pushbacks: 3Y underperformance of ${Math.abs(thrD).toFixed(1)}% \u2014 address with recent trend improvement and yield carry.`)
-    }
+    // Lead with / Pushbacks moved to war room competitive difficulty section
   } else {
     // ---- ADVISOR MODE ----
     if (hiYield) {

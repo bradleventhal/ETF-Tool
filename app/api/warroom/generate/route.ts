@@ -124,7 +124,8 @@ RULES:
 OUTPUT FORMAT: Return valid JSON matching this exact structure:
 {
   "overallDifficulty": "Very Easy" | "Easy" | "Moderate" | "Difficult" | "Very Difficult",
-  "difficultySummary": "2-3 sentence executive summary of the competitive landscape for this matchup",
+  "difficultySummary": "CONVERSATIONAL 2-3 sentences talking directly to the rep. If easy: 'This is a layup. They have nothing real. No reason they don't swap.' If moderate: 'Winnable but be ready — their X edge is real, have your response loaded.' If hard: 'This one's tough — their X is hard to argue against. Lean on Y and don't let them control the convo.' Sound like a coach in a huddle, NOT a report.",
+  "leadWith": "Comma-separated list of our fund's key advantages to lead with in the meeting (e.g. 'yield advantage, higher credit quality, comparable duration'). Null if layup.",
   "isLayup": boolean,
   "layupMessage": string | null,
   "marketContext": "1-2 sentence current market context relevant to this comparison",
@@ -165,7 +166,7 @@ export async function POST(req: Request) {
     const deltas = computeDeltas(fundA, fundB)
     const dataPayload = buildDataPayload(fundA, fundB, yahoo, deltas)
 
-    console.log("[v0] War room generate called for", fundA.ticker, "vs", fundB.ticker, "- calling AI SDK generateText...")
+
 
     const result = await generateText({
       model: "openai/gpt-4o-mini",

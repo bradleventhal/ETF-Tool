@@ -130,6 +130,7 @@ export interface Rebuttal {
 export interface WarRoom {
   overallDifficulty: DifficultyTier
   difficultySummary: string
+  leadWith: string | null
   isLayup: boolean
   layupMessage: string | null
   marketContext: string

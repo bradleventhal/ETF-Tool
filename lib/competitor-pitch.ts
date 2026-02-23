@@ -489,10 +489,11 @@ export function buildWarRoom(us: FundData, them: FundData, yahoo?: YahooAnalytic
     // Find the smallest possible gap to mention
     const secDelta = absBps(them.secYield, us.secYield)
     const lowestMetric = secDelta > 0 ? `SEC yield (${pct(them.secYield)} vs ${pct(us.secYield)})` : "any core metric"
-    return {
-      overallDifficulty: "Very Easy",
-      difficultySummary: "This is a layup. There are no material data-driven arguments working against you.",
-      isLayup: true,
+  return {
+  overallDifficulty: "Very Easy",
+  difficultySummary: "This is a layup. There are no material data-driven arguments working against you.",
+  leadWith: null,
+  isLayup: true,
       layupMessage: `This is a layup. There are no material data-driven arguments working against you. The one thing they might try is ${lowestMetric} — but the gap is immaterial and easily addressed with your broader positioning story.`,
       marketContext: MARKET_CONTEXT,
       competitorArguments: [],
@@ -512,9 +513,32 @@ export function buildWarRoom(us: FundData, them: FundData, yahoo?: YahooAnalytic
   if ((nz(us.threeYear) - nz(them.threeYear)) * 100 > 0.5) ourWins.push("3Y performance")
   if (nz(us.sharpe) > nz(them.sharpe) + 0.1) ourWins.push("Sharpe ratio")
 
-  const hardestStr = hardest.join(" and ")
-  const counterStr = ourWins.length > 0 ? ` but your ${ourWins.join(", ")} give${ourWins.length === 1 ? "s" : ""} you strong counters` : ""
-  const difficultySummary = `${overall} — their ${hardestStr} edge is real${counterStr}.`
+  // Build "lead with" string from our advantages
+  const leads: string[] = []
+  if ((nz(us.secYield) - nz(them.secYield)) * 10000 > 10) leads.push("yield advantage")
+  if (igPct(us) > igPct(them) + 0.03) leads.push("higher credit quality")
+  if (nz(us.duration) < nz(them.duration) - 0.2) leads.push("shorter duration")
+  else if (Math.abs(nz(us.duration) - nz(them.duration)) <= 0.2) leads.push("comparable duration")
+  if ((nz(us.threeYear) - nz(them.threeYear)) * 100 > 0.5) leads.push("3Y outperformance")
+  if (nz(us.stdDev) < nz(them.stdDev)) leads.push("lower volatility")
+  const leadWith = leads.length > 0 ? leads.join(", ") : null
+
+  // Conversational difficulty summary -- talk to the rep like a person
+  let difficultySummary: string
+  const argCount = ranked.length
+  if (overall === "Very Easy" || overall === "Easy") {
+    if (argCount <= 1) {
+      difficultySummary = `This is a layup. They have ${argCount === 0 ? "nothing" : "one thin angle"} to work with. No reason an advisor doesn't swap if they want what's best for their clients.`
+    } else {
+      difficultySummary = `You're in great shape here. They have ${argCount} points but none of them are hard to counter. Lead with your strengths and you'll close this.`
+    }
+  } else if (overall === "Moderate") {
+    const hardestStr = hardest.join(" and ")
+    difficultySummary = `Winnable but be ready. Their ${hardestStr} edge is real — have your response ready for that. ${ourWins.length > 0 ? `Your ${ourWins.join(" and ")} ${ourWins.length === 1 ? "gives" : "give"} you strong ammo.` : ""}`
+  } else {
+    const hardestStr = hardest.join(" and ")
+    difficultySummary = `This one's tough — their ${hardestStr} ${hardest.length === 1 ? "is" : "are"} hard to argue against. ${ourWins.length > 0 ? `Lean on your ${ourWins.join(" and ")} and don't let them control the conversation.` : "You'll need to reframe the conversation around what their numbers don't show."}`
+  }
 
   // Generate arguments and rebuttals
   const competitorArguments: CompetitorArgument[] = ranked.map(adv => ({
@@ -532,6 +556,7 @@ export function buildWarRoom(us: FundData, them: FundData, yahoo?: YahooAnalytic
   return {
     overallDifficulty: overall,
     difficultySummary,
+    leadWith,
     isLayup: false,
     layupMessage: null,
     marketContext: MARKET_CONTEXT,
