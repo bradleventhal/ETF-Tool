@@ -543,7 +543,7 @@ export default function Page() {
         {lookupTicker && (() => {
           const fund = funds.find(f => f.ticker === lookupTicker)
           if (!fund) return null
-          return <FundLookup fund={fund} allTickers={tickers.map(t => t.ticker)} onCompare={(competitor) => {
+          return <FundLookup fund={fund} allTickers={tickers} onCompare={(competitor) => {
             setTickerB(competitor)
             if (!competitors.includes(competitor)) setCompetitors(prev => [...prev.slice(0, 4), competitor])
             setTickerA("")

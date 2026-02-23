@@ -109,7 +109,7 @@ function StarRating({ rating }: { rating: number | null }) {
   )
 }
 
-export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; allTickers?: string[]; onCompare?: (competitorTicker: string) => void }) {
+export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; allTickers?: { ticker: string; name: string }[]; onCompare?: (competitorTicker: string) => void }) {
   const [insights, setInsights] = useState<FundInsights | null>(null)
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
@@ -117,6 +117,7 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
   const mstarCategory = fund.morningstarCategory ?? null
   const [compareTicker, setCompareTicker] = useState("")
   const [compareSearch, setCompareSearch] = useState("")
+  const [compareFocused, setCompareFocused] = useState(false)
 
   const fetchInsights = useCallback(() => {
     setLoading(true)
@@ -149,9 +150,10 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
   useEffect(() => { fetchInsights() }, [fetchInsights])
 
   // Filter tickers for compare search
+  const compareQ = compareSearch.toLowerCase()
   const filteredTickers = (allTickers || []).filter(t =>
-    t !== fund.ticker && t.toLowerCase().includes(compareSearch.toLowerCase())
-  ).slice(0, 6)
+    t.ticker !== fund.ticker && (t.ticker.toLowerCase().includes(compareQ) || t.name.toLowerCase().includes(compareQ))
+  ).slice(0, 8)
 
   const sectorData = [
     { name: "Non-Agency RMBS", value: nz(fund.nonAgencyRmbs) },
@@ -244,7 +246,7 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
       {/* Interactive Growth Chart */}
       <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
         <div className="flex items-center justify-between border-b px-3 py-2.5 sm:px-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
-          <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Growth Chart</h4>
+          <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Growth of $10,000</h4>
           {!compareTicker && (
             <div className="relative">
               <div className="flex items-center gap-1.5">
@@ -253,21 +255,24 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
                   type="text"
                   value={compareSearch}
                   onChange={e => setCompareSearch(e.target.value)}
+                  onFocus={() => setCompareFocused(true)}
+                  onBlur={() => setTimeout(() => setCompareFocused(false), 200)}
                   placeholder="Add fund to compare..."
                   className="w-[140px] border-b bg-transparent py-0.5 text-[11px] font-medium outline-none placeholder:text-[11px] sm:w-[180px]"
                   style={{ borderColor: "#e2e8f0", color: "#334155" }}
                 />
               </div>
-              {compareSearch && filteredTickers.length > 0 && (
-                <div className="absolute right-0 top-full z-10 mt-1 max-h-[160px] w-[180px] overflow-y-auto rounded border shadow-lg" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+              {compareFocused && filteredTickers.length > 0 && (
+                <div className="absolute right-0 top-full z-10 mt-1 max-h-[200px] w-[260px] overflow-y-auto rounded-lg border shadow-xl" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
                   {filteredTickers.map(t => (
                     <button
-                      key={t}
-                      onClick={() => { setCompareTicker(t); setCompareSearch("") }}
-                      className="block w-full px-3 py-2 text-left text-[12px] font-medium transition-colors hover:bg-[#f0f7ff]"
+                      key={t.ticker}
+                      onMouseDown={e => { e.preventDefault(); setCompareTicker(t.ticker); setCompareSearch(""); setCompareFocused(false) }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] font-medium transition-colors hover:bg-[#f0f7ff]"
                       style={{ color: "#334155" }}
                     >
-                      {t}
+                      <span className="w-[48px] shrink-0 font-bold">{t.ticker}</span>
+                      <span className="truncate text-[11px]" style={{ color: "#64748b" }}>{t.name}</span>
                     </button>
                   ))}
                 </div>

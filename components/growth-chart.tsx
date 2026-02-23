@@ -6,6 +6,10 @@ import {
 } from "recharts"
 
 interface GrowthPoint { date: string; [ticker: string]: string | number }
+interface ChartPoint { date: string; [key: string]: string | number }
+const BASE = 10000
+function pctToDollar(pct: number): number { return Math.round(BASE * (1 + pct / 100)) }
+function fmtDollar(v: number): string { return v >= 10000 ? `$${(v / 1000).toFixed(1)}k` : `$${v.toLocaleString()}` }
 
 interface Props {
   tickerA: string
@@ -108,7 +112,7 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
   const [customStart, setCustomStart] = useState("")
   const [customEnd, setCustomEnd] = useState(todayStr())
   const [useCustom, setUseCustom] = useState(false)
-  const [data, setData] = useState<GrowthPoint[]>([])
+  const [data, setData] = useState<ChartPoint[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [totalA, setTotalA] = useState<number | null>(null)
@@ -191,11 +195,17 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
         const fundA = json.funds?.[0]
         const fundB = json.funds?.[1]
         if (!fundA || !fundB) { setError("Missing fund data"); setData([]); return }
-        const merged: GrowthPoint[] = fundA.data.map((p: { date: string; growth: number }, i: number) => ({
-          date: p.date,
-          [tickerA]: parseFloat(p.growth.toFixed(2)),
-          [tickerB]: fundB.data[i] ? parseFloat(fundB.data[i].growth.toFixed(2)) : 0,
-        }))
+        const merged: ChartPoint[] = fundA.data.map((p: { date: string; growth: number }, i: number) => {
+          const growthA = parseFloat(p.growth.toFixed(2))
+          const growthB = fundB.data[i] ? parseFloat(fundB.data[i].growth.toFixed(2)) : 0
+          return {
+            date: p.date,
+            [tickerA]: growthA,
+            [tickerB]: growthB,
+            [`${tickerA}_dollar`]: pctToDollar(growthA),
+            [`${tickerB}_dollar`]: pctToDollar(growthB),
+          }
+        })
         setData(merged)
         if (fundA.data.length > 0) setTotalA(parseFloat(fundA.data[fundA.data.length - 1].growth.toFixed(2)))
         if (fundB.data.length > 0) setTotalB(parseFloat(fundB.data[fundB.data.length - 1].growth.toFixed(2)))
@@ -213,7 +223,7 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
     <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
       {/* Header */}
       <div className="flex items-center justify-between border-b px-4 py-2.5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f8fafc" }}>
-        <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Growth Comparison</h4>
+        <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Growth of $10,000</h4>
         <div className="flex items-center gap-1">
           {PRESETS.map(p => {
             const isCIDisabled = p === "CI" && !ciDate
@@ -282,12 +292,14 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
             <span style={{ color: navy }}>
               <span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: navy }} />
               <span className="font-bold">{tickerA}</span>
-              <span className="ml-1.5 font-mono font-semibold">{totalA >= 0 ? "+" : ""}{totalA.toFixed(2)}%</span>
+              <span className="ml-1.5 font-mono font-semibold">${pctToDollar(totalA).toLocaleString()}</span>
+              <span className="ml-1 font-mono text-[10px]" style={{ color: "#64748b" }}>({totalA >= 0 ? "+" : ""}{totalA.toFixed(2)}%)</span>
             </span>
             <span style={{ color: red }}>
               <span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: red }} />
               <span className="font-bold">{tickerB}</span>
-              <span className="ml-1.5 font-mono font-semibold">{totalB >= 0 ? "+" : ""}{totalB.toFixed(2)}%</span>
+              <span className="ml-1.5 font-mono font-semibold">${pctToDollar(totalB).toLocaleString()}</span>
+              <span className="ml-1 font-mono text-[10px]" style={{ color: "#64748b" }}>({totalB >= 0 ? "+" : ""}{totalB.toFixed(2)}%)</span>
             </span>
           </div>
         )}
@@ -310,16 +322,21 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
             <LineChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
               <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#94a3b8" }} tickFormatter={formatDateLabel} interval={tickInterval} axisLine={{ stroke: "#cbd5e1" }} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => `${v.toFixed(1)}%`} width={50} />
-              <ReferenceLine y={0} stroke="#cbd5e1" strokeDasharray="3 3" />
+              <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmtDollar(v)} width={52} domain={["dataMin - 200", "dataMax + 200"]} />
+              <ReferenceLine y={BASE} stroke="#cbd5e1" strokeDasharray="3 3" label={{ value: "$10k", position: "left", style: { fontSize: 9, fill: "#94a3b8" } }} />
               <Tooltip
                 labelFormatter={(l: string) => { const d = new Date(l + "T00:00:00"); return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) }}
-                formatter={(value: number, name: string) => [`${value >= 0 ? "+" : ""}${value.toFixed(2)}%`, name]}
+                formatter={(value: number, name: string, props: { payload?: ChartPoint }) => {
+                  const ticker = name.replace("_dollar", "")
+                  const pct = props.payload?.[ticker]
+                  const pctStr = typeof pct === "number" ? ` (${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%)` : ""
+                  return [`$${value.toLocaleString()}${pctStr}`, ticker]
+                }}
                 contentStyle={{ backgroundColor: "#fff", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: 12, padding: "8px 14px", color: "#1e293b", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
                 labelStyle={{ color: "#64748b", fontSize: 11, fontWeight: 600, marginBottom: 4 }}
               />
-              <Line type="monotone" dataKey={tickerA} stroke={navy} dot={false} strokeWidth={2} activeDot={{ r: 4, fill: navy, stroke: "#fff", strokeWidth: 2 }} />
-              <Line type="monotone" dataKey={tickerB} stroke={red} dot={false} strokeWidth={2} activeDot={{ r: 4, fill: red, stroke: "#fff", strokeWidth: 2 }} />
+              <Line type="monotone" dataKey={`${tickerA}_dollar`} name={`${tickerA}_dollar`} stroke={navy} dot={false} strokeWidth={2} activeDot={{ r: 4, fill: navy, stroke: "#fff", strokeWidth: 2 }} />
+              <Line type="monotone" dataKey={`${tickerB}_dollar`} name={`${tickerB}_dollar`} stroke={red} dot={false} strokeWidth={2} activeDot={{ r: 4, fill: red, stroke: "#fff", strokeWidth: 2 }} />
             </LineChart>
           </ResponsiveContainer>
         )}
