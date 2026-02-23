@@ -119,6 +119,23 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
   const [compareSearch, setCompareSearch] = useState("")
   const [compareFocused, setCompareFocused] = useState(false)
 
+  // Compute inception return from growth API if not in fund data
+  const [inceptionReturn, setInceptionReturn] = useState<number | null>(fund.commonInception)
+  useEffect(() => {
+    if (fund.commonInception != null) { setInceptionReturn(fund.commonInception); return }
+    // Fetch max-range growth data to compute inception return
+    fetch(`/api/growth?tickers=${fund.ticker},${fund.ticker}&start=2000-01-01&end=${new Date().toISOString().slice(0, 10)}`)
+      .then(r => r.json())
+      .then(json => {
+        const fundData = json.funds?.[0]
+        if (fundData?.data?.length > 0) {
+          const lastGrowth = fundData.data[fundData.data.length - 1].growth
+          setInceptionReturn(lastGrowth / 100) // Convert from pct to decimal
+        }
+      })
+      .catch(() => {})
+  }, [fund.ticker, fund.commonInception])
+
   const fetchInsights = useCallback(() => {
     setLoading(true)
     setInsights(null)
@@ -237,7 +254,7 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
               { label: "YTD", value: fund.ytd },
               { label: "1Y", value: fund.oneYear },
               { label: "3Y", value: fund.threeYear },
-              { label: "Inception", value: fund.commonInception },
+              { label: "Inception", value: inceptionReturn },
             ].filter(p => p.value != null && !isNaN(p.value as number))
             return (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

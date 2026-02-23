@@ -144,6 +144,7 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
   const [recLoading, setRecLoading] = useState(false)
   const [ciDate, setCiDate] = useState<string | null>(null)
   const recFetched = useRef(false)
+  const badgeAPixelY = useRef<number>(0) // For overlap detection between badges
 
   // Map recommend label to a preset if possible
   const labelToPreset = (label: string): Preset | null => {
@@ -352,7 +353,7 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
         )}
         {!loading && !recLoading && !error && data.length > 0 && (
           <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={data} margin={{ top: 5, right: 75, left: 0, bottom: 0 }}>
+            <AreaChart data={data} margin={{ top: 5, right: 90, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id={`fillA_${tickerA}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={navy} stopOpacity={0.15} />
@@ -387,11 +388,13 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
                   const { cx, cy, index } = dotProps
                   if (index !== data.length - 1) return <g key={index} />
                   const pctLabel = `${(totalA ?? 0) >= 0 ? "+" : ""}${(totalA ?? 0).toFixed(2)}%`
+                  const badgeY = cy - 13
+                  badgeAPixelY.current = badgeY // store for B overlap check
                   return (
                     <g key="endA">
-                      <circle cx={cx} cy={cy} r={3} fill={navy} stroke="#fff" strokeWidth={2} />
-                      <rect x={cx + 6} y={cy - 10} width={66} height={20} rx={4} fill={navy} />
-                      <text x={cx + 39} y={cy + 4} fontSize={10} fontWeight={700} fontFamily="ui-monospace, monospace" fill="#fff" textAnchor="middle">{pctLabel}</text>
+                      <circle cx={cx} cy={cy} r={3.5} fill={navy} stroke="#fff" strokeWidth={2} />
+                      <rect x={cx + 8} y={badgeY} width={76} height={24} rx={5} fill={navy} />
+                      <text x={cx + 46} y={badgeY + 16} fontSize={12} fontWeight={700} fontFamily="ui-monospace, monospace" fill="#fff" textAnchor="middle">{pctLabel}</text>
                     </g>
                   )
                 }}
@@ -404,11 +407,17 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
                     const { cx, cy, index } = dotProps
                     if (index !== data.length - 1) return <g key={index} />
                     const pctLabel = `${(totalB ?? 0) >= 0 ? "+" : ""}${(totalB ?? 0).toFixed(2)}%`
+                    let badgeY = cy - 13
+                    // Prevent overlap with A badge: if within 28px, push down
+                    const aBadgeY = badgeAPixelY.current
+                    if (Math.abs(badgeY - aBadgeY) < 28) {
+                      badgeY = aBadgeY + 30 // push below A badge
+                    }
                     return (
                       <g key="endB">
-                        <circle cx={cx} cy={cy} r={3} fill={red} stroke="#fff" strokeWidth={2} />
-                        <rect x={cx + 6} y={cy - 10} width={66} height={20} rx={4} fill={red} />
-                        <text x={cx + 39} y={cy + 4} fontSize={10} fontWeight={700} fontFamily="ui-monospace, monospace" fill="#fff" textAnchor="middle">{pctLabel}</text>
+                        <circle cx={cx} cy={cy} r={3.5} fill={red} stroke="#fff" strokeWidth={2} />
+                        <rect x={cx + 8} y={badgeY} width={76} height={24} rx={5} fill={red} />
+                        <text x={cx + 46} y={badgeY + 16} fontSize={12} fontWeight={700} fontFamily="ui-monospace, monospace" fill="#fff" textAnchor="middle">{pctLabel}</text>
                       </g>
                     )
                   }}
