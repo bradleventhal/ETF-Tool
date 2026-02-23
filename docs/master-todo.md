@@ -9,7 +9,7 @@
 6. ~~Fix data persistence (Supabase)~~ -- DONE
 
 ## SHORT TERM:
-7. GPT "Elevator Pitch" Generator (one-click, tailored to client type)
+7. ~~GPT "Elevator Pitch" Generator (one-click, tailored to client type)~~ -- DONE
 8. Meeting Prep Mode ("Prep Me" button -- one-page briefing)
 9. Mobile "Quick Glance" (stripped-down mobile view -- difficulty rating, 3 bullets)
 10. Sector Deep Dive on Click (click allocation % and GPT explains positioning)

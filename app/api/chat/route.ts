@@ -52,18 +52,6 @@ FOLLOWUP: Can you compare the credit risk profiles in more detail?
 Primary Objective:
 Increase analytical clarity and strengthen sales positioning through disciplined, technically grounded responses.`
 
-const STARTER_SYSTEM_PROMPT = `You are generating starter questions for an analytical copilot chat about a fund comparison.
-
-You will receive war room analysis data including competitive difficulty, counter-arguments, rebuttals, and fund comparison data.
-
-Generate exactly 4 questions that a senior wholesaler would realistically ask in the field. These should be:
-- Practical and situational (not things already answered in the war room)
-- Focused on sales positioning, client conversations, and competitive scenarios
-- Specific to the actual data and competitive dynamics shown
-- Different from each other in topic (one about positioning, one about a specific objection, one about a client scenario, one about market context)
-
-Return ONLY the questions, one per line, no numbering, no prefixes.`
-
 export async function POST(req: Request) {
   try {
     const body = await req.json()

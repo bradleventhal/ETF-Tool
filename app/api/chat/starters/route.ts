@@ -6,9 +6,10 @@ You will receive war room analysis data including competitive difficulty, counte
 
 Generate exactly 4 questions that a senior wholesaler would realistically ask in the field. These should be:
 - Practical and situational (not things already answered in the war room)
-- Focused on sales positioning, client conversations, and competitive scenarios
+- Focused on analytical deep-dives, client objection handling, market context, and competitive scenarios
 - Specific to the actual data and competitive dynamics shown
-- Different from each other in topic (one about positioning, one about a specific objection, one about a client scenario, one about market context)
+- Different from each other in topic (one about a specific metric/risk, one about a client objection, one about market conditions, one about competitive positioning)
+- NEVER ask for an "elevator pitch" or "30-second pitch" -- there is already a separate elevator pitch generator. Focus on analytical and tactical questions instead.
 
 Return ONLY the questions, one per line, no numbering, no prefixes.`
 

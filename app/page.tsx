@@ -14,6 +14,7 @@ import { runAnalysis } from "@/lib/analysis-engine"
 import { buildWarRoom } from "@/lib/competitor-pitch"
 import { CompetitorWarRoom } from "@/components/competitor-war-room"
 import { FundChat } from "@/components/fund-chat"
+import { ElevatorPitch } from "@/components/elevator-pitch"
 import { FundLookup } from "@/components/fund-lookup"
 import type { FundData, AnalysisMode, AnalysisResult, WarRoom, YahooAnalytics } from "@/lib/fund-types"
 import { Upload, X, Loader2, ArrowRightLeft, Search, BarChart3 } from "lucide-react"
@@ -363,6 +364,8 @@ export default function Page() {
             )}
 
             {warRoom && <CompetitorWarRoom warRoom={warRoom} competitorTicker={result.tickerB} ourTicker={result.tickerA} polishing={polishing} />}
+
+            <ElevatorPitch result={result} />
 
             <FundChat result={result} />
 
