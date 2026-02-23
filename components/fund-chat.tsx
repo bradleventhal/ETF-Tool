@@ -8,6 +8,7 @@ interface ChatMessage {
   id: string
   role: "user" | "assistant"
   content: string
+  followUps?: string[]
 }
 
 function buildFundContext(result: AnalysisResult): string {
@@ -54,30 +55,45 @@ function buildFundContext(result: AnalysisResult): string {
   return lines.join("\n")
 }
 
-function generateAnticipatedQuestions(result: AnalysisResult): string[] {
-  // These should be PRACTICAL / SITUATIONAL questions a rep would ask
-  // NOT the same things already covered in the war room (arguments, rebuttals, metrics)
-  const questions: string[] = []
+function buildWarRoomContext(result: AnalysisResult): string {
+  const lines: string[] = []
+  lines.push(`Our Fund: ${result.tickerA} (${result.nameA})`)
+  lines.push(`Competitor: ${result.tickerB} (${result.nameB})`)
+  lines.push("")
 
-  // Pitch framing — different from rebuttals
-  questions.push(`Give me a 30-second elevator pitch for ${result.tickerA} over ${result.tickerB} for a conservative income client.`)
-
-  // Client-type specific
-  questions.push(`How should I position ${result.tickerA} for an advisor moving clients out of money markets?`)
-
-  // Allocation context
-  const secA = result.sectorAllocation.find(r => r.label === "Securitized")
-  const corpA = result.sectorAllocation.find(r => r.label === "Corporate Credit")
-  if (secA && secA.nA != null && secA.nA > 0.20) {
-    questions.push(`An advisor says "I don't understand securitized credit." How do I explain our allocation simply?`)
-  } else if (corpA && corpA.nA != null && corpA.nA > 0.30) {
-    questions.push(`What's the case for our corporate allocation vs a more diversified approach?`)
+  // Include competitive difficulty
+  if (result.narrative) {
+    for (const section of result.narrative) {
+      lines.push(`${section.title}:`)
+      section.lines.forEach(l => lines.push(`  - ${l}`))
+      lines.push("")
+    }
   }
 
-  // Forward-looking
-  questions.push(`Given where rates and spreads are today, which fund is better positioned for the next 12 months?`)
+  // Include reverse pitch
+  if (result.reversePitch) {
+    lines.push("HOW COMPETITOR WOULD PITCH AGAINST US:")
+    result.reversePitch.lines.forEach(l => lines.push(`  - ${l}`))
+    lines.push("")
+  }
 
-  return questions.slice(0, 4)
+  // Include rebuttals
+  if (result.rebuttals) {
+    lines.push("OUR RECOMMENDED REBUTTALS:")
+    result.rebuttals.forEach(r => {
+      lines.push(`  ${r.label} (${r.difficulty}):`)
+      r.lines.forEach(l => lines.push(`    - ${l}`))
+    })
+    lines.push("")
+  }
+
+  // Key stats for context
+  lines.push("KEY STATS:")
+  for (const row of result.keyStats) {
+    lines.push(`  ${row.label}: ${result.tickerA}=${row.a}  ${result.tickerB}=${row.b}`)
+  }
+
+  return lines.join("\n")
 }
 
 interface FundChatProps {
@@ -89,18 +105,38 @@ export function FundChat({ result }: FundChatProps) {
   const [input, setInput] = useState("")
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [streaming, setStreaming] = useState(false)
+  const [starterQuestions, setStarterQuestions] = useState<string[]>([])
+  const [loadingStarters, setLoadingStarters] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   const fundContext = useMemo(() => buildFundContext(result), [result])
-  const anticipatedQuestions = useMemo(() => generateAnticipatedQuestions(result), [result])
+  const warRoomContext = useMemo(() => buildWarRoomContext(result), [result])
 
-  // Reset when comparison changes
+  // Reset when comparison changes and fetch AI-generated starter questions
   useEffect(() => {
     setMessages([])
     setStreaming(false)
     setInput("")
-  }, [result.tickerA, result.tickerB])
+    setStarterQuestions([])
+
+    const fetchStarters = async () => {
+      setLoadingStarters(true)
+      try {
+        const res = await fetch("/api/chat/starters", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ warRoomContext }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setStarterQuestions(data.questions || [])
+        }
+      } catch { /* ignore */ }
+      setLoadingStarters(false)
+    }
+    fetchStarters()
+  }, [result.tickerA, result.tickerB, warRoomContext])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -150,7 +186,11 @@ export function FundChat({ result }: FundChatProps) {
 
       setMessages(prev => {
         const updated = [...prev]
-        updated[updated.length - 1] = { ...updated[updated.length - 1], content: data.content || "No response received" }
+        updated[updated.length - 1] = {
+          ...updated[updated.length - 1],
+          content: data.content || "No response received",
+          followUps: data.followUps || [],
+        }
         return updated
       })
     } catch (err) {
@@ -197,18 +237,25 @@ export function FundChat({ result }: FundChatProps) {
             <p className="mb-3 text-xs" style={{ color: "#94a3b8" }}>
               Context-aware analysis for {result.tickerA} vs {result.tickerB}. All fund data is loaded.
             </p>
-            <div className="space-y-2">
-              {anticipatedQuestions.map((q, i) => (
-                <button
-                  key={i}
-                  onClick={() => sendMessage(q)}
-                  className="block w-full rounded border px-3 py-2 text-left text-xs transition-colors hover:bg-blue-50/50"
-                  style={{ borderColor: "#e2e8f0", color: "#334155" }}
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
+            {loadingStarters ? (
+              <div className="flex items-center gap-2 py-4 text-xs" style={{ color: "#94a3b8" }}>
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-current" style={{ borderTopColor: "transparent" }} />
+                Generating questions from analysis...
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {starterQuestions.map((q, i) => (
+                  <button
+                    key={i}
+                    onClick={() => sendMessage(q)}
+                    className="block w-full rounded border px-3 py-2 text-left text-xs transition-colors hover:bg-blue-50/50"
+                    style={{ borderColor: "#e2e8f0", color: "#334155" }}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -228,6 +275,7 @@ export function FundChat({ result }: FundChatProps) {
           }
           if (!msg.content) return null
           const isUser = msg.role === "user"
+          const isLastAssistant = !isUser && msg.id === messages.filter(m => m.role === "assistant").at(-1)?.id
           return (
             <div key={msg.id} className={`mb-3 ${isUser ? "text-right" : ""}`}>
               <div
@@ -240,6 +288,20 @@ export function FundChat({ result }: FundChatProps) {
               >
                 <div className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content.split(/\*\*(.+?)\*\*/g).map((part, i) => i % 2 === 1 ? <strong key={i}>{part}</strong> : part)}</div>
               </div>
+              {!isUser && isLastAssistant && msg.followUps && msg.followUps.length > 0 && !streaming && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {msg.followUps.map((q, i) => (
+                    <button
+                      key={i}
+                      onClick={() => sendMessage(q)}
+                      className="rounded-full border px-3 py-1.5 text-[11px] leading-tight transition-colors hover:bg-blue-50/50"
+                      style={{ borderColor: "#cbd5e1", color: "#475569", backgroundColor: "#f8fafc" }}
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )
         })}
