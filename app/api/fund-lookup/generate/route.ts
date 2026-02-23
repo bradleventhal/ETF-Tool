@@ -1,6 +1,4 @@
 import OpenAI from "openai"
-// @ts-expect-error pdf-parse has no types
-import pdfParse from "pdf-parse"
 import type { FundData } from "@/lib/fund-types"
 
 export const maxDuration = 60
@@ -11,96 +9,104 @@ function fNum(v: number | null, d = 2): string { return v == null || isNaN(v) ? 
 
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
-/** Try to fetch a PDF from a URL and extract its text */
+/** Dynamically import pdf-parse only when needed (avoids startup crash) */
+async function parsePdf(buffer: Buffer): Promise<string | null> {
+  try {
+    const mod = await import("pdf-parse")
+    const pdfParse = mod.default || mod
+    const data = await pdfParse(buffer)
+    return data.text?.trim() || null
+  } catch (err) {
+    console.error("[v0] pdf-parse error:", err)
+    return null
+  }
+}
+
+/** Fetch a PDF from a URL and extract its text */
 async function fetchPdfText(url: string): Promise<string | null> {
   try {
+    console.log("[v0] Trying PDF:", url)
     const res = await fetch(url, {
       headers: { "User-Agent": UA, "Accept": "application/pdf,*/*" },
       signal: AbortSignal.timeout(10000),
       redirect: "follow",
     })
-    if (!res.ok) return null
+    if (!res.ok) { console.log("[v0] PDF fetch failed:", res.status); return null }
     const contentType = res.headers.get("content-type") || ""
-    // Must be a PDF
-    if (!contentType.includes("pdf") && !url.toLowerCase().endsWith(".pdf")) return null
+    if (!contentType.includes("pdf") && !url.toLowerCase().endsWith(".pdf")) {
+      console.log("[v0] Not a PDF, content-type:", contentType)
+      return null
+    }
     const buffer = Buffer.from(await res.arrayBuffer())
-    const data = await pdfParse(buffer)
-    const text = data.text?.trim()
-    return text && text.length > 100 ? text : null
-  } catch {
+    console.log("[v0] PDF downloaded, size:", buffer.length)
+    const text = await parsePdf(buffer)
+    if (text && text.length > 100) {
+      console.log("[v0] PDF parsed, text length:", text.length)
+      return text
+    }
+    return null
+  } catch (err) {
+    console.error("[v0] fetchPdfText error:", err)
     return null
   }
 }
 
-/** Search the web for a fund's quarterly commentary PDF, download it, and extract text.
- *  Works for ANY fund -- uses DuckDuckGo to find the PDF. */
+/** Search for a fund's quarterly commentary PDF via DuckDuckGo, download and parse it. */
 async function fetchCommentary(ticker: string, fundName: string): Promise<string | null> {
-  // Step 1: Search DuckDuckGo for the fund's commentary PDF
+  console.log("[v0] Searching commentary for:", ticker, fundName)
+
   const queries = [
     `${ticker} ${fundName} quarterly commentary filetype:pdf`,
-    `${ticker} fund commentary pdf`,
+    `"${ticker}" fund commentary pdf`,
     `${fundName} quarterly report pdf`,
   ]
 
   const pdfUrlsFound: string[] = []
+  const webPages: string[] = []
 
   for (const query of queries) {
     try {
       const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`
+      console.log("[v0] DuckDuckGo search:", query)
       const res = await fetch(searchUrl, {
-        headers: {
-          "User-Agent": UA,
-          "Accept": "text/html",
-        },
+        headers: { "User-Agent": UA, "Accept": "text/html" },
         signal: AbortSignal.timeout(8000),
       })
-      if (!res.ok) continue
+      if (!res.ok) { console.log("[v0] DDG returned:", res.status); continue }
       const html = await res.text()
+      console.log("[v0] DDG response length:", html.length)
 
-      // Extract all URLs from search results
-      const allUrls = [...html.matchAll(/href=["'](https?:\/\/[^"'\s]+)["']/gi)]
-      for (const match of allUrls) {
-        const url = decodeURIComponent(match[1])
-        // Direct PDF links
-        if (url.toLowerCase().endsWith(".pdf")) {
-          if (!pdfUrlsFound.includes(url)) pdfUrlsFound.push(url)
-        }
+      // Extract uddg redirect URLs (DuckDuckGo wraps all result links)
+      const uddgMatches = [...html.matchAll(/uddg=([^&"']+)/gi)]
+      console.log("[v0] Found", uddgMatches.length, "uddg links")
+
+      for (const match of uddgMatches) {
+        try {
+          const url = decodeURIComponent(match[1])
+          if (url.toLowerCase().endsWith(".pdf")) {
+            if (!pdfUrlsFound.includes(url)) pdfUrlsFound.push(url)
+          } else if (url.includes("commentary") || url.includes("quarterly") || url.includes("report") || url.includes("insights")) {
+            if (!webPages.includes(url)) webPages.push(url)
+          }
+        } catch { /* bad URL encoding */ }
       }
 
-      // Also extract uddg redirect URLs (DuckDuckGo wraps links)
-      const uddgUrls = [...html.matchAll(/uddg=([^&"']+)/gi)]
-      for (const match of uddgUrls) {
-        const url = decodeURIComponent(match[1])
-        if (url.toLowerCase().endsWith(".pdf")) {
-          if (!pdfUrlsFound.includes(url)) pdfUrlsFound.push(url)
-        }
-        // Also check non-PDF pages that might host PDFs (fund company pages)
-        if (!url.toLowerCase().endsWith(".pdf") && (
-          url.includes("commentary") || url.includes("quarterly") || url.includes("report") || url.includes("insights")
-        )) {
-          if (!pdfUrlsFound.includes(url)) pdfUrlsFound.push(url)
-        }
-      }
-
-      // If we found PDF URLs, stop searching
-      if (pdfUrlsFound.filter(u => u.endsWith(".pdf")).length >= 2) break
-    } catch { continue }
+      if (pdfUrlsFound.length >= 2) break
+    } catch (err) { console.error("[v0] DDG search error:", err); continue }
   }
 
-  // Step 2: Try each found PDF URL
-  const directPdfs = pdfUrlsFound.filter(u => u.toLowerCase().endsWith(".pdf"))
-  const webPages = pdfUrlsFound.filter(u => !u.toLowerCase().endsWith(".pdf"))
+  console.log("[v0] PDF URLs found:", pdfUrlsFound.length, "Web pages:", webPages.length)
 
-  // Try direct PDFs first (up to 5)
-  for (const url of directPdfs.slice(0, 5)) {
+  // Try direct PDFs first
+  for (const url of pdfUrlsFound.slice(0, 5)) {
     const text = await fetchPdfText(url)
     if (text) {
-      console.log("[v0] Found PDF commentary at:", url, "- length:", text.length)
+      console.log("[v0] Got commentary from PDF:", url)
       return text.slice(0, 6000)
     }
   }
 
-  // Step 3: If no direct PDFs worked, scrape the web pages for PDF links
+  // Scrape web pages for PDF links
   for (const url of webPages.slice(0, 3)) {
     try {
       const res = await fetch(url, {
@@ -110,30 +116,22 @@ async function fetchCommentary(ticker: string, fundName: string): Promise<string
       if (!res.ok) continue
       const html = await res.text()
 
-      // Find PDF links on the page
       const pdfLinks = [...html.matchAll(/href=["'](https?:\/\/[^"']+\.pdf)["']/gi)]
-      for (const match of pdfLinks.slice(0, 3)) {
-        const pdfText = await fetchPdfText(match[1])
-        if (pdfText) {
-          console.log("[v0] Found PDF via page scrape:", match[1])
-          return pdfText.slice(0, 6000)
-        }
+      for (const m of pdfLinks.slice(0, 3)) {
+        const pdfText = await fetchPdfText(m[1])
+        if (pdfText) return pdfText.slice(0, 6000)
       }
 
-      // Check relative PDF links too
-      const relPdfLinks = [...html.matchAll(/href=["'](\/[^"']+\.pdf)["']/gi)]
+      const relLinks = [...html.matchAll(/href=["'](\/[^"']+\.pdf)["']/gi)]
       const baseUrl = new URL(url).origin
-      for (const match of relPdfLinks.slice(0, 3)) {
-        const pdfText = await fetchPdfText(baseUrl + match[1])
-        if (pdfText) {
-          console.log("[v0] Found PDF via relative link:", baseUrl + match[1])
-          return pdfText.slice(0, 6000)
-        }
+      for (const m of relLinks.slice(0, 3)) {
+        const pdfText = await fetchPdfText(baseUrl + m[1])
+        if (pdfText) return pdfText.slice(0, 6000)
       }
     } catch { continue }
   }
 
-  console.log("[v0] No commentary PDF found for", ticker)
+  console.log("[v0] No commentary found for", ticker)
   return null
 }
 
@@ -230,8 +228,10 @@ export async function POST(req: Request) {
     const parsed = JSON.parse(cleaned)
 
     return Response.json({ ...parsed, hasCommentary: !!commentary })
-  } catch (err) {
-    console.error("[v0] Fund lookup generate error:", err)
-    return Response.json({ error: "Failed to generate fund analysis" }, { status: 500 })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    const stack = err instanceof Error ? err.stack : ""
+    console.error("[v0] Fund lookup generate error:", msg, stack)
+    return Response.json({ error: msg, stack: stack?.slice(0, 500) }, { status: 500 })
   }
 }

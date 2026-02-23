@@ -85,6 +85,7 @@ function StarRating({ rating }: { rating: number | null }) {
 export function FundLookup({ fund, allTickers }: { fund: FundData; allTickers?: string[] }) {
   const [insights, setInsights] = useState<FundInsights | null>(null)
   const [loading, setLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState("")
   const [mstarRating, setMstarRating] = useState<number | null>(null)
   const [compareTicker, setCompareTicker] = useState("")
   const [compareSearch, setCompareSearch] = useState("")
@@ -105,6 +106,7 @@ export function FundLookup({ fund, allTickers }: { fund: FundData; allTickers?: 
   const fetchInsights = useCallback(() => {
     setLoading(true)
     setInsights(null)
+    setErrorMsg("")
     fetch("/api/fund-lookup/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -113,15 +115,19 @@ export function FundLookup({ fund, allTickers }: { fund: FundData; allTickers?: 
       .then(async r => {
         const text = await r.text()
         console.log("[v0] fund-lookup response status:", r.status, "body:", text.slice(0, 500))
-        try { return JSON.parse(text) } catch { return null }
+        try { return JSON.parse(text) } catch { return { error: "Bad JSON: " + text.slice(0, 200) } }
       })
       .then(data => {
         console.log("[v0] fund-lookup parsed data:", data)
-        if (data && !data.error && data.performanceDrivers) {
+        if (data?.error) {
+          setErrorMsg(data.error)
+        } else if (data?.performanceDrivers) {
           setInsights(data)
+        } else {
+          setErrorMsg("Unexpected response format")
         }
       })
-      .catch((err) => { console.log("[v0] fund-lookup fetch error:", err) })
+      .catch((err) => { setErrorMsg(String(err)) })
       .finally(() => setLoading(false))
   }, [fund])
 
@@ -341,7 +347,7 @@ export function FundLookup({ fund, allTickers }: { fund: FundData; allTickers?: 
           )}
           {!loading && !insights && (
             <div className="flex flex-col items-center gap-3 py-6">
-              <p className="text-sm" style={{ color: "#94a3b8" }}>Analysis unavailable -- GPT may be loading</p>
+              <p className="text-sm" style={{ color: "#94a3b8" }}>{errorMsg || "Analysis unavailable"}</p>
               <button
                 onClick={fetchInsights}
                 className="rounded px-4 py-2 text-[12px] font-semibold transition-colors"
