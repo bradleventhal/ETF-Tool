@@ -1,4 +1,4 @@
-import { generateText } from "ai"
+import OpenAI from "openai"
 import type { FundData, YahooAnalytics, WarRoom } from "@/lib/fund-types"
 
 export const maxDuration = 30
@@ -163,22 +163,26 @@ export async function POST(req: Request) {
       return Response.json({ error: "fundA and fundB required" }, { status: 400 })
     }
 
+    if (!process.env.OPENAI_API_KEY) {
+      return Response.json({ error: "OPENAI_API_KEY is not configured" }, { status: 500 })
+    }
+
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
     const deltas = computeDeltas(fundA, fundB)
     const dataPayload = buildDataPayload(fundA, fundB, yahoo, deltas)
 
-
-
-    const result = await generateText({
-      model: "openai/gpt-4o-mini",
-      system: SYSTEM_PROMPT,
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
       messages: [
+        { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: `Generate the war room briefing for ${fundA.ticker} (our fund) vs ${fundB.ticker} (competitor).\n\nDATA:\n${dataPayload}` },
       ],
       temperature: 0.3,
-      maxOutputTokens: 2500,
+      max_tokens: 2500,
     })
 
-    const raw = result.text || ""
+    const raw = completion.choices[0]?.message?.content || ""
 
     // Parse JSON from response (handle possible markdown fences)
     let jsonStr = raw.trim()

@@ -1,4 +1,4 @@
-import { generateText } from "ai"
+import OpenAI from "openai"
 
 export const maxDuration = 60
 
@@ -69,6 +69,12 @@ export async function POST(req: Request) {
       )
     }
 
+    if (!process.env.OPENAI_API_KEY) {
+      return Response.json({ error: "OPENAI_API_KEY is not configured" }, { status: 500 })
+    }
+
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
     const body = await req.json()
     const userMessages: { role: string; content: string }[] = body.messages || []
     const fundContext: string = body.fundContext || ""
@@ -77,18 +83,20 @@ export async function POST(req: Request) {
       ? SYSTEM_PROMPT + "\n\nCURRENT FUND COMPARISON DATA:\n" + fundContext
       : SYSTEM_PROMPT
 
-    const result = await generateText({
-      model: "openai/gpt-4o-mini",
-      system: systemContent,
-      messages: userMessages.map(m => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemContent },
+        ...userMessages.map(m => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
+      ],
       temperature: 0.2,
-      maxOutputTokens: 800,
+      max_tokens: 800,
     })
 
-    const text = result.text || "No response generated."
+    const text = completion.choices[0]?.message?.content || "No response generated."
     return Response.json({ content: text }, {
       headers: { "X-RateLimit-Remaining": String(remaining) },
     })

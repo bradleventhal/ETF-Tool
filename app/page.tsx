@@ -9,7 +9,7 @@ import { SectorPieChart } from "@/components/sector-pie-chart"
 import { IncomeBars, RiskTable } from "@/components/income-risk-bars"
 import { FileUpload } from "@/components/file-upload"
 import { parseFile } from "@/lib/parse-fund-data"
-import { saveFunds, loadFunds } from "@/lib/fund-store"
+import { saveFunds } from "@/lib/fund-store"
 import { runAnalysis } from "@/lib/analysis-engine"
 import { buildWarRoom } from "@/lib/competitor-pitch"
 import { CompetitorWarRoom } from "@/components/competitor-war-room"
@@ -105,12 +105,16 @@ export default function Page() {
   const [showUpload, setShowUpload] = useState(false)
 
   useEffect(() => {
-    loadFunds()
-      .then(({ funds: stored, lastUpdated: lu }) => {
-        if (stored.length > 0) { setFunds(stored); setLastUpdated(lu) }
+    // Load from Supabase so all visitors see the same data
+    fetch("/api/funds")
+      .then(r => r.json())
+      .then(json => {
+        if (json.funds && json.funds.length > 0) {
+          setFunds(json.funds)
+          setLastUpdated(new Date().toISOString())
+        }
       })
       .catch(() => {})
-      .finally(() => setLoading(false))
   }, [])
 
   const tickers = useMemo(() => funds.map((f) => ({ ticker: f.ticker, name: f.name })), [funds])
@@ -119,8 +123,11 @@ export default function Page() {
     try {
       const parsed = parseFile(buffer, fileName)
       if (parsed.length === 0) { setError("No fund data found."); return }
-      setFunds(parsed); setTickerA(""); setTickerB(""); setResult(null); setError(null); setShowUpload(false)
-      await saveFunds(parsed); setLastUpdated(new Date().toISOString())
+  setFunds(parsed); setTickerA(""); setTickerB(""); setResult(null); setError(null); setShowUpload(false)
+  setLastUpdated(new Date().toISOString())
+  // Save to both IndexedDB (local cache) and Supabase (shared persistence)
+  await saveFunds(parsed)
+  await fetch("/api/funds", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ funds: parsed }) }).catch(() => {})
     } catch (err) {
       setError("Parse error: " + (err instanceof Error ? err.message : "Unknown"))
     }
