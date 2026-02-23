@@ -100,6 +100,7 @@ export default function Page() {
   const [tickerB, setTickerB] = useState("")
   const [competitors, setCompetitors] = useState<string[]>([])
   const [addingComp, setAddingComp] = useState("")
+  const [addCompFocused, setAddCompFocused] = useState(false)
   const [mode, setMode] = useState<AnalysisMode>("internal")
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [warRoom, setWarRoom] = useState<WarRoom | null>(null)
@@ -369,6 +370,8 @@ export default function Page() {
                     type="text"
                     value={addingComp}
                     onChange={e => setAddingComp(e.target.value.toUpperCase())}
+                    onFocus={() => setAddCompFocused(true)}
+                    onBlur={() => setTimeout(() => { setAddCompFocused(false); setAddingComp("") }, 200)}
                     onKeyDown={e => {
                       if (e.key === "Enter" && addingComp) {
                         const match = tickers.find(t =>
@@ -379,39 +382,39 @@ export default function Page() {
                           setCompetitors(prev => [...prev.slice(0, 4), match.ticker])
                           setTickerB(match.ticker)
                           setAddingComp("")
+                          setAddCompFocused(false)
                         }
                       }
-                      if (e.key === "Escape") setAddingComp("")
+                      if (e.key === "Escape") { setAddingComp(""); setAddCompFocused(false) }
                     }}
-                    onBlur={() => setTimeout(() => setAddingComp(""), 150)}
                     placeholder="+ Add competitor"
-                    className="w-[130px] rounded-full border bg-transparent px-3 py-1 text-[11px] font-medium outline-none placeholder:text-[11px] focus:border-[#0f3d6b] focus:ring-1 focus:ring-[#0f3d6b]"
-                    style={{ borderColor: "#e2e8f0", color: "#334155" }}
+                    className="w-[140px] rounded-full border bg-transparent px-3 py-1.5 text-[11px] font-medium outline-none placeholder:text-[11px] focus:border-[#0f3d6b] focus:ring-1 focus:ring-[#0f3d6b]"
+                    style={{ borderColor: "#cbd5e1", color: "#334155" }}
                   />
-                  {addingComp.length > 0 && (
-                    <div className="absolute left-0 top-full z-20 mt-1 max-h-[180px] w-[220px] overflow-y-auto rounded border shadow-lg" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-                      {tickers
-                        .filter(t => t.ticker !== tickerA && !competitors.includes(t.ticker) &&
-                          (t.ticker.toUpperCase().includes(addingComp) || t.name.toUpperCase().includes(addingComp)))
-                        .slice(0, 8)
-                        .map(t => (
+                  {addCompFocused && (
+                    <div className="absolute left-0 top-full z-30 mt-1 max-h-[200px] w-[240px] overflow-y-auto rounded-lg border shadow-xl" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+                      {(() => {
+                        const matches = tickers.filter(t => t.ticker !== tickerA && !competitors.includes(t.ticker) &&
+                          (!addingComp || t.ticker.toUpperCase().includes(addingComp) || t.name.toUpperCase().includes(addingComp)))
+                        return matches.length === 0 ? (
+                          <div className="px-3 py-3 text-[11px]" style={{ color: "#94a3b8" }}>No matching funds</div>
+                        ) : matches.slice(0, 10).map(t => (
                           <button
                             key={t.ticker}
-                            onClick={() => {
+                            onMouseDown={e => {
+                              e.preventDefault()
                               setCompetitors(prev => [...prev.slice(0, 4), t.ticker])
                               setTickerB(t.ticker)
                               setAddingComp("")
+                              setAddCompFocused(false)
                             }}
                             className="block w-full px-3 py-2 text-left text-[11px] font-medium transition-colors hover:bg-[#f0f7ff]"
                             style={{ color: "#334155" }}
                           >
                             <span className="font-bold">{t.ticker}</span> <span style={{ color: "#94a3b8" }}>{t.name.slice(0, 35)}</span>
                           </button>
-                        ))}
-                      {tickers.filter(t => t.ticker !== tickerA && !competitors.includes(t.ticker) &&
-                        (t.ticker.toUpperCase().includes(addingComp) || t.name.toUpperCase().includes(addingComp))).length === 0 && (
-                        <div className="px-3 py-2 text-[11px]" style={{ color: "#94a3b8" }}>No matching funds</div>
-                      )}
+                        ))
+                      })()}
                     </div>
                   )}
                 </div>
