@@ -93,9 +93,13 @@ export function FundLookup({ fund, allTickers }: { fund: FundData; allTickers?: 
   useEffect(() => {
     setMstarRating(null)
     fetch(`/api/morningstar?ticker=${fund.ticker}`)
-      .then(r => r.ok ? r.json() : null)
+      .then(async r => {
+        const text = await r.text()
+        console.log("[v0] morningstar response:", text.slice(0, 300))
+        try { return JSON.parse(text) } catch { return null }
+      })
       .then(data => { if (data?.morningstarRating) setMstarRating(data.morningstarRating) })
-      .catch(() => {})
+      .catch((err) => { console.log("[v0] morningstar fetch error:", err) })
   }, [fund.ticker])
 
   const fetchInsights = useCallback(() => {
@@ -106,13 +110,18 @@ export function FundLookup({ fund, allTickers }: { fund: FundData; allTickers?: 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fund }),
     })
-      .then(r => r.ok ? r.json() : null)
+      .then(async r => {
+        const text = await r.text()
+        console.log("[v0] fund-lookup response status:", r.status, "body:", text.slice(0, 500))
+        try { return JSON.parse(text) } catch { return null }
+      })
       .then(data => {
+        console.log("[v0] fund-lookup parsed data:", data)
         if (data && !data.error && data.performanceDrivers) {
           setInsights(data)
         }
       })
-      .catch(() => {})
+      .catch((err) => { console.log("[v0] fund-lookup fetch error:", err) })
       .finally(() => setLoading(false))
   }, [fund])
 
