@@ -6,7 +6,7 @@ Rules:
 - The pitch should be 3-4 sentences MAX. Something you can say in 30 seconds.
 - Lead with the strongest differentiator.
 - Include one specific number (yield, duration, Sharpe, performance -- whatever hits hardest).
-- End with a positioning statement that gives the advisor a reason to act.
+- End with a sharp, specific question that flows naturally from what you just said. NOT "let's discuss" or "let's connect" -- ask something that makes the advisor think. Example: "When's the last time you stress-tested that allocation against a 50bps move?"
 - No filler. No "in today's market" generic openers.
 - Tone: confident, direct, not salesy. Like you're talking to a sharp advisor who's heard it all.
 - ALWAYS use actual ticker symbols and fund names. Never say "our fund", "their fund", "the competitor", or "the fund they're currently using". Use the real tickers (e.g. "UYLD" and "VNLA").
