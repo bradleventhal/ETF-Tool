@@ -1,4 +1,4 @@
-import OpenAI from 'openai'
+// Direct fetch to OpenAI API
 import type { FundData, YahooAnalytics, WarRoom } from '@/lib/fund-types'
 
 export const maxDuration = 30
@@ -105,22 +105,34 @@ export async function POST(req: Request) {
 
     const dataPayload = buildDataPayload(fundA, fundB, yahoo)
 
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        {
-          role: 'user',
-          content: `Generate the war room briefing for ${fundA.ticker} (our fund) vs ${fundB.ticker} (competitor).\n\nDATA:\n${dataPayload}`,
-        },
-      ],
-      temperature: 0.3,
-      max_tokens: 2500,
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          {
+            role: 'user',
+            content: `Generate the war room briefing for ${fundA.ticker} (our fund) vs ${fundB.ticker} (competitor).\n\nDATA:\n${dataPayload}`,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 2500,
+      }),
     })
 
-    const text = completion.choices[0]?.message?.content || ''
+    if (!res.ok) {
+      const errText = await res.text()
+      console.error('[v0] OpenAI war room error:', res.status, errText)
+      return Response.json({ error: `OpenAI error ${res.status}` }, { status: 500 })
+    }
+
+    const data = await res.json()
+    const text = data.choices?.[0]?.message?.content || ''
     // Parse the JSON from GPT response
     const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
     const warRoom: WarRoom = JSON.parse(cleaned)
