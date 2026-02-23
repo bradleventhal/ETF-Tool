@@ -194,11 +194,7 @@ export default function Page() {
       <main className="flex min-h-screen flex-col items-center justify-center px-4" style={{ backgroundColor: "#f8fafc" }}>
         <div className="w-full max-w-sm">
           <div className="mb-8 flex flex-col items-center">
-            <div className="mb-4 text-center">
-              <span className="text-lg font-bold tracking-tight" style={{ color: "#0f3d6b" }}>Angel Oak</span>
-              <br />
-              <span className="text-[10px] font-medium uppercase tracking-widest" style={{ color: "#6b7280" }}>Capital Advisors</span>
-            </div>
+            <img src="/images/angel-oak-logo.svg" alt="Angel Oak Capital Advisors" className="mb-4 h-auto w-[140px] sm:w-[180px] brightness-0 opacity-20" />
             <p className="text-sm" style={{ color: "#64748b" }}>Upload your fund data to get started</p>
           </div>
           <FileUpload onFileLoaded={handleFileLoaded} />
@@ -228,10 +224,7 @@ export default function Page() {
       <header style={{ backgroundColor: "#0f3d6b" }}>
         <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-2.5 sm:px-6 sm:py-3">
           <div className="flex items-center gap-2 sm:gap-4">
-            <div className="flex flex-col">
-              <span className="text-sm font-bold tracking-tight sm:text-base" style={{ color: "#ffffff" }}>Angel Oak</span>
-              <span className="text-[9px] font-medium uppercase tracking-widest sm:text-[10px]" style={{ color: "rgba(255,255,255,0.5)" }}>Capital Advisors</span>
-            </div>
+            <img src="/images/angel-oak-logo.svg" alt="Angel Oak Capital Advisors" className="h-[28px] w-auto sm:h-[34px]" />
             <div className="hidden sm:block" style={{ width: 1, height: 24, backgroundColor: "rgba(255,255,255,0.2)" }} />
             <span className="hidden text-sm font-semibold tracking-tight sm:inline" style={{ color: "rgba(255,255,255,0.9)" }}>Fund Comparison</span>
           </div>
