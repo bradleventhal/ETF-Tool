@@ -436,7 +436,6 @@ export default function Page() {
               <PerformanceChart tickerA={result.tickerA} tickerB={result.tickerB} />
               <GrowthChart tickerA={result.tickerA} tickerB={result.tickerB} mode="internal" />
             </div>
-            <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} highlight />
 
             <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
               <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>

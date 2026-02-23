@@ -282,13 +282,8 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: PRIMARY }}>Fund Universe Map</h3>
-        <span className="text-[11px] font-semibold tabular-nums" style={{ color: sortedData.length === funds.length ? "#94a3b8" : DOT_DEFAULT }}>
-          {sortedData.length === funds.length
-            ? `${funds.length} funds`
-            : `${sortedData.length} of ${funds.length} funds`}
-          {sortedData.length < funds.length && !hasActiveFilters && (
-            <span className="ml-1 font-normal" style={{ color: "#94a3b8" }}>(some lack data for these axes)</span>
-          )}
+        <span className="text-[11px] font-semibold tabular-nums" style={{ color: DOT_DEFAULT }}>
+          {sortedData.length} of {funds.length} funds plotted
         </span>
       </div>
 

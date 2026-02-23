@@ -40,10 +40,21 @@ export function PerformanceChart({ tickerA, tickerB }: Props) {
       { label: "YTD", start: ytdStart() },
       { label: "1Y", start: dateMinusYears(1) },
       { label: "3Y", start: dateMinusYears(3) },
-      { label: "5Y", start: dateMinusYears(5) },
     ]
 
     setLoading(true)
+
+    // First fetch common inception date, then add CI period
+    fetch(`/api/growth/recommend?tickerA=${tickerA}&tickerB=${tickerB}`)
+      .then(r => r.json())
+      .then(json => {
+        if (json.commonInceptionDate) {
+          periods.push({ label: "CI", start: json.commonInceptionDate })
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+
     Promise.all(
       periods.map(async (p) => {
         try {
@@ -63,6 +74,8 @@ export function PerformanceChart({ tickerA, tickerB }: Props) {
       setData(results.filter((r): r is BarPoint => r !== null && (r.fundA !== 0 || r.fundB !== 0)))
       setLoading(false)
     })
+
+    }) // end .finally from recommend fetch
   }, [tickerA, tickerB])
 
   return (
