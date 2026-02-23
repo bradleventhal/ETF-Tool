@@ -60,7 +60,7 @@ export function TickerInput({ label, value, onChange, options, placeholder = "Se
 
   return (
     <div className="flex flex-col gap-1.5" ref={wrapperRef}>
-      <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</label>
+      {label && <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</label>}
       <div className="relative">
         {value && selected ? (
           <div className="flex h-10 items-center gap-2.5 rounded-md border border-border bg-card px-3 shadow-sm">
