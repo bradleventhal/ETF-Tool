@@ -32,6 +32,8 @@ export interface FundData {
   ccc: number | null
   belowCcc: number | null
   creditOther: number | null
+  morningstarRating: number | null
+  morningstarCategory: string | null
 }
 
 export type AnalysisMode = "advisor" | "internal"

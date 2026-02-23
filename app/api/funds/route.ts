@@ -42,6 +42,8 @@ function rowToFund(r: Record<string, unknown>) {
     ccc: num(r.ccc),
     belowCcc: num(r.below_ccc),
     creditOther: num(r.credit_other),
+    morningstarRating: num(r.morningstar_rating),
+    morningstarCategory: r.morningstar_category as string | null,
   }
 }
 

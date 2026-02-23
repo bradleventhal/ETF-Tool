@@ -161,6 +161,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
   const [yKey, setYKey] = useState(PRESETS[0].y)
   const [activeInsight, setActiveInsight] = useState(PRESETS[0].insight)
   const [search, setSearch] = useState("")
+  const [searchFocused, setSearchFocused] = useState(false)
   const [showFilters, setShowFilters] = useState(true)
   const [hoveredTicker, setHoveredTicker] = useState<string | null>(null)
 
@@ -328,19 +329,46 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
         {/* Search + Filter toggle */}
         <div className="flex flex-1 items-center gap-2 sm:justify-end">
           <div className="relative flex-1 sm:max-w-[220px]">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2" style={{ color: "#94a3b8" }} />
+            <Search className="absolute left-2.5 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2" style={{ color: "#94a3b8" }} />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
               placeholder="Search ticker or name..."
               className="h-8 w-full rounded-md border pl-8 pr-7 text-xs"
               style={{ borderColor: "#e2e8f0", color: "#334155" }}
             />
             {search && (
-              <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2">
+              <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 z-10 -translate-y-1/2">
                 <X className="h-3.5 w-3.5" style={{ color: "#94a3b8" }} />
               </button>
+            )}
+            {searchFocused && search.length > 0 && (
+              <div className="absolute left-0 top-full z-30 mt-1 max-h-[180px] w-full overflow-y-auto rounded-lg border shadow-xl" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+                {(() => {
+                  const sl = search.toLowerCase()
+                  const matches = funds.filter(f => f.ticker.toLowerCase().includes(sl) || f.name.toLowerCase().includes(sl))
+                  return matches.length === 0 ? (
+                    <div className="px-3 py-2 text-[11px]" style={{ color: "#94a3b8" }}>No matches</div>
+                  ) : matches.slice(0, 8).map(f => (
+                    <button
+                      key={f.ticker}
+                      onMouseDown={e => {
+                        e.preventDefault()
+                        setSearch(f.ticker)
+                        setSearchFocused(false)
+                      }}
+                      className="block w-full px-3 py-2 text-left text-[11px] font-medium transition-colors hover:bg-[#f0f7ff]"
+                      style={{ color: "#334155" }}
+                    >
+                      <span className="font-bold">{f.ticker}</span>{" "}
+                      <span style={{ color: "#94a3b8" }}>{f.name.slice(0, 30)}</span>
+                    </button>
+                  ))
+                })()}
+              </div>
             )}
           </div>
           <button

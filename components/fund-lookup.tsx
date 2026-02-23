@@ -113,26 +113,10 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
   const [insights, setInsights] = useState<FundInsights | null>(null)
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
-  const [mstarRating, setMstarRating] = useState<number | null>(null)
-  const [mstarCategory, setMstarCategory] = useState<string | null>(null)
+  const mstarRating = fund.morningstarRating ?? null
+  const mstarCategory = fund.morningstarCategory ?? null
   const [compareTicker, setCompareTicker] = useState("")
   const [compareSearch, setCompareSearch] = useState("")
-
-  // Fetch Morningstar rating + category
-  useEffect(() => {
-    setMstarRating(null)
-    setMstarCategory(null)
-    fetch(`/api/morningstar?ticker=${fund.ticker}`)
-      .then(async r => {
-        const text = await r.text()
-        try { return JSON.parse(text) } catch { return null }
-      })
-      .then(data => {
-        if (data?.morningstarRating) setMstarRating(data.morningstarRating)
-        if (data?.category) setMstarCategory(data.category)
-      })
-      .catch(() => {})
-  }, [fund.ticker])
 
   const fetchInsights = useCallback(() => {
     setLoading(true)

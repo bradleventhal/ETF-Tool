@@ -323,105 +323,104 @@ export default function Page() {
             </div>
           </div>
 
-          {/* Multi-competitor chips */}
-          {console.log("[v0] competitors state:", competitors, "tickerA:", tickerA, "tickerB:", tickerB)}
-          {competitors.length > 0 && (
-            <div className="mt-3 flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>Comparing vs:</span>
-              {competitors.map((comp) => {
-                const isActive = tickerB === comp
-                return (
-                  <div key={comp} className="flex items-center gap-0">
-                    <button
-                      onClick={() => setTickerB(comp)}
-                      className="rounded-l-full py-1 pl-3 pr-1.5 text-[11px] font-semibold transition-all"
-                      style={{
-                        backgroundColor: isActive ? "#0f3d6b" : "#f1f5f9",
-                        color: isActive ? "#fff" : "#64748b",
-                        border: isActive ? "1px solid #0f3d6b" : "1px solid #e2e8f0",
-                        borderRight: "none",
-                      }}
-                    >
-                      {comp}
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        const next = competitors.filter(c => c !== comp)
-                        setCompetitors(next)
-                        if (tickerB === comp) setTickerB(next[0] || "")
-                      }}
-                      className="rounded-r-full py-1 pl-0.5 pr-2 text-[11px] transition-all"
-                      style={{
-                        backgroundColor: isActive ? "#0f3d6b" : "#f1f5f9",
-                        color: isActive ? "rgba(255,255,255,0.6)" : "#94a3b8",
-                        border: isActive ? "1px solid #0f3d6b" : "1px solid #e2e8f0",
-                        borderLeft: "none",
-                      }}
-                      aria-label={`Remove ${comp}`}
-                    >
-                      <X className="h-2.5 w-2.5" />
-                    </button>
-                  </div>
-                )
-              })}
-              {competitors.length < 5 && (
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={addingComp}
-                    onChange={e => setAddingComp(e.target.value.toUpperCase())}
-                    onFocus={() => setAddCompFocused(true)}
-                    onBlur={() => setTimeout(() => { setAddCompFocused(false); setAddingComp("") }, 200)}
-                    onKeyDown={e => {
-                      if (e.key === "Enter" && addingComp) {
-                        const match = tickers.find(t =>
-                          t.ticker !== tickerA && !competitors.includes(t.ticker) &&
-                          (t.ticker.toUpperCase().includes(addingComp) || t.name.toUpperCase().includes(addingComp))
-                        )
-                        if (match) {
-                          setCompetitors(prev => [...prev.slice(0, 4), match.ticker])
-                          setTickerB(match.ticker)
-                          setAddingComp("")
-                          setAddCompFocused(false)
-                        }
-                      }
-                      if (e.key === "Escape") { setAddingComp(""); setAddCompFocused(false) }
+          {/* Multi-competitor bar -- always visible */}
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>
+              {competitors.length > 0 ? "Comparing vs:" : "Add up to 5 competitors:"}
+            </span>
+            {competitors.map((comp) => {
+              const isActive = tickerB === comp
+              return (
+                <div key={comp} className="flex items-center gap-0">
+                  <button
+                    onClick={() => setTickerB(comp)}
+                    className="rounded-l-full py-1 pl-3 pr-1.5 text-[11px] font-semibold transition-all"
+                    style={{
+                      backgroundColor: isActive ? "#0f3d6b" : "#f1f5f9",
+                      color: isActive ? "#fff" : "#64748b",
+                      border: isActive ? "1px solid #0f3d6b" : "1px solid #e2e8f0",
+                      borderRight: "none",
                     }}
-                    placeholder="+ Add competitor"
-                    className="w-[140px] rounded-full border bg-transparent px-3 py-1.5 text-[11px] font-medium outline-none placeholder:text-[11px] focus:border-[#0f3d6b] focus:ring-1 focus:ring-[#0f3d6b]"
-                    style={{ borderColor: "#cbd5e1", color: "#334155" }}
-                  />
-                  {addCompFocused && (
-                    <div className="absolute left-0 top-full z-30 mt-1 max-h-[200px] w-[240px] overflow-y-auto rounded-lg border shadow-xl" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-                      {(() => {
-                        const matches = tickers.filter(t => t.ticker !== tickerA && !competitors.includes(t.ticker) &&
-                          (!addingComp || t.ticker.toUpperCase().includes(addingComp) || t.name.toUpperCase().includes(addingComp)))
-                        return matches.length === 0 ? (
-                          <div className="px-3 py-3 text-[11px]" style={{ color: "#94a3b8" }}>No matching funds</div>
-                        ) : matches.slice(0, 10).map(t => (
-                          <button
-                            key={t.ticker}
-                            onMouseDown={e => {
-                              e.preventDefault()
-                              setCompetitors(prev => [...prev.slice(0, 4), t.ticker])
-                              setTickerB(t.ticker)
-                              setAddingComp("")
-                              setAddCompFocused(false)
-                            }}
-                            className="block w-full px-3 py-2 text-left text-[11px] font-medium transition-colors hover:bg-[#f0f7ff]"
-                            style={{ color: "#334155" }}
-                          >
-                            <span className="font-bold">{t.ticker}</span> <span style={{ color: "#94a3b8" }}>{t.name.slice(0, 35)}</span>
-                          </button>
-                        ))
-                      })()}
-                    </div>
-                  )}
+                  >
+                    {comp}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      const next = competitors.filter(c => c !== comp)
+                      setCompetitors(next)
+                      if (tickerB === comp) setTickerB(next[0] || "")
+                    }}
+                    className="rounded-r-full py-1 pl-0.5 pr-2 text-[11px] transition-all"
+                    style={{
+                      backgroundColor: isActive ? "#0f3d6b" : "#f1f5f9",
+                      color: isActive ? "rgba(255,255,255,0.6)" : "#94a3b8",
+                      border: isActive ? "1px solid #0f3d6b" : "1px solid #e2e8f0",
+                      borderLeft: "none",
+                    }}
+                    aria-label={`Remove ${comp}`}
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
                 </div>
-              )}
-            </div>
-          )}
+              )
+            })}
+            {competitors.length < 5 && (
+              <div className="relative">
+                <input
+                  type="text"
+                  value={addingComp}
+                  onChange={e => setAddingComp(e.target.value.toUpperCase())}
+                  onFocus={() => setAddCompFocused(true)}
+                  onBlur={() => setTimeout(() => { setAddCompFocused(false); setAddingComp("") }, 200)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && addingComp) {
+                      const match = tickers.find(t =>
+                        t.ticker !== tickerA && !competitors.includes(t.ticker) &&
+                        (t.ticker.toUpperCase().includes(addingComp) || t.name.toUpperCase().includes(addingComp))
+                      )
+                      if (match) {
+                        setCompetitors(prev => [...prev.slice(0, 4), match.ticker])
+                        setTickerB(match.ticker)
+                        setAddingComp("")
+                        setAddCompFocused(false)
+                      }
+                    }
+                    if (e.key === "Escape") { setAddingComp(""); setAddCompFocused(false) }
+                  }}
+                  placeholder="+ Add competitor"
+                  className="w-[140px] rounded-full border bg-transparent px-3 py-1.5 text-[11px] font-medium outline-none placeholder:text-[11px] focus:border-[#0f3d6b] focus:ring-1 focus:ring-[#0f3d6b]"
+                  style={{ borderColor: "#cbd5e1", color: "#334155" }}
+                />
+                {addCompFocused && (
+                  <div className="absolute left-0 top-full z-30 mt-1 max-h-[200px] w-[240px] overflow-y-auto rounded-lg border shadow-xl" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+                    {(() => {
+                      const matches = tickers.filter(t => t.ticker !== tickerA && !competitors.includes(t.ticker) &&
+                        (!addingComp || t.ticker.toUpperCase().includes(addingComp) || t.name.toUpperCase().includes(addingComp)))
+                      return matches.length === 0 ? (
+                        <div className="px-3 py-3 text-[11px]" style={{ color: "#94a3b8" }}>No matching funds</div>
+                      ) : matches.slice(0, 10).map(t => (
+                        <button
+                          key={t.ticker}
+                          onMouseDown={e => {
+                            e.preventDefault()
+                            setCompetitors(prev => [...prev.slice(0, 4), t.ticker])
+                            setTickerB(t.ticker)
+                            setAddingComp("")
+                            setAddCompFocused(false)
+                          }}
+                          className="block w-full px-3 py-2 text-left text-[11px] font-medium transition-colors hover:bg-[#f0f7ff]"
+                          style={{ color: "#334155" }}
+                        >
+                          <span className="font-bold">{t.ticker}</span> <span style={{ color: "#94a3b8" }}>{t.name.slice(0, 35)}</span>
+                        </button>
+                      ))
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {error && <p className="pt-3 text-sm" style={{ color: "#dc2626" }}>{error}</p>}
