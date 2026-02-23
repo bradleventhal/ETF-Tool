@@ -63,10 +63,27 @@ async function fetchPdfText(url: string): Promise<string | null> {
 
 type CommentaryResult = { text: string; sourceUrl: string; preview: string } | null
 
-/** Check if PDF text looks like actual commentary vs just a fact sheet / data table */
-function isRealCommentary(text: string): boolean {
+/** Check if PDF text is real commentary AND is for the correct fund */
+function isRealCommentary(text: string, ticker: string, fundName: string): boolean {
   const lower = text.toLowerCase()
-  // Real commentary has narrative sentences -- look for commentary-specific language
+  const tickerLower = ticker.toLowerCase()
+
+  // First: the PDF must mention THIS fund's ticker or a distinctive part of the fund name
+  const nameWords = fundName.toLowerCase().split(/\s+/).filter(w => w.length > 4)
+  const mentionsTicker = lower.includes(tickerLower)
+  // Check for distinctive name words (skip generic words)
+  const genericWords = ["fund", "income", "trust", "total", "return", "short", "credit", "bond", "securities", "investment"]
+  const distinctiveWords = nameWords.filter(w => !genericWords.includes(w))
+  const mentionsName = distinctiveWords.length > 0
+    ? distinctiveWords.some(w => lower.includes(w))
+    : nameWords.slice(0, 2).every(w => lower.includes(w))
+
+  if (!mentionsTicker && !mentionsName) {
+    console.log("[v0] PDF doesn't mention ticker", ticker, "or fund name words. Skipping.")
+    return false
+  }
+
+  // Second: check for commentary-style narrative language
   const commentarySignals = [
     "during the quarter", "quarter ended", "market environment", "we believe",
     "our view", "portfolio positioning", "looking ahead", "outlook",
@@ -81,7 +98,6 @@ function isRealCommentary(text: string): boolean {
   for (const signal of commentarySignals) {
     if (lower.includes(signal)) hits++
   }
-  // Need at least 3 commentary signals to qualify
   return hits >= 3
 }
 
@@ -231,9 +247,8 @@ async function fetchCommentary(ticker: string, fundName: string): Promise<Commen
       if (ct.includes("pdf")) {
         const buffer = Buffer.from(await res.arrayBuffer())
         const text = await parsePdf(buffer)
-        if (text && isRealCommentary(text)) {
+        if (text && isRealCommentary(text, ticker, fundName)) {
           const preview = text.slice(0, 300).replace(/\s+/g, " ").trim()
-          const domain = new URL(url).hostname.replace("www.", "").replace("go.", "")
           return { text: text.slice(0, 6000), sourceUrl: url, preview }
         }
         continue
@@ -263,7 +278,7 @@ async function fetchCommentary(ticker: string, fundName: string): Promise<Commen
   console.log("[v0] Total PDF URLs to try:", pdfUrls.length)
   for (const url of pdfUrls.slice(0, 8)) {
     const text = await fetchPdfText(url)
-    if (text && isRealCommentary(text)) {
+    if (text && isRealCommentary(text, ticker, fundName)) {
       console.log("[v0] Validated commentary from:", url)
       const preview = text.slice(0, 300).replace(/\s+/g, " ").trim()
       return { text: text.slice(0, 6000), sourceUrl: url, preview }

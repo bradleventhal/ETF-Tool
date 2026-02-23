@@ -329,7 +329,7 @@ export function FundLookup({ fund, allTickers }: { fund: FundData; allTickers?: 
               className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold tracking-wider transition-colors hover:opacity-80"
               style={{ backgroundColor: "#dcfce7", color: "#16a34a" }}
             >
-              Via {(() => { try { return new URL(insights.commentarySource).hostname.replace("www.", "") } catch { return "PDF" } })()}
+              View Quarterly Commentary
             </a>
           ) : !insights?.hasCommentary && insights ? (
             <span className="rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider" style={{ backgroundColor: "#fef3c7", color: "#d97706" }}>
