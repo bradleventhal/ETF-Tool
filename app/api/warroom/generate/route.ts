@@ -134,15 +134,7 @@ CRITICAL RULES:
 
 export async function POST(req: Request) {
   try {
-    const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "OpenAI API key not found. Please add OPENAI_API_KEY in the Vars section of the sidebar." },
-        { status: 500 }
-      )
-    }
-
-    const openai = new OpenAI({ apiKey })
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "" })
 
     const { fundA, fundB, yahoo } = (await req.json()) as {
       fundA: FundData
