@@ -56,11 +56,11 @@ const findAxis = (key: string) => AXIS_OPTIONS.findIndex(a => a.key === key)
 
 /* ── Preset views ── */
 const PRESETS = [
-  { label: "Yield vs Duration", x: "ytwYtm", y: "secYield" },
-  { label: "Yield vs Risk", x: "stdDev", y: "secYield" },
-  { label: "Credit vs Yield", x: "credit", y: "secYield" },
-  { label: "Sharpe vs Expense", x: "expense", y: "sharpe" },
-  { label: "Return vs Risk", x: "stdDev", y: "threeYear" },
+  { label: "Yield vs Duration", x: "duration", y: "ytwYtm", insight: "Shows yield pickup per unit of interest rate risk -- are you getting paid enough for the duration you're taking?" },
+  { label: "Yield vs Risk", x: "stdDev", y: "ytwYtm", insight: "Maps yield against volatility -- funds in the upper-left quadrant deliver the most yield per unit of risk." },
+  { label: "Credit vs Yield", x: "credit", y: "ytwYtm", insight: "Reveals whether higher yield comes from credit risk -- funds to the left offer higher quality at comparable yields." },
+  { label: "Return vs Risk", x: "stdDev", y: "oneYear", insight: "Classic efficient frontier view -- upper-left funds are generating better risk-adjusted returns." },
+  { label: "Sharpe vs Expense", x: "expense", y: "sharpe", insight: "Tests whether higher fees translate to better risk-adjusted performance -- upper-left funds deliver more Sharpe per fee dollar." },
 ]
 
 /* ── Duration categories ── */
@@ -159,8 +159,9 @@ function CustomTooltip({ active, payload }: any) {
 }
 
 export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props) {
-  const [xKey, setXKey] = useState("ytwYtm")
-  const [yKey, setYKey] = useState("secYield")
+  const [xKey, setXKey] = useState(PRESETS[0].x)
+  const [yKey, setYKey] = useState(PRESETS[0].y)
+  const [activeInsight, setActiveInsight] = useState(PRESETS[0].insight)
   const [search, setSearch] = useState("")
   const [showFilters, setShowFilters] = useState(false)
   const [hoveredTicker, setHoveredTicker] = useState<string | null>(null)
@@ -256,24 +257,29 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
       </div>
 
       {/* Quick Views */}
-      <div className="flex flex-wrap items-center gap-1.5 border-b px-4 py-2.5 sm:px-5" style={{ borderColor: "#f1f5f9" }}>
-        {PRESETS.map((p) => {
-          const isActive = xKey === p.x && yKey === p.y
-          return (
-            <button
-              key={p.label}
-              onClick={() => { setXKey(p.x); setYKey(p.y) }}
-              className="rounded-full px-3 py-1.5 text-[11px] font-medium transition-all"
-              style={{
-                backgroundColor: isActive ? PRIMARY : "transparent",
-                color: isActive ? "#fff" : "#64748b",
-                border: isActive ? "none" : "1px solid #e2e8f0",
-              }}
-            >
-              {p.label}
-            </button>
-          )
-        })}
+      <div className="border-b px-4 py-2.5 sm:px-5" style={{ borderColor: "#f1f5f9" }}>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {PRESETS.map((p) => {
+            const isActive = xKey === p.x && yKey === p.y
+            return (
+              <button
+                key={p.label}
+                onClick={() => { setXKey(p.x); setYKey(p.y); setActiveInsight(p.insight) }}
+                className="rounded-full px-3 py-1.5 text-[11px] font-medium transition-all"
+                style={{
+                  backgroundColor: isActive ? PRIMARY : "transparent",
+                  color: isActive ? "#fff" : "#64748b",
+                  border: isActive ? "none" : "1px solid #e2e8f0",
+                }}
+              >
+                {p.label}
+              </button>
+            )
+          })}
+        </div>
+        {activeInsight && (
+          <p className="mt-2 text-[11px] leading-relaxed italic" style={{ color: "#64748b" }}>{activeInsight}</p>
+        )}
       </div>
 
       {/* Controls row */}
@@ -284,7 +290,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
             <span className="flex h-5 w-5 items-center justify-center rounded text-[9px] font-bold" style={{ backgroundColor: "#eff6ff", color: PRIMARY }}>X</span>
             <select
               value={xKey}
-              onChange={e => setXKey(e.target.value)}
+              onChange={e => { setXKey(e.target.value); setActiveInsight("") }}
               className="h-8 rounded-md border px-2 pr-7 text-xs font-medium"
               style={{ borderColor: "#e2e8f0", color: "#334155", backgroundColor: "#fff" }}
             >
@@ -296,7 +302,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
             <span className="flex h-5 w-5 items-center justify-center rounded text-[9px] font-bold" style={{ backgroundColor: "#eff6ff", color: PRIMARY }}>Y</span>
             <select
               value={yKey}
-              onChange={e => setYKey(e.target.value)}
+              onChange={e => { setYKey(e.target.value); setActiveInsight("") }}
               className="h-8 rounded-md border px-2 pr-7 text-xs font-medium"
               style={{ borderColor: "#e2e8f0", color: "#334155", backgroundColor: "#fff" }}
             >
