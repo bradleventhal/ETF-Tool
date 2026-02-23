@@ -235,10 +235,10 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
           {(() => {
             const periods = [
               { label: "YTD", value: fund.ytd },
-              { label: "1 Year", value: fund.oneYear },
-              { label: "3 Year", value: fund.threeYear },
+              { label: "1Y", value: fund.oneYear },
+              { label: "3Y", value: fund.threeYear },
               { label: "Inception", value: fund.commonInception },
-            ].filter(p => p.value != null && !isNaN(p.value))
+            ].filter(p => p.value != null && !isNaN(p.value as number))
             return (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {periods.map(p => {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, ReferenceLine, ReferenceDot
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, ReferenceLine
 } from "recharts"
 
 interface ChartPoint { date: string; [key: string]: string | number }
@@ -11,6 +11,24 @@ function pctToDollar(pct: number): number { return Math.round(BASE * (1 + pct / 
 function fmtDollar(v: number): string {
   if (v >= 100000) return `$${(v / 1000).toFixed(0)}k`
   return `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+}
+
+/** Generate nice round Y-axis ticks for dollar values */
+function niceYTicks(dataMin: number, dataMax: number, count: number = 5): number[] {
+  const range = dataMax - dataMin
+  if (range <= 0) return [dataMin]
+  // Pick a nice step: 100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000
+  const rawStep = range / (count - 1)
+  const niceSteps = [100, 200, 250, 500, 1000, 2000, 2500, 5000, 10000, 20000, 50000]
+  const step = niceSteps.find(s => s >= rawStep) || Math.ceil(rawStep / 1000) * 1000
+  const start = Math.floor(dataMin / step) * step
+  const ticks: number[] = []
+  for (let v = start; v <= dataMax + step * 0.5; v += step) {
+    ticks.push(v)
+  }
+  // Ensure we have at least 3 ticks
+  if (ticks.length < 3) return [dataMin, Math.round((dataMin + dataMax) / 2), dataMax]
+  return ticks
 }
 
 interface Props {
@@ -218,6 +236,20 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
 
   const tickInterval = data.length > 500 ? Math.floor(data.length / 6) : data.length > 200 ? Math.floor(data.length / 5) : Math.floor(data.length / 4)
 
+  // Compute nice Y-axis ticks from data
+  const yTicks = (() => {
+    if (data.length === 0) return [BASE]
+    const allVals: number[] = []
+    for (const pt of data) {
+      const vA = pt[`${tickerA}_dollar`]
+      const vB = pt[`${tickerB}_dollar`]
+      if (typeof vA === "number") allVals.push(vA)
+      if (typeof vB === "number" && tickerA !== tickerB) allVals.push(vB)
+    }
+    if (allVals.length === 0) return [BASE]
+    return niceYTicks(Math.min(...allVals), Math.max(...allVals), 5)
+  })()
+
   // Is the current view using the recommended date?
   const isUsingRec = useCustom && recDate && customStart === recDate
 
@@ -320,7 +352,7 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
         )}
         {!loading && !recLoading && !error && data.length > 0 && (
           <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={data} margin={{ top: 5, right: 60, left: 0, bottom: 0 }}>
+            <AreaChart data={data} margin={{ top: 5, right: 75, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id={`fillA_${tickerA}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor={navy} stopOpacity={0.15} />
@@ -335,7 +367,7 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
               <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#94a3b8" }} tickFormatter={formatDateLabel} interval={tickInterval} axisLine={{ stroke: "#e2e8f0" }} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmtDollar(v)} width={55} domain={["dataMin", "dataMax"]} tickCount={6} allowDecimals={false} />
+              <YAxis tick={{ fontSize: 10, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v: number) => fmtDollar(v)} width={55} ticks={yTicks} domain={[yTicks[0], yTicks[yTicks.length - 1]]} />
               <ReferenceLine y={BASE} stroke="#e2e8f0" strokeDasharray="3 3" />
               <Tooltip
                 labelFormatter={(l: string) => { const d = new Date(l + "T00:00:00"); return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) }}
@@ -348,42 +380,40 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
                 contentStyle={{ backgroundColor: "#fff", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: 12, padding: "8px 14px", color: "#1e293b", boxShadow: "0 4px 12px rgba(0,0,0,0.08)" }}
                 labelStyle={{ color: "#64748b", fontSize: 11, fontWeight: 600, marginBottom: 4 }}
               />
-              <Area type="monotone" dataKey={`${tickerA}_dollar`} name={`${tickerA}_dollar`} stroke={navy} strokeWidth={1.5} fill={`url(#fillA_${tickerA})`} dot={false} activeDot={{ r: 3, fill: navy, stroke: "#fff", strokeWidth: 2 }} />
-              {tickerA !== tickerB && (
-                <Area type="monotone" dataKey={`${tickerB}_dollar`} name={`${tickerB}_dollar`} stroke={red} strokeWidth={1.5} fill={`url(#fillB_${tickerB})`} dot={false} activeDot={{ r: 3, fill: red, stroke: "#fff", strokeWidth: 2 }} />
-              )}
-              {/* End-of-line percentage badge like Morningstar */}
-              {data.length > 0 && totalA != null && (() => {
-                const last = data[data.length - 1]
-                const lastDateStr = last.date as string
-                const lastValA = last[`${tickerA}_dollar`] as number
-                const labelA = `${totalA >= 0 ? "+" : ""}${totalA.toFixed(2)}%`
-                const badges: React.ReactNode[] = [
-                  <ReferenceDot key="endA" x={lastDateStr} y={lastValA} r={3} fill={navy} stroke="#fff" strokeWidth={2}>
-                    <g>
-                      <rect x={8} y={-10} width={62} height={20} rx={4} fill={navy} />
-                      <text x={39} y={4} fontSize={11} fontWeight={700} fontFamily="ui-monospace, monospace" fill="#fff" textAnchor="middle">
-                        {labelA}
-                      </text>
+              <Area type="monotone" dataKey={`${tickerA}_dollar`} name={`${tickerA}_dollar`} stroke={navy} strokeWidth={1.5} fill={`url(#fillA_${tickerA})`}
+                activeDot={{ r: 3, fill: navy, stroke: "#fff", strokeWidth: 2 }}
+                /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+                dot={(dotProps: any) => {
+                  const { cx, cy, index } = dotProps
+                  if (index !== data.length - 1) return <g key={index} />
+                  const pctLabel = `${(totalA ?? 0) >= 0 ? "+" : ""}${(totalA ?? 0).toFixed(2)}%`
+                  return (
+                    <g key="endA">
+                      <circle cx={cx} cy={cy} r={3} fill={navy} stroke="#fff" strokeWidth={2} />
+                      <rect x={cx + 6} y={cy - 10} width={66} height={20} rx={4} fill={navy} />
+                      <text x={cx + 39} y={cy + 4} fontSize={10} fontWeight={700} fontFamily="ui-monospace, monospace" fill="#fff" textAnchor="middle">{pctLabel}</text>
                     </g>
-                  </ReferenceDot>
-                ]
-                if (tickerA !== tickerB && totalB != null) {
-                  const lastValB = last[`${tickerB}_dollar`] as number
-                  const labelB = `${totalB >= 0 ? "+" : ""}${totalB.toFixed(2)}%`
-                  badges.push(
-                    <ReferenceDot key="endB" x={lastDateStr} y={lastValB} r={3} fill={red} stroke="#fff" strokeWidth={2}>
-                      <g>
-                        <rect x={8} y={-10} width={62} height={20} rx={4} fill={red} />
-                        <text x={39} y={4} fontSize={11} fontWeight={700} fontFamily="ui-monospace, monospace" fill="#fff" textAnchor="middle">
-                          {labelB}
-                        </text>
-                      </g>
-                    </ReferenceDot>
                   )
-                }
-                return <>{badges}</>
-              })()}
+                }}
+              />
+              {tickerA !== tickerB && (
+                <Area type="monotone" dataKey={`${tickerB}_dollar`} name={`${tickerB}_dollar`} stroke={red} strokeWidth={1.5} fill={`url(#fillB_${tickerB})`}
+                  activeDot={{ r: 3, fill: red, stroke: "#fff", strokeWidth: 2 }}
+                  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+                  dot={(dotProps: any) => {
+                    const { cx, cy, index } = dotProps
+                    if (index !== data.length - 1) return <g key={index} />
+                    const pctLabel = `${(totalB ?? 0) >= 0 ? "+" : ""}${(totalB ?? 0).toFixed(2)}%`
+                    return (
+                      <g key="endB">
+                        <circle cx={cx} cy={cy} r={3} fill={red} stroke="#fff" strokeWidth={2} />
+                        <rect x={cx + 6} y={cy - 10} width={66} height={20} rx={4} fill={red} />
+                        <text x={cx + 39} y={cy + 4} fontSize={10} fontWeight={700} fontFamily="ui-monospace, monospace" fill="#fff" textAnchor="middle">{pctLabel}</text>
+                      </g>
+                    )
+                  }}
+                />
+              )}
             </AreaChart>
           </ResponsiveContainer>
         )}
