@@ -1,4 +1,4 @@
-// Direct fetch to OpenAI API -- SDK env var detection unreliable in this runtime
+import OpenAI from "openai"
 
 export const maxDuration = 60
 
@@ -53,34 +53,22 @@ export async function POST(req: Request) {
       ? SYSTEM_PROMPT + '\n\nCURRENT FUND COMPARISON DATA:\n' + fundContext
       : SYSTEM_PROMPT
 
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${(process.env.OPENAI_API_KEY || '').trim()}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemContent },
-          ...userMessages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
-        ],
-        temperature: 0.2,
-        max_tokens: 800,
-      }),
+    const openai = new OpenAI()
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemContent },
+        ...userMessages.map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
+      ],
+      temperature: 0.2,
+      max_tokens: 800,
     })
 
-    if (!res.ok) {
-      const errText = await res.text()
-      console.error('[v0] OpenAI error:', res.status, errText)
-      return Response.json({ error: `OpenAI error ${res.status}` }, { status: 500 })
-    }
-
-    const data = await res.json()
-    const text = data.choices?.[0]?.message?.content || 'No response generated.'
+    const text = completion.choices[0]?.message?.content || "No response generated."
     return Response.json({ content: text })
   } catch (err: unknown) {
     console.error('[v0] Chat error:', err)
