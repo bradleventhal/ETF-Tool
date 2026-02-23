@@ -61,7 +61,6 @@ Increase analytical clarity and strengthen sales positioning through disciplined
 
 export async function POST(req: Request) {
   try {
-    console.log("[v0] OPENAI_API_KEY present:", !!process.env.OPENAI_API_KEY)
     if (!process.env.OPENAI_API_KEY) {
       return Response.json({ error: "OPENAI_API_KEY is not configured" }, { status: 500 })
     }

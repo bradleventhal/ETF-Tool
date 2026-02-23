@@ -28,7 +28,8 @@ function buildDataPayload(fundA: FundData, fundB: FundData, yahoo: YahooAnalytic
 function computeDeltas(us: FundData, them: FundData) {
   const deltas: Record<string, { metric: string; ours: number | null; theirs: number | null; delta: number; unit: string; higherIsBetter: boolean }> = {}
 
-  const metrics: { key: keyof FundData; label: string; unit: string; higherBetter: boolean }[] = [
+  // Performance & risk metrics — these have clear directionality
+  const directionalMetrics: { key: keyof FundData; label: string; unit: string; higherBetter: boolean }[] = [
     { key: "secYield", label: "SEC Yield", unit: "%", higherBetter: true },
     { key: "distributionYield", label: "Distribution Yield", unit: "%", higherBetter: true },
     { key: "expense", label: "Expense Ratio", unit: "%", higherBetter: false },
@@ -39,24 +40,28 @@ function computeDeltas(us: FundData, them: FundData) {
     { key: "oneYear", label: "1Y Return", unit: "%", higherBetter: true },
     { key: "threeYear", label: "3Y Return", unit: "%", higherBetter: true },
     { key: "commonInception", label: "Common Inception Return", unit: "%", higherBetter: true },
-    { key: "securitized", label: "Securitized Allocation", unit: "%", higherBetter: false },
-    { key: "corporateCredit", label: "Corporate Credit Allocation", unit: "%", higherBetter: false },
-    { key: "governmentCash", label: "Government/Cash Allocation", unit: "%", higherBetter: false },
-    { key: "nonAgencyRmbs", label: "Non-Agency RMBS", unit: "%", higherBetter: false },
-    { key: "agencyRmbs", label: "Agency RMBS", unit: "%", higherBetter: false },
-    { key: "abs", label: "ABS", unit: "%", higherBetter: false },
-    { key: "clo", label: "CLO", unit: "%", higherBetter: false },
-    { key: "cmbs", label: "CMBS", unit: "%", higherBetter: false },
-    { key: "aaa", label: "AAA Allocation", unit: "%", higherBetter: true },
-    { key: "aa", label: "AA Allocation", unit: "%", higherBetter: true },
-    { key: "a", label: "A Allocation", unit: "%", higherBetter: true },
-    { key: "bbb", label: "BBB Allocation", unit: "%", higherBetter: false },
-    { key: "bb", label: "BB Allocation", unit: "%", higherBetter: false },
-    { key: "b", label: "B Allocation", unit: "%", higherBetter: false },
-    { key: "ccc", label: "CCC Allocation", unit: "%", higherBetter: false },
   ]
 
-  for (const m of metrics) {
+  // Allocation & sector metrics — NO directionality. GPT decides what matters.
+  const neutralMetrics: { key: keyof FundData; label: string; unit: string }[] = [
+    { key: "securitized", label: "Securitized Allocation", unit: "%" },
+    { key: "corporateCredit", label: "Corporate Credit Allocation", unit: "%" },
+    { key: "governmentCash", label: "Government/Cash Allocation", unit: "%" },
+    { key: "nonAgencyRmbs", label: "Non-Agency RMBS", unit: "%" },
+    { key: "agencyRmbs", label: "Agency RMBS", unit: "%" },
+    { key: "abs", label: "ABS", unit: "%" },
+    { key: "clo", label: "CLO", unit: "%" },
+    { key: "cmbs", label: "CMBS", unit: "%" },
+    { key: "aaa", label: "AAA Allocation", unit: "%" },
+    { key: "aa", label: "AA Allocation", unit: "%" },
+    { key: "a", label: "A Allocation", unit: "%" },
+    { key: "bbb", label: "BBB Allocation", unit: "%" },
+    { key: "bb", label: "BB Allocation", unit: "%" },
+    { key: "b", label: "B Allocation", unit: "%" },
+    { key: "ccc", label: "CCC Allocation", unit: "%" },
+  ]
+
+  for (const m of directionalMetrics) {
     const ours = us[m.key] as number | null
     const theirs = them[m.key] as number | null
     if (ours == null && theirs == null) continue
@@ -64,7 +69,18 @@ function computeDeltas(us: FundData, them: FundData) {
     const t = theirs ?? 0
     const delta = t - o
     if (Math.abs(delta) < 0.001) continue
-    deltas[m.key] = { metric: m.label, ours, theirs, delta, unit: m.unit, higherIsBetter: m.higherBetter }
+    deltas[m.key] = { metric: m.label, ours, theirs, delta, unit: m.unit, type: "directional", higherIsBetter: m.higherBetter }
+  }
+
+  for (const m of neutralMetrics) {
+    const ours = us[m.key] as number | null
+    const theirs = them[m.key] as number | null
+    if (ours == null && theirs == null) continue
+    const o = ours ?? 0
+    const t = theirs ?? 0
+    const delta = t - o
+    if (Math.abs(delta) < 0.005) continue // 0.5% threshold for allocations
+    deltas[m.key] = { metric: m.label, ours, theirs, delta, unit: m.unit, type: "neutral_allocation" }
   }
   return deltas
 }
@@ -84,11 +100,18 @@ TONE RULES:
 
 KEY DIMENSIONS TO EVALUATE (prioritize based on magnitude):
 - SEC yield, distribution yield, expense ratio
-- Duration, credit quality (IG% vs HY%), allocation differences (securitized vs corporate vs govt)
-- Standard deviation, Sharpe ratio
+- Duration, credit quality (IG% vs HY%)
+- Standard deviation, Sharpe ratio (supplementary only)
 - Performance: YTD, 1Y, 3Y, common inception
 - Stress period behavior from Yahoo price data
 - Sector breakdown differences (RMBS, CLO, ABS, CMBS)
+
+CRITICAL — ALLOCATION DIFFERENCES:
+Metrics labeled "neutral_allocation" in the data are NOT inherently good or bad. Having more corporate credit is NOT automatically an advantage. Having more securitized is NOT automatically a disadvantage. YOU must use your fixed income knowledge to determine:
+- Would a competitor ACTUALLY use this allocation difference as a pitch point? In what context?
+- Is this allocation difference a VULNERABILITY in the current environment? (e.g. heavy corporate during a spread-widening episode)
+- Or is it just a structural difference that doesn't give either fund a meaningful edge?
+Only include allocation as a competitor argument if a real competitor wholesaler would actually lead with it. Note allocation differences in the difficultySummary as context even if they don't warrant a standalone argument.
 
 RULES:
 1. Surface EVERY metric where the competitor has a material advantage. Do NOT limit to 2 or 3. If they have 6 angles, show all 6. If they only have 1 or 2, explicitly note in the difficultySummary: "The competitor has limited ammunition — [metric] is likely their only/primary angle." This helps our rep know when the competitor is grasping at straws vs when they have real firepower. Count the angles for the rep.
