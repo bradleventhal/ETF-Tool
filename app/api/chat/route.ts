@@ -18,7 +18,9 @@ GUIDELINES:
 
 export async function POST(req: Request) {
   try {
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "" })
+    const key = process.env.OPENAI_API_KEY
+    console.log("[v0] Chat route - OPENAI_API_KEY present:", !!key, "length:", key?.length, "prefix:", key?.substring(0, 7))
+    const openai = new OpenAI({ apiKey: key })
 
     const body = await req.json()
     const userMessages: { role: string; content: string }[] = body.messages || []
