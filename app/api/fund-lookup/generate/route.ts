@@ -85,141 +85,131 @@ function isRealCommentary(text: string): boolean {
   return hits >= 3
 }
 
-/** Search for a fund's quarterly commentary PDF via DuckDuckGo, download and parse it. */
+/** Search for any fund's quarterly commentary PDF. Purely search-driven -- no hardcoded fund families. */
 async function fetchCommentary(ticker: string, fundName: string): Promise<CommentaryResult> {
   console.log("[v0] Searching commentary for:", ticker, fundName)
-  const nameLower = fundName.toLowerCase()
-  const tickerLower = ticker.toLowerCase()
 
-  // Step 0: Try known commentary redirect URLs first -- these are the fastest path
-  const knownUrls: string[] = []
-
-  // Angel Oak uses go.angeloakcapital.com redirects
-  if (nameLower.includes("angel oak")) {
-    const slugMap: Record<string, string> = {
-      "uyld": "ultrashort_income_etf_commentary",
-      "aodo": "income_etf_commentary",
-      "aohy": "high_yield_opportunities_etf_commentary",
-      "aomr": "mortgage_backed_securities_etf_commentary",
-      "aotr": "total_return_etf_commentary",
-      "anglx": "multi_strategy_income_fund_commentary",
-      "anflx": "financials_income_fund_commentary",
-      "aousx": "ultrashort_income_fund_commentary",
-      "aoscx": "strategic_credit_fund_commentary",
-    }
-    const slug = slugMap[tickerLower]
-    if (slug) {
-      knownUrls.push(`https://go.angeloakcapital.com/${slug}`)
-    }
-    // Also try the quarterly commentaries page for scraping
-  }
-
-  // PIMCO uses pimco.com/handlers for PDFs
-  if (nameLower.includes("pimco")) {
-    knownUrls.push(`https://www.pimco.com/handlers/PIMCOFundFactSheetHandler.ashx?ticker=${ticker}`)
-  }
-
-  // Try known URLs first
-  for (const url of knownUrls) {
-    const text = await fetchPdfText(url)
-    if (text && isRealCommentary(text)) {
-      console.log("[v0] Got commentary from known URL:", url)
-      const preview = text.slice(0, 300).replace(/\s+/g, " ").trim()
-      return { text: text.slice(0, 6000), sourceUrl: url, preview }
-    } else if (text) {
-      console.log("[v0] Known URL returned PDF but not real commentary:", url, "hits:", text.slice(0, 150))
-    } else {
-      console.log("[v0] Known URL failed:", url)
-    }
-  }
-
-  // Step 1: DuckDuckGo search as fallback
+  // Use multiple search engines / approaches in parallel
   const queries = [
     `"${ticker}" quarterly commentary filetype:pdf`,
-    `"${fundName}" quarterly commentary filetype:pdf`,
-    `"${ticker}" "market commentary" OR "portfolio manager commentary" filetype:pdf`,
+    `"${fundName}" quarterly commentary pdf`,
+    `"${ticker}" portfolio manager commentary pdf`,
+    `"${ticker}" quarterly report commentary`,
   ]
 
-  const pdfUrlsFound: string[] = []
-  const webPages: string[] = []
+  const pdfUrls: string[] = []
+  const pageUrls: string[] = []
 
+  // Search DuckDuckGo and Google (via scrape) for PDF commentary
   for (const query of queries) {
+    // DuckDuckGo HTML search
     try {
-      const searchUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`
+      const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`
       console.log("[v0] DDG search:", query)
-      const res = await fetch(searchUrl, {
+      const res = await fetch(ddgUrl, {
         headers: { "User-Agent": UA, "Accept": "text/html" },
         signal: AbortSignal.timeout(8000),
       })
-      if (!res.ok) continue
-      const html = await res.text()
-
-      const uddgMatches = [...html.matchAll(/uddg=([^&"']+)/gi)]
-      for (const match of uddgMatches) {
-        try {
-          const url = decodeURIComponent(match[1])
-          const urlLower = url.toLowerCase()
-          // Only grab PDFs with "commentary" in the URL, skip fact sheets
-          if (urlLower.endsWith(".pdf") && (urlLower.includes("comment") || urlLower.includes("quarter") || urlLower.includes("outlook") || urlLower.includes("review"))) {
-            if (!pdfUrlsFound.includes(url)) pdfUrlsFound.push(url)
-          } else if (urlLower.endsWith(".pdf")) {
-            // Lower priority -- could be anything
-            if (!pdfUrlsFound.includes(url)) pdfUrlsFound.push(url)
-          } else if (urlLower.includes("commentary") || urlLower.includes("quarterly")) {
-            if (!webPages.includes(url)) webPages.push(url)
-          }
-        } catch { /* bad URL encoding */ }
+      if (res.ok) {
+        const html = await res.text()
+        // Extract result URLs from DuckDuckGo's uddg redirects
+        const matches = [...html.matchAll(/uddg=([^&"']+)/gi)]
+        console.log("[v0] DDG results:", matches.length)
+        for (const m of matches) {
+          try {
+            const url = decodeURIComponent(m[1])
+            const lower = url.toLowerCase()
+            if (lower.endsWith(".pdf")) {
+              if (!pdfUrls.includes(url)) pdfUrls.push(url)
+            } else if (lower.includes("commentary") || lower.includes("quarterly") || lower.includes("insights")) {
+              if (!pageUrls.includes(url)) pageUrls.push(url)
+            }
+          } catch { /* bad URL */ }
+        }
       }
+    } catch { /* skip */ }
 
-      if (pdfUrlsFound.length >= 3) break
-    } catch { continue }
+    // Google lite search
+    try {
+      const gUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}&num=10`
+      const res = await fetch(gUrl, {
+        headers: { "User-Agent": UA, "Accept": "text/html" },
+        signal: AbortSignal.timeout(8000),
+      })
+      if (res.ok) {
+        const html = await res.text()
+        // Google wraps URLs in /url?q= redirects
+        const matches = [...html.matchAll(/\/url\?q=(https?[^&"]+)/gi)]
+        console.log("[v0] Google results:", matches.length)
+        for (const m of matches) {
+          try {
+            const url = decodeURIComponent(m[1])
+            const lower = url.toLowerCase()
+            if (lower.endsWith(".pdf")) {
+              if (!pdfUrls.includes(url)) pdfUrls.push(url)
+            } else if (lower.includes("commentary") || lower.includes("quarterly") || lower.includes("insights")) {
+              if (!pageUrls.includes(url)) pageUrls.push(url)
+            }
+          } catch { /* bad URL */ }
+        }
+      }
+    } catch { /* skip */ }
+
+    if (pdfUrls.length >= 3) break
   }
 
-  // Also add known commentary index pages to scrape
-  if (nameLower.includes("angel oak") && !webPages.includes("https://angeloakcapital.com/quarterly-fund-commentaries")) {
-    webPages.push("https://angeloakcapital.com/quarterly-fund-commentaries")
-  }
+  // Sort PDFs: prioritize URLs with "commentary" or "quarter" in them
+  pdfUrls.sort((a, b) => {
+    const aL = a.toLowerCase()
+    const bL = b.toLowerCase()
+    const aScore = (aL.includes("comment") ? 0 : 2) + (aL.includes("quarter") ? 0 : 1)
+    const bScore = (bL.includes("comment") ? 0 : 2) + (bL.includes("quarter") ? 0 : 1)
+    return aScore - bScore
+  })
 
-  console.log("[v0] PDF URLs found:", pdfUrlsFound.length, "Web pages:", webPages.length)
+  console.log("[v0] Found", pdfUrls.length, "PDF URLs,", pageUrls.length, "page URLs")
 
-  // Try direct PDFs -- validate each one is actual commentary
-  for (const url of pdfUrlsFound.slice(0, 5)) {
+  // Try direct PDF downloads -- validate each is real commentary
+  for (const url of pdfUrls.slice(0, 6)) {
     const text = await fetchPdfText(url)
     if (text && isRealCommentary(text)) {
-      console.log("[v0] Validated real commentary from:", url)
+      console.log("[v0] Validated commentary from:", url)
       const preview = text.slice(0, 300).replace(/\s+/g, " ").trim()
       return { text: text.slice(0, 6000), sourceUrl: url, preview }
     } else if (text) {
-      console.log("[v0] Skipping PDF (not real commentary):", url, "- first 200 chars:", text.slice(0, 200))
+      console.log("[v0] PDF not real commentary:", url)
     }
   }
 
-  // Scrape web pages for PDF links
-  for (const url of webPages.slice(0, 3)) {
+  // Scrape pages for PDF links, then download and validate
+  for (const url of pageUrls.slice(0, 4)) {
     try {
       const res = await fetch(url, {
         headers: { "User-Agent": UA },
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(6000),
       })
       if (!res.ok) continue
       const html = await res.text()
 
-      const allPdfLinks = [
+      // Find all PDF links (absolute + relative)
+      const allLinks = [
         ...([...html.matchAll(/href=["'](https?:\/\/[^"']+\.pdf)["']/gi)].map(m => m[1])),
-        ...([...html.matchAll(/href=["'](\/[^"']+\.pdf)["']/gi)].map(m => new URL(url).origin + m[1])),
-      ]
+        ...([...html.matchAll(/href=["'](\/[^"']+\.pdf)["']/gi)].map(m => {
+          try { return new URL(m[1], url).href } catch { return "" }
+        })),
+      ].filter(Boolean)
 
       // Prioritize links with "commentary" in the URL
-      allPdfLinks.sort((a, b) => {
-        const aScore = a.toLowerCase().includes("comment") ? 0 : 1
-        const bScore = b.toLowerCase().includes("comment") ? 0 : 1
-        return aScore - bScore
+      allLinks.sort((a, b) => {
+        const aHas = a.toLowerCase().includes("comment") ? 0 : 1
+        const bHas = b.toLowerCase().includes("comment") ? 0 : 1
+        return aHas - bHas
       })
 
-      for (const pdfUrl of allPdfLinks.slice(0, 5)) {
+      for (const pdfUrl of allLinks.slice(0, 4)) {
         const pdfText = await fetchPdfText(pdfUrl)
         if (pdfText && isRealCommentary(pdfText)) {
-          console.log("[v0] Validated commentary via page scrape:", pdfUrl)
+          console.log("[v0] Commentary via page scrape:", pdfUrl)
           const preview = pdfText.slice(0, 300).replace(/\s+/g, " ").trim()
           return { text: pdfText.slice(0, 6000), sourceUrl: pdfUrl, preview }
         }
@@ -227,11 +217,11 @@ async function fetchCommentary(ticker: string, fundName: string): Promise<Commen
     } catch { continue }
   }
 
-  console.log("[v0] No real commentary found for", ticker)
+  console.log("[v0] No commentary found for", ticker)
   return null
 }
 
-const SYSTEM_PROMPT = `You are an expert fixed income analyst at Angel Oak Capital Advisors. You will receive a fund's data and possibly commentary scraped from the fund company's website.
+const SYSTEM_PROMPT = `You are an expert fixed income analyst. You will receive a fund's data and possibly commentary scraped from the fund company's quarterly PDF.
 
 Return ONLY valid JSON with this exact structure:
 {
