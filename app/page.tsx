@@ -321,6 +321,25 @@ function InlineFundMap({ funds, onSelectFund }: { funds: FundData[]; onSelectFun
     return { sortedData: pts.sort((a, b) => a.x - b.x), avgY: cnt > 0 ? ySum / cnt : 0 }
   }, [funds, xAxis, yAxis, search, durationCats, creditCats, mstarCats, starMin, yieldMinP, expenseMaxP, sharpeMinP, stdDevMaxP])
 
+  // Pre-compute static domains so Recharts never gets NaN
+  const xDomain = useMemo((): [number, number] => {
+    if (xAxis.isCredit) return [0.5, 8.5]
+    if (sortedData.length === 0) return [0, 10]
+    let lo = Infinity, hi = -Infinity
+    for (const d of sortedData) { if (d.x < lo) lo = d.x; if (d.x > hi) hi = d.x }
+    const pad = (hi - lo) * 0.1 || 1
+    return [Math.max(0, Math.floor((lo - pad) * 10) / 10), Math.ceil((hi + pad) * 10) / 10]
+  }, [sortedData, xAxis.isCredit])
+
+  const yDomain = useMemo((): [number, number] => {
+    if (yAxis.isCredit) return [0.5, 8.5]
+    if (sortedData.length === 0) return [0, 10]
+    let lo = Infinity, hi = -Infinity
+    for (const d of sortedData) { if (d.y < lo) lo = d.y; if (d.y > hi) hi = d.y }
+    const pad = (hi - lo) * 0.1 || 0.01
+    return [Math.floor((lo - pad) * 100) / 100, Math.ceil((hi + pad) * 100) / 100]
+  }, [sortedData, yAxis.isCredit])
+  
   const resetFilters = useCallback(() => {
     setSearch("")
     setDurationCats(new Set(MAP_DUR_CATS.map(c => c.label)))
@@ -470,7 +489,6 @@ function InlineFundMap({ funds, onSelectFund }: { funds: FundData[]; onSelectFun
       )}
 
       {/* Chart */}
-      {console.log("[v0] InlineFundMap chartWidth:", chartWidth, "sortedData:", sortedData.length, "sample:", sortedData[0])}
       <div ref={chartWrapRef} style={{ width: "100%", minHeight: 400 }}>
       {sortedData.length < 1 ? (
         <div className="flex h-[400px] items-center justify-center rounded-lg border border-dashed" style={{ borderColor: "#e2e8f0" }}>
@@ -481,7 +499,7 @@ function InlineFundMap({ funds, onSelectFund }: { funds: FundData[]; onSelectFun
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
           <RXAxis
             type="number" dataKey="x" name={xAxis.label}
-            domain={xAxis.isCredit ? [0.5, 8.5] : [(dMin: number) => isFinite(dMin) ? Math.max(0, Math.floor(dMin * 0.9 * 10) / 10) : 0, (dMax: number) => isFinite(dMax) ? Math.ceil(dMax * 1.1 * 10) / 10 : 10]}
+            domain={xDomain}
             ticks={xAxis.isCredit ? [1,2,3,4,5,6,7,8] : undefined}
             tick={{ fontSize: 11, fill: "#94a3b8" }}
             tickFormatter={(v: number) => xAxis.tickFmt(v)}
@@ -492,7 +510,7 @@ function InlineFundMap({ funds, onSelectFund }: { funds: FundData[]; onSelectFun
           </RXAxis>
           <RYAxis
             type="number" dataKey="y" name={yAxis.label}
-            domain={yAxis.isCredit ? [0.5, 8.5] : undefined}
+            domain={yDomain}
             ticks={yAxis.isCredit ? [1,2,3,4,5,6,7,8] : undefined}
             tick={{ fontSize: 11, fill: "#94a3b8" }}
             tickFormatter={(v: number) => yAxis.tickFmt(v)}
@@ -504,7 +522,7 @@ function InlineFundMap({ funds, onSelectFund }: { funds: FundData[]; onSelectFun
           </RYAxis>
           <ZAxis range={[50, 50]} />
           <RTooltip content={<MapTip />} cursor={false} />
-          {sortedData.length >= 2 && <ReferenceLine y={avgY} stroke="#94a3b8" strokeDasharray="6 4" strokeWidth={1} />}
+          {sortedData.length >= 2 && isFinite(avgY) && <ReferenceLine y={avgY} stroke="#94a3b8" strokeDasharray="6 4" strokeWidth={1} />}
           <Scatter
             data={sortedData}
             shape={<MapDot hoveredTicker={hoveredTicker} onHover={setHoveredTicker} onLeave={() => setHoveredTicker(null)} onClick={onSelectFund} />}
