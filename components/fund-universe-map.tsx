@@ -5,7 +5,7 @@ import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
   ResponsiveContainer, Tooltip, ZAxis, Cell, ReferenceLine, Label,
 } from "recharts"
-import { Search, X, SlidersHorizontal } from "lucide-react"
+import { Search, X, SlidersHorizontal, ArrowRightLeft } from "lucide-react"
 import type { FundData } from "@/lib/fund-types"
 
 /* ── Helpers ── */
@@ -64,7 +64,7 @@ const findAxis = (key: string) => AXIS_OPTIONS.findIndex(a => a.key === key)
 /* ── Presets ── */
 const PRESETS = [
   { label: "Yield vs Duration", x: "duration", y: "ytwYtm", insight: "Shows yield pickup per unit of interest rate risk -- are you getting paid enough for the duration you're taking?" },
-  { label: "Credit vs Yield", x: "credit", y: "ytwYtm", insight: "Reveals whether higher yield comes from credit risk -- funds to the left offer higher quality at comparable yields." },
+  { label: "Yield vs Credit", x: "credit", y: "ytwYtm", insight: "Reveals whether higher yield comes from credit risk -- funds to the left offer higher quality at comparable yields." },
 ]
 
 /* ── Duration categories ── */
@@ -417,7 +417,14 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
             {AXIS_OPTIONS.map((a, i) => <option key={a.key} value={i}>{a.label}</option>)}
           </select>
         </div>
-        <span className="text-[10px] font-medium" style={{ color: "#94a3b8" }}>vs</span>
+        <button
+          onClick={() => { const prev = xIdx; setXIdx(yIdx); setYIdx(prev); setPresetIdx(-1) }}
+          className="flex h-7 items-center gap-1 rounded-md border px-2 text-[10px] font-bold transition-all hover:border-[#0f3d6b] hover:bg-[#f0f7ff]"
+          style={{ borderColor: "#e2e8f0", color: "#64748b" }}
+          title="Swap X and Y axes"
+        >
+          <ArrowRightLeft className="h-3 w-3" />
+        </button>
         <div className="flex items-center gap-1.5">
           <span className="flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold text-white" style={{ backgroundColor: PRIMARY }}>Y</span>
           <select value={yIdx} onChange={e => { setYIdx(+e.target.value); setPresetIdx(-1) }}
