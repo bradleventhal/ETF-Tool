@@ -99,6 +99,7 @@ export default function Page() {
   const [tickerA, setTickerA] = useState("")
   const [tickerB, setTickerB] = useState("")
   const [competitors, setCompetitors] = useState<string[]>([])
+  // competitor add state removed -- now using TickerInput for competitor selection
   const [mode, setMode] = useState<AnalysisMode>("internal")
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [warRoom, setWarRoom] = useState<WarRoom | null>(null)
@@ -130,6 +131,7 @@ export default function Page() {
     try {
       const res = await fetch("/api/refresh-ratings", { method: "POST" })
       if (res.ok) {
+        // Reload funds with updated ratings
         const r = await fetch("/api/funds")
         const json = await r.json()
         if (json.funds?.length) setFunds(json.funds)
@@ -160,6 +162,7 @@ export default function Page() {
       const fA = funds.find((f) => f.ticker === tickerA)
       const fB = funds.find((f) => f.ticker === tickerB)
       if (fA && fB) {
+        // Always ensure tickerB is in the competitors list
         setCompetitors(prev => prev.includes(tickerB) ? prev : [...prev.slice(0, 4), tickerB])
         setError(null)
         setResult(runAnalysis(fA, fB, mode))
@@ -206,6 +209,7 @@ export default function Page() {
     const prevB = tickerB
     setTickerA(prevB)
     setTickerB(prevA)
+    // Ensure the swapped tickers are in the competitor list
     if (prevA && !competitors.includes(prevA)) {
       setCompetitors(prev => [...prev.slice(0, 4), prevA])
     }
@@ -333,11 +337,14 @@ export default function Page() {
       {section === "comparison" && (
       <div className="mx-auto max-w-6xl px-3 sm:px-6">
         <div className="border-b py-4 sm:py-5" style={{ borderColor: "#e2e8f0" }}>
+          {/* Compact grid: Our Fund | vs | Competitors | Mode */}
           <div className="flex flex-col gap-3 sm:grid sm:gap-4" style={{ gridTemplateColumns: "minmax(160px, 1fr) auto minmax(240px, 2fr) auto" }}>
+            {/* Our Fund -- compact */}
             <div>
               <TickerInput label="Our Fund" value={tickerA} onChange={(v) => { setTickerA(v); if (v && competitors.length > 0 && !tickerB) setTickerB(competitors[0]) }} options={tickers} placeholder="Select fund..." />
             </div>
 
+            {/* Swap / VS button */}
             <div className="flex items-end pb-2">
               <button
                 onClick={swapTickers}
@@ -351,6 +358,7 @@ export default function Page() {
               </button>
             </div>
 
+            {/* Competitors section */}
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>
@@ -361,6 +369,7 @@ export default function Page() {
                 )}
               </div>
               <div className="flex items-center gap-1.5">
+                {/* Competitor tabs */}
                 {competitors.map((comp) => {
                   const isActive = tickerB === comp
                   return (
@@ -388,7 +397,7 @@ export default function Page() {
                     </div>
                   )
                 })}
-
+                {/* Add competitor button/input */}
                 {competitors.length < 5 && (
                   <div className="min-w-[160px] flex-1">
                     <TickerInput
@@ -408,6 +417,7 @@ export default function Page() {
               </div>
             </div>
 
+            {/* Mode toggle */}
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>Mode</span>
               <div className="flex h-10 overflow-hidden rounded-lg border text-[12px] font-semibold" style={{ borderColor: "#e2e8f0" }}>
@@ -542,20 +552,18 @@ export default function Page() {
       </div>
       )}
 
-      {/* ===== FUND MAP SECTION ===== */}
-      {section === "map" && (
-        <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6 sm:py-6">
-          <FundUniverseMap
-            funds={funds}
-            highlightTicker={undefined}
-            onSelectFund={(t) => {
-              setLookupTicker(t)
-              setCameFromMap(true)
-              setSection("lookup")
-            }}
-          />
-        </div>
-      )}
+      {/* ===== FUND MAP SECTION (always mounted to preserve state) ===== */}
+      <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6 sm:py-6" style={{ display: section === "map" ? undefined : "none" }}>
+        <FundUniverseMap
+          funds={funds}
+          highlightTicker={undefined}
+          onSelectFund={(t) => {
+            setLookupTicker(t)
+            setCameFromMap(true)
+            setSection("lookup")
+          }}
+        />
+      </div>
 
       {/* ===== FUND LOOKUP SECTION ===== */}
       {section === "lookup" && (
@@ -591,9 +599,11 @@ export default function Page() {
           const ANGEL_OAK_TICKERS = new Set(["ANGIX", "CARY", "UYLD", "AOUIX", "ASCIX", "TRBF", "AOHY", "MBS", "FINS"])
           return <FundLookup fund={fund} allTickers={tickers} onCompare={(ticker) => {
             if (ANGEL_OAK_TICKERS.has(ticker)) {
+              // Angel Oak fund goes into "Our Fund" slot
               setTickerA(ticker)
               setTickerB("")
             } else {
+              // Non-Angel Oak fund goes into competitors
               setTickerB(ticker)
               if (!competitors.includes(ticker)) setCompetitors(prev => [...prev.slice(0, 4), ticker])
               setTickerA("")
