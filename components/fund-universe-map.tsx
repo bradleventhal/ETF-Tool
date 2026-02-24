@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react"
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
-  ResponsiveContainer, Tooltip, ZAxis, Cell, ReferenceLine, Label,
+  ResponsiveContainer, Tooltip, ZAxis, Cell, ReferenceLine, Label, Customized,
 } from "recharts"
 import { Search, X, SlidersHorizontal } from "lucide-react"
 import type { FundData } from "@/lib/fund-types"
@@ -234,7 +234,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
   }, [funds])
 
   /* ── Data pipeline ── */
-  const { sortedData, avgX, avgY } = useMemo(() => {
+  const { sortedData, avgY, trendLine } = useMemo(() => {
     const searchLower = search.toLowerCase()
     let xSum = 0, ySum = 0, count = 0
     const points = funds.map(f => {
@@ -294,11 +294,23 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
       }
     }).filter(Boolean) as { ticker: string; name: string; x: number; y: number; isHighlighted: boolean; ytwYtm: number | null; secYield: number | null; duration: number | null; expense: number | null; stdDev: number | null; sharpe: number | null; creditQuality: string | null; morningstarRating: number | null; morningstarCategory: string | null; ytd: number | null; oneYear: number | null; threeYear: number | null }[]
 
-    return {
-      sortedData: points.sort((a, b) => a.x - b.x),
-      avgX: count > 0 ? xSum / count : 0,
-      avgY: count > 0 ? ySum / count : 0,
-    }
+    const sorted = points.sort((a, b) => a.x - b.x)
+    const aX = count > 0 ? xSum / count : 0
+    const aY = count > 0 ? ySum / count : 0
+
+    // Linear regression (least squares)
+    let ssXX = 0, ssXY = 0
+    for (const p of sorted) { ssXX += (p.x - aX) ** 2; ssXY += (p.x - aX) * (p.y - aY) }
+    const slope = ssXX > 0 ? ssXY / ssXX : 0
+    const intercept = aY - slope * aX
+    const trendLine = sorted.length >= 3
+      ? [
+          { x: sorted[0].x, y: slope * sorted[0].x + intercept },
+          { x: sorted[sorted.length - 1].x, y: slope * sorted[sorted.length - 1].x + intercept },
+        ]
+      : []
+
+    return { sortedData: sorted, avgX: aX, avgY: aY, trendLine }
   }, [funds, xAxis, yAxis, highlightTicker, search, durationCats, creditCats, mstarCats, starMin, yieldMinPreset, expenseMaxPreset, sharpeMinPreset, stdDevMaxPreset])
 
   /* ── Filter state checks ── */
@@ -652,6 +664,24 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
             <ZAxis range={[50, 50]} />
             <Tooltip content={<CustomTooltip />} cursor={false} />
             {sortedData.length >= 2 && <ReferenceLine y={avgY} stroke="#94a3b8" strokeDasharray="6 4" strokeWidth={1} />}
+            {trendLine.length === 2 && (
+              <Customized
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                component={(props: any) => {
+                  const xScale = props.xAxisMap?.[0]?.scale
+                  const yScale = props.yAxisMap?.[0]?.scale
+                  if (!xScale || !yScale) return null
+                  const x1 = xScale(trendLine[0].x)
+                  const y1 = yScale(trendLine[0].y)
+                  const x2 = xScale(trendLine[1].x)
+                  const y2 = yScale(trendLine[1].y)
+                  if ([x1, y1, x2, y2].some(v => v == null || isNaN(v))) return null
+                  return (
+                    <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#0f3d6b" strokeWidth={1.5} strokeDasharray="6 3" opacity={0.5} />
+                  )
+                }}
+              />
+            )}
             <Scatter data={sortedData}
               shape={<TickerDot hoveredTicker={hoveredTicker} onHover={setHoveredTicker} onLeave={() => setHoveredTicker(null)} onClick={onSelectFund} />}
             >
@@ -670,7 +700,10 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
             <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: DOT_DEFAULT }} /> Funds in universe
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-[1px] w-5" style={{ backgroundColor: "#94a3b8", borderTop: "2px dashed #94a3b8" }} /> Universe average
+            <span className="inline-block h-[1px] w-5" style={{ backgroundColor: "#94a3b8", borderTop: "2px dashed #94a3b8" }} /> Average
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-[1px] w-5" style={{ borderTop: "2px dashed #0f3d6b", opacity: 0.5 }} /> Trend
           </span>
           {highlightTicker && (
             <span className="flex items-center gap-1.5">
