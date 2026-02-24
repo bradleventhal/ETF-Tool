@@ -188,40 +188,167 @@ function FilterPopover({ label, activeCount, children }: { label: string; active
   )
 }
 
+/* ── Chart with trend line overlay ── */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function TrendLineChart({ sortedData, trendLine, avgY, xAxis, yAxis, hoveredTicker, setHoveredTicker, onSelectFund }: any) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [trendPixels, setTrendPixels] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null)
+
+  // After render, grab the Recharts internal scales from the rendered DOM
+  useEffect(() => {
+    if (trendLine.length < 2 || !containerRef.current) { setTrendPixels(null); return }
+    // Recharts renders an SVG with .recharts-cartesian-grid-bg rect that shows the plot area
+    const svg = containerRef.current.querySelector("svg.recharts-surface") as SVGSVGElement | null
+    if (!svg) { setTrendPixels(null); return }
+    // Find the x and y axis ticks to determine scale
+    const xTicks = Array.from(svg.querySelectorAll(".recharts-xAxis .recharts-cartesian-axis-tick"))
+    const yTicks = Array.from(svg.querySelectorAll(".recharts-yAxis .recharts-cartesian-axis-tick"))
+    if (xTicks.length < 2 || yTicks.length < 2) { setTrendPixels(null); return }
+
+    // Extract pixel position and data value from ticks
+    const getTickInfo = (el: Element) => {
+      const transform = el.getAttribute("transform") || ""
+      const match = transform.match(/translate\(\s*([\d.e+-]+)[,\s]+([\d.e+-]+)\s*\)/)
+      const textEl = el.querySelector("text")
+      const text = textEl?.textContent || ""
+      return { px: match ? parseFloat(match[1]) : 0, py: match ? parseFloat(match[2]) : 0, text }
+    }
+
+    const xt = xTicks.map(getTickInfo)
+    const yt = yTicks.map(getTickInfo)
+
+    // Parse tick text to numeric value
+    const parseTickVal = (text: string, unit: string): number => {
+      if (unit === "credit") {
+        const idx = CREDIT_LABELS.indexOf(text)
+        return idx >= 0 ? idx + 1 : parseFloat(text) || 0
+      }
+      return parseFloat(text.replace("%", "").replace(",", "")) || 0
+    }
+
+    const x0 = { px: xt[0].px, val: parseTickVal(xt[0].text, xAxis.unit) }
+    const x1 = { px: xt[xt.length - 1].px, val: parseTickVal(xt[xt.length - 1].text, xAxis.unit) }
+    const y0 = { px: yt[0].py, val: parseTickVal(yt[0].text, yAxis.unit) }
+    const y1 = { px: yt[yt.length - 1].py, val: parseTickVal(yt[yt.length - 1].text, yAxis.unit) }
+
+    if (x1.val === x0.val || y1.val === y0.val) { setTrendPixels(null); return }
+
+    const xScale = (v: number) => x0.px + (v - x0.val) / (x1.val - x0.val) * (x1.px - x0.px)
+    const yScale = (v: number) => y0.py + (v - y0.val) / (y1.val - y0.val) * (y1.py - y0.py)
+
+    setTrendPixels({
+      x1: xScale(trendLine[0].x), y1: yScale(trendLine[0].y),
+      x2: xScale(trendLine[1].x), y2: yScale(trendLine[1].y),
+    })
+  }, [trendLine, xAxis, yAxis, sortedData])
+
+  return (
+    <div ref={containerRef} className="relative">
+      <ResponsiveContainer width="100%" height={400}>
+        <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+          <XAxis
+            type="number" dataKey="x" name={xAxis.label}
+            domain={
+              xAxis.unit === "credit"
+                ? [0.5, 8.5]
+                : [(dataMin: number) => Math.max(0, Math.floor(dataMin * 0.9 * 10) / 10), (dataMax: number) => Math.ceil(dataMax * 1.1 * 10) / 10]
+            }
+            ticks={xAxis.unit === "credit" ? [1, 2, 3, 4, 5, 6, 7, 8] : undefined}
+            tick={{ fontSize: 11, fill: "#94a3b8" }}
+            tickFormatter={(v: number) => xAxis.tickFormat(v)}
+            tickLine={{ stroke: "#e2e8f0" }}
+            axisLine={{ stroke: "#e2e8f0" }}
+          >
+            <Label value={xAxis.label} position="bottom" offset={12} style={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} />
+          </XAxis>
+          <YAxis
+            type="number" dataKey="y" name={yAxis.label}
+            domain={yAxis.unit === "credit" ? [0.5, 8.5] : undefined}
+            ticks={yAxis.unit === "credit" ? [1, 2, 3, 4, 5, 6, 7, 8] : undefined}
+            tick={{ fontSize: 11, fill: "#94a3b8" }}
+            tickFormatter={(v: number) => yAxis.tickFormat(v)}
+            tickLine={{ stroke: "#e2e8f0" }}
+            axisLine={{ stroke: "#e2e8f0" }}
+            width={yAxis.unit === "credit" ? 45 : undefined}
+          >
+            <Label value={yAxis.label} angle={-90} position="insideLeft" offset={-5} style={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} />
+          </YAxis>
+          <ZAxis range={[50, 50]} />
+          <Tooltip content={<CustomTooltip />} cursor={false} />
+          {sortedData.length >= 2 && <ReferenceLine y={avgY} stroke="#94a3b8" strokeDasharray="6 4" strokeWidth={1} />}
+          <Scatter data={sortedData}
+            shape={<TickerDot hoveredTicker={hoveredTicker} onHover={setHoveredTicker} onLeave={() => setHoveredTicker(null)} onClick={onSelectFund} />}
+          >
+            {sortedData.map((d: { ticker: string; isHighlighted: boolean }) => (
+              <Cell key={d.ticker} fill={d.isHighlighted ? HIGHLIGHT : DOT_DEFAULT} />
+            ))}
+          </Scatter>
+        </ScatterChart>
+      </ResponsiveContainer>
+      {trendPixels && (
+        <svg className="pointer-events-none absolute left-0 top-0 h-full w-full" style={{ overflow: "visible" }}>
+          <line
+            x1={trendPixels.x1} y1={trendPixels.y1}
+            x2={trendPixels.x2} y2={trendPixels.y2}
+            stroke="#0f3d6b" strokeWidth={1.5} strokeDasharray="6 3" opacity={0.45}
+          />
+        </svg>
+      )}
+    </div>
+  )
+}
+
+type SavedMapState = Record<string, unknown>
+
 /* ═══════════════════════════════════════ MAIN COMPONENT ═══════════════════════════════════════ */
-export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props) {
-  const [presetIdx, setPresetIdx] = useState(0)
-  const [xIdx, setXIdx] = useState(findAxis("duration"))
-  const [yIdx, setYIdx] = useState(findAxis("ytwYtm"))
+export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedState, onStateChange }: Props & { savedState?: SavedMapState | null; onStateChange?: (s: SavedMapState) => void }) {
+  // Restore from savedState on mount, otherwise use defaults
+  const s = savedState
+  const [presetIdx, setPresetIdx] = useState(() => typeof s?.presetIdx === "number" ? s.presetIdx : 0)
+  const [xIdx, setXIdx] = useState(() => typeof s?.xIdx === "number" ? s.xIdx : findAxis("duration"))
+  const [yIdx, setYIdx] = useState(() => typeof s?.yIdx === "number" ? s.yIdx : findAxis("ytwYtm"))
   const xAxis = AXIS_OPTIONS[xIdx]
   const yAxis = AXIS_OPTIONS[yIdx]
   const [hoveredTicker, setHoveredTicker] = useState<string | null>(null)
 
   /* ── Search ── */
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState(() => typeof s?.search === "string" ? s.search : "")
   const [searchFocused, setSearchFocused] = useState(false)
 
   /* ── Filter panel ── */
-  const [showFilters, setShowFilters] = useState(false)
+  const [showFilters, setShowFilters] = useState(() => typeof s?.showFilters === "boolean" ? s.showFilters : false)
 
   /* ── Duration category filter ── */
-  const [durationCats, setDurationCats] = useState<Set<string>>(new Set(DURATION_CATEGORIES.map(c => c.label)))
+  const [durationCats, setDurationCats] = useState<Set<string>>(() => s?.durationCats instanceof Set ? s.durationCats as Set<string> : new Set(DURATION_CATEGORIES.map(c => c.label)))
 
   /* ── Credit quality filter ── */
   const CREDIT_CATS = ["AAA", "AA", "A", "BBB", "BB & Below"] as const
-  const [creditCats, setCreditCats] = useState<Set<string>>(new Set(CREDIT_CATS))
+  const [creditCats, setCreditCats] = useState<Set<string>>(() => s?.creditCats instanceof Set ? s.creditCats as Set<string> : new Set(CREDIT_CATS))
 
   /* ── Morningstar category filter ── */
-  const [mstarCats, setMstarCats] = useState<Set<string>>(new Set(MSTAR_CATEGORIES))
+  const [mstarCats, setMstarCats] = useState<Set<string>>(() => s?.mstarCats instanceof Set ? s.mstarCats as Set<string> : new Set(MSTAR_CATEGORIES))
 
   /* ── Star rating filter ── */
-  const [starMin, setStarMin] = useState(0) // 0 = no filter
+  const [starMin, setStarMin] = useState(() => typeof s?.starMin === "number" ? s.starMin : 0)
 
   /* ── Preset-based range filters (null = no filter) ── */
-  const [yieldMinPreset, setYieldMinPreset] = useState<number | null>(null)
-  const [expenseMaxPreset, setExpenseMaxPreset] = useState<number | null>(null)
-  const [sharpeMinPreset, setSharpeMinPreset] = useState<number | null>(null)
-  const [stdDevMaxPreset, setStdDevMaxPreset] = useState<number | null>(null)
+  const [yieldMinPreset, setYieldMinPreset] = useState<number | null>(() => typeof s?.yieldMinPreset === "number" ? s.yieldMinPreset : null)
+  const [expenseMaxPreset, setExpenseMaxPreset] = useState<number | null>(() => typeof s?.expenseMaxPreset === "number" ? s.expenseMaxPreset : null)
+  const [sharpeMinPreset, setSharpeMinPreset] = useState<number | null>(() => typeof s?.sharpeMinPreset === "number" ? s.sharpeMinPreset : null)
+  const [stdDevMaxPreset, setStdDevMaxPreset] = useState<number | null>(() => typeof s?.stdDevMaxPreset === "number" ? s.stdDevMaxPreset : null)
+
+  // Persist state to parent on unmount
+  useEffect(() => {
+    return () => {
+      onStateChange?.({
+        presetIdx, xIdx, yIdx, search, showFilters,
+        durationCats, creditCats, mstarCats, starMin,
+        yieldMinPreset, expenseMaxPreset, sharpeMinPreset, stdDevMaxPreset,
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presetIdx, xIdx, yIdx, search, showFilters, durationCats, creditCats, mstarCats, starMin, yieldMinPreset, expenseMaxPreset, sharpeMinPreset, stdDevMaxPreset])
 
   /* ── Compute fund counts per Morningstar category ── */
   const mstarCatCounts = useMemo(() => {
@@ -634,52 +761,16 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
           )}
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={400}>
-          <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis
-              type="number" dataKey="x" name={xAxis.label}
-              domain={
-                xAxis.unit === "credit"
-                  ? [0.5, 8.5]
-                  : [(dataMin: number) => Math.max(0, Math.floor(dataMin * 0.9 * 10) / 10), (dataMax: number) => Math.ceil(dataMax * 1.1 * 10) / 10]
-              }
-              ticks={xAxis.unit === "credit" ? [1, 2, 3, 4, 5, 6, 7, 8] : undefined}
-              tick={{ fontSize: 11, fill: "#94a3b8" }}
-              tickFormatter={v => xAxis.tickFormat(v)}
-              tickLine={{ stroke: "#e2e8f0" }}
-              axisLine={{ stroke: "#e2e8f0" }}
-            >
-              <Label value={xAxis.label} position="bottom" offset={12} style={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} />
-            </XAxis>
-            <YAxis
-              type="number" dataKey="y" name={yAxis.label}
-              domain={
-                yAxis.unit === "credit"
-                  ? [0.5, 8.5]
-                  : undefined
-              }
-              ticks={yAxis.unit === "credit" ? [1, 2, 3, 4, 5, 6, 7, 8] : undefined}
-              tick={{ fontSize: 11, fill: "#94a3b8" }}
-              tickFormatter={v => yAxis.tickFormat(v)}
-              tickLine={{ stroke: "#e2e8f0" }}
-              axisLine={{ stroke: "#e2e8f0" }}
-              width={yAxis.unit === "credit" ? 45 : undefined}
-            >
-              <Label value={yAxis.label} angle={-90} position="insideLeft" offset={-5} style={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} />
-            </YAxis>
-            <ZAxis range={[50, 50]} />
-            <Tooltip content={<CustomTooltip />} cursor={false} />
-            {sortedData.length >= 2 && <ReferenceLine y={avgY} stroke="#94a3b8" strokeDasharray="6 4" strokeWidth={1} />}
-            <Scatter data={sortedData}
-              shape={<TickerDot hoveredTicker={hoveredTicker} onHover={setHoveredTicker} onLeave={() => setHoveredTicker(null)} onClick={onSelectFund} />}
-            >
-              {sortedData.map((d) => (
-                <Cell key={d.ticker} fill={d.isHighlighted ? HIGHLIGHT : DOT_DEFAULT} />
-              ))}
-            </Scatter>
-          </ScatterChart>
-        </ResponsiveContainer>
+        <TrendLineChart
+          sortedData={sortedData}
+          trendLine={trendLine}
+          avgY={avgY}
+          xAxis={xAxis}
+          yAxis={yAxis}
+          hoveredTicker={hoveredTicker}
+          setHoveredTicker={setHoveredTicker}
+          onSelectFund={onSelectFund}
+        />
       )}
 
       {/* Legend */}

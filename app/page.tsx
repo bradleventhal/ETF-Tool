@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback, useEffect } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import { TickerInput } from "@/components/ticker-input"
 import { ComparisonTable } from "@/components/comparison-table"
 import { PerformanceChart } from "@/components/performance-chart"
@@ -110,11 +110,7 @@ export default function Page() {
   const [section, setSection] = useState<"comparison" | "lookup" | "map">("lookup")
   const [lookupTicker, setLookupTicker] = useState("")
   const [cameFromMap, setCameFromMap] = useState(false)
-  const switchToMap = useCallback(() => {
-    setSection("map")
-    // ResponsiveContainer needs a resize event to recalculate after display:none
-    setTimeout(() => window.dispatchEvent(new Event("resize")), 50)
-  }, [])
+  const mapStateRef = useRef<Record<string, unknown> | null>(null)
 
   useEffect(() => {
     fetch("/api/funds")
@@ -317,7 +313,7 @@ export default function Page() {
             Fund Comparison
           </button>
           <button
-                onClick={switchToMap}
+                onClick={() => setSection("map")}
             className="flex min-h-[44px] items-center gap-1.5 border-b-2 px-4 py-2.5 text-[12px] font-semibold uppercase tracking-wider transition-colors sm:text-[13px]"
             style={{
               borderColor: section === "map" ? "#0f3d6b" : "transparent",
@@ -557,11 +553,14 @@ export default function Page() {
       </div>
       )}
 
-      {/* ===== FUND MAP SECTION (always mounted to preserve state) ===== */}
-      <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6 sm:py-6" style={{ display: section === "map" ? undefined : "none" }}>
+      {/* ===== FUND MAP SECTION ===== */}
+      {section === "map" && (
+      <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6 sm:py-6">
         <FundUniverseMap
           funds={funds}
           highlightTicker={undefined}
+          savedState={mapStateRef.current}
+          onStateChange={(s) => { mapStateRef.current = s }}
           onSelectFund={(t) => {
             setLookupTicker(t)
             setCameFromMap(true)
@@ -569,6 +568,7 @@ export default function Page() {
           }}
         />
       </div>
+      )}
 
       {/* ===== FUND LOOKUP SECTION ===== */}
       {section === "lookup" && (
@@ -580,7 +580,7 @@ export default function Page() {
             </div>
             {cameFromMap && (
               <button
-            onClick={switchToMap}
+            onClick={() => setSection("map")}
                 className="mb-0.5 flex h-10 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-semibold transition-all hover:bg-[#f0f7ff]"
                 style={{ borderColor: "#e2e8f0", color: "#0f3d6b" }}
               >
