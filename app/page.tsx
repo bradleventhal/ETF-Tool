@@ -24,6 +24,8 @@ import { SlidersHorizontal } from "lucide-react"
 import type { FundData, AnalysisMode, AnalysisResult, WarRoom, YahooAnalytics } from "@/lib/fund-types"
 import { Upload, X, Loader2, ArrowRightLeft, Search, BarChart3, Crosshair, Star } from "lucide-react"
 
+/* ═══════════════════════ HELPER COMPONENTS ═══════════════════════ */
+
 function NegTable({ rows, tickerA, tickerB, label, viewMode }: {
   rows: { label: string; a: string; b: string; nA: number | null; nB: number | null }[]
   tickerA: string; tickerB: string; label: string; viewMode: "internal" | "advisor"
@@ -96,7 +98,8 @@ function PieWithTable({ title, dataA, dataB, tickerA, tickerB, subtitleA, subtit
   )
 }
 
-/* ═══ CREDIT HELPERS ═══ */
+/* ═══════════════════════ FUND MAP (INLINE) ═══════════════════════ */
+
 const MAP_CREDIT_LABELS = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC", "Below CCC"]
 function creditScore(f: FundData): number | null {
   const w: [keyof FundData, number][] = [["aaa",1],["aa",2],["a",3],["bbb",4],["bb",5],["b",6],["ccc",7],["belowCcc",8]]
@@ -106,7 +109,6 @@ function creditScore(f: FundData): number | null {
 }
 function creditLabel(score: number): string { const i = Math.round(score) - 1; return MAP_CREDIT_LABELS[i] ?? score.toFixed(1) }
 
-/* ═══ AXIS SYSTEM ═══ */
 type MapAxisKey = "duration"|"ytwYtm"|"secYield"|"expense"|"sharpe"|"stdDev"|"credit"|"ytd"|"oneYear"|"threeYear"|"correlation"|"morningstarRating"
 interface MapAxisOption { key: MapAxisKey; label: string; isCredit: boolean; format: (v:number)=>string; tickFmt: (v:number)=>string; getValue: (f:FundData)=>number|null }
 const mfp = (v:number) => `${v.toFixed(2)}%`
@@ -132,37 +134,78 @@ const MAP_PRESETS = [
 ]
 const MAP_DUR_CATS = [{label:"Ultra-Short (0\u20131 yr)",min:0,max:1},{label:"Short (1\u20133.5 yrs)",min:1,max:3.5},{label:"Intermediate (3.5\u20136 yrs)",min:3.5,max:6},{label:"Long (6+ yrs)",min:6,max:100}]
 const MAP_MSTAR_CATS = ["Nontraditional Bond","Multisector Bond","Short-Term Bond","Ultrashort Bond","High Yield Bond","Intermediate Core Bond","Intermediate Core-Plus Bond","Corporate Bond","Intermediate Government","Bank Loan","Emerging Markets Bond","Preferred Stock","Long-Term Bond"]
-const MAP_PRI = "#0f3d6b", MAP_HL = "#dc2626", MAP_DOT = "#3b82f6"
+const MAP_PRI = "#0f3d6b"
+const MAP_HL = "#dc2626"
+const MAP_DOT = "#3b82f6"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function MapDot(props: any) {
   const { cx, cy, payload, hoveredTicker, onHover, onLeave, onClick } = props
-  if (cx == null || cy == null || !payload || isNaN(cx) || isNaN(cy)) return null
+  if (cx == null || cy == null || !payload || isNaN(Number(cx)) || isNaN(Number(cy))) return null
   const isH = hoveredTicker === payload.ticker
   const r = isH ? 7 : 4.5
   return (
     <g onMouseEnter={() => onHover(payload.ticker)} onMouseLeave={onLeave} onClick={() => onClick?.(payload.ticker)} style={{ cursor: onClick ? "pointer" : "default" }}>
       <circle cx={cx} cy={cy} r={r + 6} fill="transparent" />
       <circle cx={cx} cy={cy} r={r} fill={payload.isHighlighted ? MAP_HL : MAP_DOT} stroke="#fff" strokeWidth={1.5} opacity={isH ? 1 : 0.75} style={{ transition: "r 0.15s, opacity 0.15s" }} />
-      {isH && (<><rect x={cx - 20} y={cy - 22} width={40} height={16} rx={3} fill={MAP_PRI} opacity={0.9} /><text x={cx} y={cy - 11} textAnchor="middle" fill="#fff" fontSize={9} fontWeight={700}>{payload.ticker}</text></>)}
+      {isH && (
+        <>
+          <rect x={cx - 20} y={cy - 22} width={40} height={16} rx={3} fill={MAP_PRI} opacity={0.9} />
+          <text x={cx} y={cy - 11} textAnchor="middle" fill="#fff" fontSize={9} fontWeight={700}>{payload.ticker}</text>
+        </>
+      )}
     </g>
   )
 }
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function MapTip({ active, payload }: any) {
   if (!active || !payload?.[0]?.payload) return null
   const d = payload[0].payload
   const fp = (v: number|null) => v != null ? `${v.toFixed(2)}%` : "\u2014"
   const fn = (v: number|null) => v != null ? v.toFixed(2) : "\u2014"
-  const stats = [{label:"YTW / YTM",value:fp(d.ytwYtm)},{label:"SEC Yield",value:fp(d.secYield)},{label:"Duration",value:d.duration!=null?`${d.duration.toFixed(2)} yrs`:"\u2014"},{label:"Credit",value:d.creditQuality??"\u2014"},{label:"Expense",value:fp(d.expense)},{label:"Sharpe",value:fn(d.sharpe)},{label:"Std Dev",value:fn(d.stdDev)}].filter(s=>s.value!=="\u2014")
-  const perf = [{label:"YTD",value:fp(d.ytd)},{label:"1Y",value:fp(d.oneYear)},{label:"3Y",value:fp(d.threeYear)}].filter(s=>s.value!=="\u2014")
+  const stats = [
+    {label:"YTW / YTM",value:fp(d.ytwYtm)},
+    {label:"SEC Yield",value:fp(d.secYield)},
+    {label:"Duration",value:d.duration!=null?`${d.duration.toFixed(2)} yrs`:"\u2014"},
+    {label:"Credit",value:d.creditQuality??"\u2014"},
+    {label:"Expense",value:fp(d.expense)},
+    {label:"Sharpe",value:fn(d.sharpe)},
+    {label:"Std Dev",value:fn(d.stdDev)},
+  ].filter(s => s.value !== "\u2014")
+  const perf = [
+    {label:"YTD",value:fp(d.ytd)},
+    {label:"1Y",value:fp(d.oneYear)},
+    {label:"3Y",value:fp(d.threeYear)},
+  ].filter(s => s.value !== "\u2014")
   return (
     <div className="rounded-lg border px-3 py-2.5 shadow-lg" style={{backgroundColor:"#fff",borderColor:"#e2e8f0",minWidth:210}}>
-      <div className="flex items-center gap-2"><span className="text-xs font-bold" style={{color:MAP_PRI}}>{d.ticker}</span>{d.morningstarRating!=null&&d.morningstarRating>0&&<span className="text-[10px]" style={{color:"#f59e0b"}}>{"\u2605".repeat(d.morningstarRating)}</span>}</div>
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-bold" style={{color:MAP_PRI}}>{d.ticker}</span>
+        {d.morningstarRating != null && d.morningstarRating > 0 && (
+          <span className="text-[10px]" style={{color:"#f59e0b"}}>{"\u2605".repeat(d.morningstarRating)}</span>
+        )}
+      </div>
       <div className="text-[10px] leading-snug" style={{color:"#64748b"}}>{d.name}</div>
-      {d.morningstarCategory&&<div className="mt-0.5 text-[9px] font-medium" style={{color:"#94a3b8"}}>{d.morningstarCategory}</div>}
-      <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-0.5 border-t pt-1.5" style={{borderColor:"#f1f5f9"}}>{stats.map(s=>(<div key={s.label} className="flex items-baseline justify-between gap-2"><span className="text-[9px]" style={{color:"#94a3b8"}}>{s.label}</span><span className="text-[10px] font-semibold tabular-nums" style={{color:"#334155"}}>{s.value}</span></div>))}</div>
-      {perf.length>0&&<div className="mt-1 flex gap-3 border-t pt-1" style={{borderColor:"#f1f5f9"}}>{perf.map(s=>(<div key={s.label} className="flex items-baseline gap-1"><span className="text-[9px]" style={{color:"#94a3b8"}}>{s.label}</span><span className="text-[10px] font-semibold tabular-nums" style={{color:"#334155"}}>{s.value}</span></div>))}</div>}
+      {d.morningstarCategory && <div className="mt-0.5 text-[9px] font-medium" style={{color:"#94a3b8"}}>{d.morningstarCategory}</div>}
+      <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-0.5 border-t pt-1.5" style={{borderColor:"#f1f5f9"}}>
+        {stats.map(s => (
+          <div key={s.label} className="flex items-baseline justify-between gap-2">
+            <span className="text-[9px]" style={{color:"#94a3b8"}}>{s.label}</span>
+            <span className="text-[10px] font-semibold tabular-nums" style={{color:"#334155"}}>{s.value}</span>
+          </div>
+        ))}
+      </div>
+      {perf.length > 0 && (
+        <div className="mt-1 flex gap-3 border-t pt-1" style={{borderColor:"#f1f5f9"}}>
+          {perf.map(s => (
+            <div key={s.label} className="flex items-baseline gap-1">
+              <span className="text-[9px]" style={{color:"#94a3b8"}}>{s.label}</span>
+              <span className="text-[10px] font-semibold tabular-nums" style={{color:"#334155"}}>{s.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -177,128 +220,302 @@ function InlineFundMap({ funds, onSelectFund }: { funds: FundData[]; onSelectFun
   const [search, setSearch] = useState("")
   const [searchFocused, setSearchFocused] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
-  const [durationCats, setDurationCats] = useState<Set<string>>(new Set(MAP_DUR_CATS.map(c=>c.label)))
+  const [durationCats, setDurationCats] = useState<Set<string>>(new Set(MAP_DUR_CATS.map(c => c.label)))
   const CREDIT_CATS = ["AAA","AA","A","BBB","BB & Below"] as const
   const [creditCats, setCreditCats] = useState<Set<string>>(new Set(CREDIT_CATS))
   const [mstarCats, setMstarCats] = useState<Set<string>>(new Set(MAP_MSTAR_CATS))
   const [starMin, setStarMin] = useState(0)
-  const [yieldMinP, setYieldMinP] = useState<number|null>(null)
-  const [expenseMaxP, setExpenseMaxP] = useState<number|null>(null)
-  const [sharpeMinP, setSharpeMinP] = useState<number|null>(null)
-  const [stdDevMaxP, setStdDevMaxP] = useState<number|null>(null)
+  const [yieldMinP, setYieldMinP] = useState<number | null>(null)
+  const [expenseMaxP, setExpenseMaxP] = useState<number | null>(null)
+  const [sharpeMinP, setSharpeMinP] = useState<number | null>(null)
+  const [stdDevMaxP, setStdDevMaxP] = useState<number | null>(null)
 
-  const applyPreset = useCallback((idx: number) => { setPresetIdx(idx); const p = MAP_PRESETS[idx]; if (p) { setXIdx(findMapAxis(p.x)); setYIdx(findMapAxis(p.y)) } }, [])
+  const applyPreset = useCallback((idx: number) => {
+    setPresetIdx(idx)
+    const p = MAP_PRESETS[idx]
+    if (p) { setXIdx(findMapAxis(p.x)); setYIdx(findMapAxis(p.y)) }
+  }, [])
 
   const { sortedData, avgY } = useMemo(() => {
-    const mS = (f:FundData) => { if(!search)return true; const q=search.toLowerCase(); return f.ticker.toLowerCase().includes(q)||f.name.toLowerCase().includes(q) }
-    const mD = (f:FundData) => { if(durationCats.size===MAP_DUR_CATS.length)return true; if(f.duration==null)return false; return MAP_DUR_CATS.some(c=>durationCats.has(c.label)&&f.duration!>=c.min&&f.duration!<c.max) }
-    const mC = (f:FundData) => { if(creditCats.size===5)return true; const cs=creditScore(f); if(cs==null)return false; const r=Math.round(cs); if(creditCats.has("AAA")&&r===1)return true; if(creditCats.has("AA")&&r===2)return true; if(creditCats.has("A")&&r===3)return true; if(creditCats.has("BBB")&&r===4)return true; if(creditCats.has("BB & Below")&&r>=5)return true; return false }
-    const mM = (f:FundData) => { if(mstarCats.size===MAP_MSTAR_CATS.length)return true; return f.morningstarCategory?mstarCats.has(f.morningstarCategory):false }
-    const mSt = (f:FundData) => { if(starMin<=0)return true; return(f.morningstarRating??0)>=starMin }
-    const mR = (f:FundData) => { if(yieldMinP!=null&&(f.ytwYtm??-Infinity)<yieldMinP)return false; if(expenseMaxP!=null&&(f.expense??Infinity)>expenseMaxP)return false; if(sharpeMinP!=null&&(f.sharpe??-Infinity)<sharpeMinP)return false; if(stdDevMaxP!=null&&(f.stdDev??Infinity)>stdDevMaxP)return false; return true }
-    const pts: {x:number;y:number;ticker:string;name:string;isHighlighted:boolean;duration:number|null;ytwYtm:number|null;secYield:number|null;expense:number|null;sharpe:number|null;stdDev:number|null;ytd:number|null;oneYear:number|null;threeYear:number|null;creditQuality:string|null;morningstarRating:number|null;morningstarCategory:string|null}[] = []
-    let yS=0,cnt=0
-    for (const f of funds) {
-      if(!mS(f)||!mD(f)||!mC(f)||!mM(f)||!mSt(f)||!mR(f)) continue
-      const xV=xAxis.getValue(f), yV=yAxis.getValue(f)
-      if(xV==null||yV==null) continue
-      const cs=creditScore(f)
-      pts.push({x:xV,y:yV,ticker:f.ticker,name:f.name,isHighlighted:false,duration:f.duration,ytwYtm:f.ytwYtm,secYield:f.secYield,expense:f.expense,sharpe:f.sharpe,stdDev:f.stdDev,ytd:f.ytd,oneYear:f.oneYear,threeYear:f.threeYear,creditQuality:cs!=null?creditLabel(cs):null,morningstarRating:f.morningstarRating,morningstarCategory:f.morningstarCategory})
-      yS+=yV; cnt++
+    const matchSearch = (f: FundData) => {
+      if (!search) return true
+      const q = search.toLowerCase()
+      return f.ticker.toLowerCase().includes(q) || f.name.toLowerCase().includes(q)
     }
-    return { sortedData: pts.sort((a,b)=>a.x-b.x), avgY: cnt>0?yS/cnt:0 }
-  }, [funds,xAxis,yAxis,search,durationCats,creditCats,mstarCats,starMin,yieldMinP,expenseMaxP,sharpeMinP,stdDevMaxP])
+    const matchDuration = (f: FundData) => {
+      if (durationCats.size === MAP_DUR_CATS.length) return true
+      if (f.duration == null) return false
+      return MAP_DUR_CATS.some(c => durationCats.has(c.label) && f.duration! >= c.min && f.duration! < c.max)
+    }
+    const matchCredit = (f: FundData) => {
+      if (creditCats.size === 5) return true
+      const cs = creditScore(f)
+      if (cs == null) return false
+      const r = Math.round(cs)
+      if (creditCats.has("AAA") && r === 1) return true
+      if (creditCats.has("AA") && r === 2) return true
+      if (creditCats.has("A") && r === 3) return true
+      if (creditCats.has("BBB") && r === 4) return true
+      if (creditCats.has("BB & Below") && r >= 5) return true
+      return false
+    }
+    const matchMstar = (f: FundData) => {
+      if (mstarCats.size === MAP_MSTAR_CATS.length) return true
+      return f.morningstarCategory ? mstarCats.has(f.morningstarCategory) : false
+    }
+    const matchStars = (f: FundData) => {
+      if (starMin <= 0) return true
+      return (f.morningstarRating ?? 0) >= starMin
+    }
+    const matchRange = (f: FundData) => {
+      if (yieldMinP != null && (f.ytwYtm ?? -Infinity) < yieldMinP) return false
+      if (expenseMaxP != null && (f.expense ?? Infinity) > expenseMaxP) return false
+      if (sharpeMinP != null && (f.sharpe ?? -Infinity) < sharpeMinP) return false
+      if (stdDevMaxP != null && (f.stdDev ?? Infinity) > stdDevMaxP) return false
+      return true
+    }
 
-  const resetFilters = useCallback(() => { setSearch(""); setDurationCats(new Set(MAP_DUR_CATS.map(c=>c.label))); setCreditCats(new Set(["AAA","AA","A","BBB","BB & Below"])); setMstarCats(new Set(MAP_MSTAR_CATS)); setStarMin(0); setYieldMinP(null); setExpenseMaxP(null); setSharpeMinP(null); setStdDevMaxP(null) }, [])
-  const hasActive = search||durationCats.size<MAP_DUR_CATS.length||creditCats.size<5||mstarCats.size<MAP_MSTAR_CATS.length||starMin>0||yieldMinP!=null||expenseMaxP!=null||sharpeMinP!=null||stdDevMaxP!=null
+    const pts: Array<{
+      x: number; y: number; ticker: string; name: string; isHighlighted: boolean
+      duration: number | null; ytwYtm: number | null; secYield: number | null
+      expense: number | null; sharpe: number | null; stdDev: number | null
+      ytd: number | null; oneYear: number | null; threeYear: number | null
+      creditQuality: string | null; morningstarRating: number | null; morningstarCategory: string | null
+    }> = []
+    let ySum = 0, cnt = 0
+
+    for (const f of funds) {
+      if (!matchSearch(f) || !matchDuration(f) || !matchCredit(f) || !matchMstar(f) || !matchStars(f) || !matchRange(f)) continue
+      const xV = xAxis.getValue(f)
+      const yV = yAxis.getValue(f)
+      if (xV == null || yV == null) continue
+      const cs = creditScore(f)
+      pts.push({
+        x: xV, y: yV, ticker: f.ticker, name: f.name, isHighlighted: false,
+        duration: f.duration, ytwYtm: f.ytwYtm, secYield: f.secYield,
+        expense: f.expense, sharpe: f.sharpe, stdDev: f.stdDev,
+        ytd: f.ytd, oneYear: f.oneYear, threeYear: f.threeYear,
+        creditQuality: cs != null ? creditLabel(cs) : null,
+        morningstarRating: f.morningstarRating, morningstarCategory: f.morningstarCategory,
+      })
+      ySum += yV
+      cnt++
+    }
+    return { sortedData: pts.sort((a, b) => a.x - b.x), avgY: cnt > 0 ? ySum / cnt : 0 }
+  }, [funds, xAxis, yAxis, search, durationCats, creditCats, mstarCats, starMin, yieldMinP, expenseMaxP, sharpeMinP, stdDevMaxP])
+
+  const resetFilters = useCallback(() => {
+    setSearch("")
+    setDurationCats(new Set(MAP_DUR_CATS.map(c => c.label)))
+    setCreditCats(new Set(["AAA","AA","A","BBB","BB & Below"]))
+    setMstarCats(new Set(MAP_MSTAR_CATS))
+    setStarMin(0)
+    setYieldMinP(null)
+    setExpenseMaxP(null)
+    setSharpeMinP(null)
+    setStdDevMaxP(null)
+  }, [])
+
+  const hasActive = search || durationCats.size < MAP_DUR_CATS.length || creditCats.size < 5 || mstarCats.size < MAP_MSTAR_CATS.length || starMin > 0 || yieldMinP != null || expenseMaxP != null || sharpeMinP != null || stdDevMaxP != null
 
   return (
-    <div className="rounded-xl border p-4 sm:p-5" style={{borderColor:"#e2e8f0",backgroundColor:"#fff"}}>
+    <div className="rounded-xl border p-4 sm:p-5" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+      {/* Header */}
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-bold tracking-wide" style={{color:MAP_PRI}}>FUND UNIVERSE MAP</h2>
-        <span className="text-xs font-medium" style={{color:"#0f3d6b"}}>{sortedData.length} of {funds.length} funds plotted</span>
+        <h2 className="text-sm font-bold tracking-wide" style={{ color: MAP_PRI }}>FUND UNIVERSE MAP</h2>
+        <span className="text-xs font-medium" style={{ color: "#0f3d6b" }}>{sortedData.length} of {funds.length} funds plotted</span>
       </div>
-      <div className="mb-2 flex flex-wrap gap-2">
-        {MAP_PRESETS.map((p,i) => (<button key={p.label} onClick={()=>applyPreset(i)} className="rounded-full px-3 py-1 text-xs font-semibold transition-colors" style={presetIdx===i?{backgroundColor:MAP_PRI,color:"#fff"}:{backgroundColor:"#f1f5f9",color:"#475569"}}>{p.label}</button>))}
-      </div>
-      {MAP_PRESETS[presetIdx]&&<p className="mb-3 text-xs italic" style={{color:"#64748b"}}>{MAP_PRESETS[presetIdx].insight}</p>}
 
+      {/* Presets */}
+      <div className="mb-2 flex flex-wrap gap-2">
+        {MAP_PRESETS.map((p, i) => (
+          <button key={p.label} onClick={() => applyPreset(i)}
+            className="rounded-full px-3 py-1 text-xs font-semibold transition-colors"
+            style={presetIdx === i ? { backgroundColor: MAP_PRI, color: "#fff" } : { backgroundColor: "#f1f5f9", color: "#475569" }}>
+            {p.label}
+          </button>
+        ))}
+      </div>
+      {MAP_PRESETS[presetIdx] && <p className="mb-3 text-xs italic" style={{ color: "#64748b" }}>{MAP_PRESETS[presetIdx].insight}</p>}
+
+      {/* Axis selectors */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-md text-[10px] font-bold text-white" style={{backgroundColor:MAP_PRI}}>X</span>
-        <select value={xIdx} onChange={e=>{setXIdx(Number(e.target.value));setPresetIdx(-1)}} className="h-7 rounded-md border px-2 text-xs" style={{borderColor:"#e2e8f0"}}>{MAP_AXES.map((a,i)=><option key={a.key} value={i}>{a.label}</option>)}</select>
-        <button onClick={()=>{const p=xIdx;setXIdx(yIdx);setYIdx(p);setPresetIdx(-1)}} className="flex h-7 items-center gap-1 rounded-md border px-2 text-[10px] font-bold transition-all hover:border-[#0f3d6b] hover:bg-[#f0f7ff]" style={{borderColor:"#e2e8f0",color:"#64748b"}} title="Swap X and Y axes"><ArrowRightLeft className="h-3 w-3" /></button>
-        <span className="flex h-7 w-7 items-center justify-center rounded-md text-[10px] font-bold text-white" style={{backgroundColor:MAP_PRI}}>Y</span>
-        <select value={yIdx} onChange={e=>{setYIdx(Number(e.target.value));setPresetIdx(-1)}} className="h-7 rounded-md border px-2 text-xs" style={{borderColor:"#e2e8f0"}}>{MAP_AXES.map((a,i)=><option key={a.key} value={i}>{a.label}</option>)}</select>
+        <span className="flex h-7 w-7 items-center justify-center rounded-md text-[10px] font-bold text-white" style={{ backgroundColor: MAP_PRI }}>X</span>
+        <select value={xIdx} onChange={e => { setXIdx(Number(e.target.value)); setPresetIdx(-1) }}
+          className="h-7 rounded-md border px-2 text-xs" style={{ borderColor: "#e2e8f0" }}>
+          {MAP_AXES.map((a, i) => <option key={a.key} value={i}>{a.label}</option>)}
+        </select>
+        <button onClick={() => { const p = xIdx; setXIdx(yIdx); setYIdx(p); setPresetIdx(-1) }}
+          className="flex h-7 items-center gap-1 rounded-md border px-2 text-[10px] font-bold transition-all hover:border-[#0f3d6b] hover:bg-[#f0f7ff]"
+          style={{ borderColor: "#e2e8f0", color: "#64748b" }} title="Swap X and Y axes">
+          <ArrowRightLeft className="h-3 w-3" />
+        </button>
+        <span className="flex h-7 w-7 items-center justify-center rounded-md text-[10px] font-bold text-white" style={{ backgroundColor: MAP_PRI }}>Y</span>
+        <select value={yIdx} onChange={e => { setYIdx(Number(e.target.value)); setPresetIdx(-1) }}
+          className="h-7 rounded-md border px-2 text-xs" style={{ borderColor: "#e2e8f0" }}>
+          {MAP_AXES.map((a, i) => <option key={a.key} value={i}>{a.label}</option>)}
+        </select>
         <div className="flex-1" />
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2" style={{color:"#94a3b8"}} />
-          <input value={search} onChange={e=>setSearch(e.target.value)} onFocus={()=>setSearchFocused(true)} onBlur={()=>setSearchFocused(false)} placeholder="Search ticker or name..." className="h-7 w-40 rounded-md border pl-7 pr-2 text-xs outline-none transition-colors focus:border-[#0f3d6b]" style={{borderColor:searchFocused?MAP_PRI:"#e2e8f0"}} />
-          {search&&<button onClick={()=>setSearch("")} className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 hover:bg-gray-100"><X className="h-3 w-3" style={{color:"#94a3b8"}} /></button>}
+          <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2" style={{ color: "#94a3b8" }} />
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
+            placeholder="Search ticker or name..."
+            className="h-7 w-40 rounded-md border pl-7 pr-2 text-xs outline-none transition-colors focus:border-[#0f3d6b]"
+            style={{ borderColor: searchFocused ? MAP_PRI : "#e2e8f0" }} />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 hover:bg-gray-100">
+              <X className="h-3 w-3" style={{ color: "#94a3b8" }} />
+            </button>
+          )}
         </div>
-        <button onClick={()=>setShowFilters(v=>!v)} className="flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors" style={{borderColor:showFilters?MAP_PRI:"#e2e8f0",color:showFilters?MAP_PRI:"#64748b",backgroundColor:showFilters?"#f0f7ff":"#fff"}}><SlidersHorizontal className="h-3 w-3" /> Filters{hasActive&&<span className="ml-0.5 h-1.5 w-1.5 rounded-full" style={{backgroundColor:"#ef4444"}} />}</button>
+        <button onClick={() => setShowFilters(v => !v)}
+          className="flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors"
+          style={{ borderColor: showFilters ? MAP_PRI : "#e2e8f0", color: showFilters ? MAP_PRI : "#64748b", backgroundColor: showFilters ? "#f0f7ff" : "#fff" }}>
+          <SlidersHorizontal className="h-3 w-3" /> Filters
+          {hasActive && <span className="ml-0.5 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "#ef4444" }} />}
+        </button>
       </div>
 
-      {showFilters&&(
-        <div className="mb-4 rounded-lg border p-3 text-xs" style={{borderColor:"#e2e8f0",backgroundColor:"#f8fafc"}}>
+      {/* Filter panel */}
+      {showFilters && (
+        <div className="mb-4 rounded-lg border p-3 text-xs" style={{ borderColor: "#e2e8f0", backgroundColor: "#f8fafc" }}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <div className="mb-1.5 font-semibold" style={{color:"#334155"}}>Duration</div>
-              {MAP_DUR_CATS.map(c=>(<label key={c.label} className="flex cursor-pointer items-center gap-1.5 py-0.5"><input type="checkbox" checked={durationCats.has(c.label)} onChange={()=>{const n=new Set(durationCats);n.has(c.label)?n.delete(c.label):n.add(c.label);setDurationCats(n)}} className="rounded" /><span style={{color:"#475569"}}>{c.label}</span></label>))}
+              <div className="mb-1.5 font-semibold" style={{ color: "#334155" }}>Duration</div>
+              {MAP_DUR_CATS.map(c => (
+                <label key={c.label} className="flex cursor-pointer items-center gap-1.5 py-0.5">
+                  <input type="checkbox" checked={durationCats.has(c.label)} onChange={() => { const n = new Set(durationCats); n.has(c.label) ? n.delete(c.label) : n.add(c.label); setDurationCats(n) }} className="rounded" />
+                  <span style={{ color: "#475569" }}>{c.label}</span>
+                </label>
+              ))}
             </div>
             <div>
-              <div className="mb-1.5 font-semibold" style={{color:"#334155"}}>Credit Quality</div>
-              {(["AAA","AA","A","BBB","BB & Below"] as const).map(c=>(<label key={c} className="flex cursor-pointer items-center gap-1.5 py-0.5"><input type="checkbox" checked={creditCats.has(c)} onChange={()=>{const n=new Set(creditCats);n.has(c)?n.delete(c):n.add(c);setCreditCats(n)}} className="rounded" /><span style={{color:"#475569"}}>{c}</span></label>))}
+              <div className="mb-1.5 font-semibold" style={{ color: "#334155" }}>Credit Quality</div>
+              {(["AAA","AA","A","BBB","BB & Below"] as const).map(c => (
+                <label key={c} className="flex cursor-pointer items-center gap-1.5 py-0.5">
+                  <input type="checkbox" checked={creditCats.has(c)} onChange={() => { const n = new Set(creditCats); n.has(c) ? n.delete(c) : n.add(c); setCreditCats(n) }} className="rounded" />
+                  <span style={{ color: "#475569" }}>{c}</span>
+                </label>
+              ))}
             </div>
             <div>
-              <div className="mb-1.5 font-semibold" style={{color:"#334155"}}>Morningstar Category</div>
-              <div className="max-h-36 overflow-y-auto pr-1">{MAP_MSTAR_CATS.map(c=>(<label key={c} className="flex cursor-pointer items-center gap-1.5 py-0.5"><input type="checkbox" checked={mstarCats.has(c)} onChange={()=>{const n=new Set(mstarCats);n.has(c)?n.delete(c):n.add(c);setMstarCats(n)}} className="rounded" /><span style={{color:"#475569"}}>{c}</span></label>))}</div>
+              <div className="mb-1.5 font-semibold" style={{ color: "#334155" }}>Morningstar Category</div>
+              <div className="max-h-36 overflow-y-auto pr-1">
+                {MAP_MSTAR_CATS.map(c => (
+                  <label key={c} className="flex cursor-pointer items-center gap-1.5 py-0.5">
+                    <input type="checkbox" checked={mstarCats.has(c)} onChange={() => { const n = new Set(mstarCats); n.has(c) ? n.delete(c) : n.add(c); setMstarCats(n) }} className="rounded" />
+                    <span style={{ color: "#475569" }}>{c}</span>
+                  </label>
+                ))}
+              </div>
             </div>
             <div>
-              <div className="mb-1.5 font-semibold" style={{color:"#334155"}}>Range Filters</div>
+              <div className="mb-1.5 font-semibold" style={{ color: "#334155" }}>Range Filters</div>
               <div className="space-y-2">
-                <div><label className="text-[10px]" style={{color:"#64748b"}}>Min YTW / YTM (%)</label><input type="number" step="0.1" value={yieldMinP??""} onChange={e=>setYieldMinP(e.target.value?Number(e.target.value):null)} className="mt-0.5 h-6 w-full rounded border px-1.5 text-xs" style={{borderColor:"#e2e8f0"}} /></div>
-                <div><label className="text-[10px]" style={{color:"#64748b"}}>Max Expense (%)</label><input type="number" step="0.1" value={expenseMaxP??""} onChange={e=>setExpenseMaxP(e.target.value?Number(e.target.value):null)} className="mt-0.5 h-6 w-full rounded border px-1.5 text-xs" style={{borderColor:"#e2e8f0"}} /></div>
-                <div><label className="text-[10px]" style={{color:"#64748b"}}>Min Sharpe</label><input type="number" step="0.1" value={sharpeMinP??""} onChange={e=>setSharpeMinP(e.target.value?Number(e.target.value):null)} className="mt-0.5 h-6 w-full rounded border px-1.5 text-xs" style={{borderColor:"#e2e8f0"}} /></div>
-                <div><label className="text-[10px]" style={{color:"#64748b"}}>Max Std Dev</label><input type="number" step="0.1" value={stdDevMaxP??""} onChange={e=>setStdDevMaxP(e.target.value?Number(e.target.value):null)} className="mt-0.5 h-6 w-full rounded border px-1.5 text-xs" style={{borderColor:"#e2e8f0"}} /></div>
+                <div>
+                  <label className="text-[10px]" style={{ color: "#64748b" }}>Min YTW / YTM (%)</label>
+                  <input type="number" step="0.1" value={yieldMinP ?? ""} onChange={e => setYieldMinP(e.target.value ? Number(e.target.value) : null)} className="mt-0.5 h-6 w-full rounded border px-1.5 text-xs" style={{ borderColor: "#e2e8f0" }} />
+                </div>
+                <div>
+                  <label className="text-[10px]" style={{ color: "#64748b" }}>Max Expense (%)</label>
+                  <input type="number" step="0.1" value={expenseMaxP ?? ""} onChange={e => setExpenseMaxP(e.target.value ? Number(e.target.value) : null)} className="mt-0.5 h-6 w-full rounded border px-1.5 text-xs" style={{ borderColor: "#e2e8f0" }} />
+                </div>
+                <div>
+                  <label className="text-[10px]" style={{ color: "#64748b" }}>Min Sharpe</label>
+                  <input type="number" step="0.1" value={sharpeMinP ?? ""} onChange={e => setSharpeMinP(e.target.value ? Number(e.target.value) : null)} className="mt-0.5 h-6 w-full rounded border px-1.5 text-xs" style={{ borderColor: "#e2e8f0" }} />
+                </div>
+                <div>
+                  <label className="text-[10px]" style={{ color: "#64748b" }}>Max Std Dev</label>
+                  <input type="number" step="0.1" value={stdDevMaxP ?? ""} onChange={e => setStdDevMaxP(e.target.value ? Number(e.target.value) : null)} className="mt-0.5 h-6 w-full rounded border px-1.5 text-xs" style={{ borderColor: "#e2e8f0" }} />
+                </div>
               </div>
               <div className="mt-2">
-                <div className="text-[10px] font-medium" style={{color:"#64748b"}}>Min Star Rating</div>
-                <div className="mt-1 flex gap-1">{[0,1,2,3,4,5].map(v=>(<button key={v} onClick={()=>setStarMin(v)} className="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors" style={starMin===v?{backgroundColor:MAP_PRI,color:"#fff"}:{backgroundColor:"#f1f5f9",color:"#64748b"}}>{v===0?"Any":"\u2605".repeat(v)}</button>))}</div>
+                <div className="text-[10px] font-medium" style={{ color: "#64748b" }}>Min Star Rating</div>
+                <div className="mt-1 flex gap-1">
+                  {[0,1,2,3,4,5].map(v => (
+                    <button key={v} onClick={() => setStarMin(v)}
+                      className="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors"
+                      style={starMin === v ? { backgroundColor: MAP_PRI, color: "#fff" } : { backgroundColor: "#f1f5f9", color: "#64748b" }}>
+                      {v === 0 ? "Any" : "\u2605".repeat(v)}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-          {hasActive&&<button onClick={resetFilters} className="mt-3 flex items-center gap-1 text-xs font-medium" style={{color:"#ef4444"}}><X className="h-3 w-3" /> Reset all filters</button>}
+          {hasActive && (
+            <button onClick={resetFilters} className="mt-3 flex items-center gap-1 text-xs font-medium" style={{ color: "#ef4444" }}>
+              <X className="h-3 w-3" /> Reset all filters
+            </button>
+          )}
         </div>
       )}
 
-      {sortedData.length<1?(
-        <div className="flex h-[400px] items-center justify-center rounded-lg border border-dashed" style={{borderColor:"#e2e8f0"}}><p className="text-sm" style={{color:"#94a3b8"}}>No funds match current filters.</p></div>
-      ):(
+      {/* Chart */}
+      {sortedData.length < 1 ? (
+        <div className="flex h-[400px] items-center justify-center rounded-lg border border-dashed" style={{ borderColor: "#e2e8f0" }}>
+          <p className="text-sm" style={{ color: "#94a3b8" }}>No funds match current filters.</p>
+        </div>
+      ) : (
         <ResponsiveContainer width="100%" height={400}>
-          <ScatterChart margin={{top:10,right:20,bottom:30,left:20}}>
+          <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <RXAxis type="number" dataKey="x" name={xAxis.label} domain={xAxis.isCredit?[0.5,8.5]:[(dMin:number)=>Math.max(0,Math.floor(dMin*0.9*10)/10),(dMax:number)=>Math.ceil(dMax*1.1*10)/10]} ticks={xAxis.isCredit?[1,2,3,4,5,6,7,8]:undefined} tick={{fontSize:11,fill:"#94a3b8"}} tickFormatter={v=>xAxis.tickFmt(v)} tickLine={{stroke:"#e2e8f0"}} axisLine={{stroke:"#e2e8f0"}}><Label value={xAxis.label} position="bottom" offset={12} style={{fontSize:11,fill:"#64748b",fontWeight:600}} /></RXAxis>
-            <RYAxis type="number" dataKey="y" name={yAxis.label} domain={yAxis.isCredit?[0.5,8.5]:undefined} ticks={yAxis.isCredit?[1,2,3,4,5,6,7,8]:undefined} tick={{fontSize:11,fill:"#94a3b8"}} tickFormatter={v=>yAxis.tickFmt(v)} tickLine={{stroke:"#e2e8f0"}} axisLine={{stroke:"#e2e8f0"}} width={yAxis.isCredit?45:undefined}><Label value={yAxis.label} angle={-90} position="insideLeft" offset={-5} style={{fontSize:11,fill:"#64748b",fontWeight:600}} /></RYAxis>
-            <ZAxis range={[50,50]} />
+            <RXAxis
+              type="number" dataKey="x" name={xAxis.label}
+              domain={xAxis.isCredit ? [0.5, 8.5] : [(dMin: number) => Math.max(0, Math.floor(dMin * 0.9 * 10) / 10), (dMax: number) => Math.ceil(dMax * 1.1 * 10) / 10]}
+              ticks={xAxis.isCredit ? [1,2,3,4,5,6,7,8] : undefined}
+              tick={{ fontSize: 11, fill: "#94a3b8" }}
+              tickFormatter={(v: number) => xAxis.tickFmt(v)}
+              tickLine={{ stroke: "#e2e8f0" }}
+              axisLine={{ stroke: "#e2e8f0" }}
+            >
+              <Label value={xAxis.label} position="bottom" offset={12} style={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} />
+            </RXAxis>
+            <RYAxis
+              type="number" dataKey="y" name={yAxis.label}
+              domain={yAxis.isCredit ? [0.5, 8.5] : undefined}
+              ticks={yAxis.isCredit ? [1,2,3,4,5,6,7,8] : undefined}
+              tick={{ fontSize: 11, fill: "#94a3b8" }}
+              tickFormatter={(v: number) => yAxis.tickFmt(v)}
+              tickLine={{ stroke: "#e2e8f0" }}
+              axisLine={{ stroke: "#e2e8f0" }}
+              width={yAxis.isCredit ? 45 : undefined}
+            >
+              <Label value={yAxis.label} angle={-90} position="insideLeft" offset={-5} style={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} />
+            </RYAxis>
+            <ZAxis range={[50, 50]} />
             <RTooltip content={<MapTip />} cursor={false} />
-            {sortedData.length>=2&&<ReferenceLine y={avgY} stroke="#94a3b8" strokeDasharray="6 4" strokeWidth={1} />}
-            <Scatter data={sortedData} shape={<MapDot hoveredTicker={hoveredTicker} onHover={setHoveredTicker} onLeave={()=>setHoveredTicker(null)} onClick={onSelectFund} />}>
-              {sortedData.map(d=>(<Cell key={d.ticker} fill={d.isHighlighted?MAP_HL:MAP_DOT} />))}
+            {sortedData.length >= 2 && <ReferenceLine y={avgY} stroke="#94a3b8" strokeDasharray="6 4" strokeWidth={1} />}
+            <Scatter
+              data={sortedData}
+              shape={<MapDot hoveredTicker={hoveredTicker} onHover={setHoveredTicker} onLeave={() => setHoveredTicker(null)} onClick={onSelectFund} />}
+            >
+              {sortedData.map(d => (
+                <Cell key={d.ticker} fill={d.isHighlighted ? MAP_HL : MAP_DOT} />
+              ))}
             </Scatter>
           </ScatterChart>
         </ResponsiveContainer>
       )}
 
-      <div className="mt-2 flex flex-wrap items-center justify-between text-[10px]" style={{color:"#94a3b8"}}>
+      {/* Legend */}
+      <div className="mt-2 flex flex-wrap items-center justify-between text-[10px]" style={{ color: "#94a3b8" }}>
         <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1.5"><span className="inline-block h-2 w-2 rounded-full" style={{backgroundColor:MAP_DOT}} /> Funds in universe</span>
-          <span className="flex items-center gap-1.5"><span className="inline-block h-[1px] w-5" style={{backgroundColor:"#94a3b8",borderTop:"2px dashed #94a3b8"}} /> Average</span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: MAP_DOT }} /> Funds in universe
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-[1px] w-5" style={{ backgroundColor: "#94a3b8", borderTop: "2px dashed #94a3b8" }} /> Average
+          </span>
         </div>
         <span className="italic">Click any fund to view details</span>
       </div>
     </div>
   )
 }
+
+/* ═══════════════════════ MAIN PAGE ═══════════════════════ */
 
 export default function Page() {
   const [funds, setFunds] = useState<FundData[]>([])
@@ -307,7 +524,6 @@ export default function Page() {
   const [tickerA, setTickerA] = useState("")
   const [tickerB, setTickerB] = useState("")
   const [competitors, setCompetitors] = useState<string[]>([])
-  // competitor add state removed -- now using TickerInput for competitor selection
   const [mode, setMode] = useState<AnalysisMode>("internal")
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [warRoom, setWarRoom] = useState<WarRoom | null>(null)
@@ -339,7 +555,6 @@ export default function Page() {
     try {
       const res = await fetch("/api/refresh-ratings", { method: "POST" })
       if (res.ok) {
-        // Reload funds with updated ratings
         const r = await fetch("/api/funds")
         const json = await r.json()
         if (json.funds?.length) setFunds(json.funds)
@@ -370,7 +585,6 @@ export default function Page() {
       const fA = funds.find((f) => f.ticker === tickerA)
       const fB = funds.find((f) => f.ticker === tickerB)
       if (fA && fB) {
-        // Always ensure tickerB is in the competitors list
         setCompetitors(prev => prev.includes(tickerB) ? prev : [...prev.slice(0, 4), tickerB])
         setError(null)
         setResult(runAnalysis(fA, fB, mode))
@@ -417,7 +631,6 @@ export default function Page() {
     const prevB = tickerB
     setTickerA(prevB)
     setTickerB(prevA)
-    // Ensure the swapped tickers are in the competitor list
     if (prevA && !competitors.includes(prevA)) {
       setCompetitors(prev => [...prev.slice(0, 4), prevA])
     }
@@ -520,7 +733,7 @@ export default function Page() {
             Fund Comparison
           </button>
           <button
-                onClick={() => setSection("map")}
+            onClick={() => setSection("map")}
             className="flex min-h-[44px] items-center gap-1.5 border-b-2 px-4 py-2.5 text-[12px] font-semibold uppercase tracking-wider transition-colors sm:text-[13px]"
             style={{
               borderColor: section === "map" ? "#0f3d6b" : "transparent",
@@ -545,213 +758,114 @@ export default function Page() {
       {section === "comparison" && (
       <div className="mx-auto max-w-6xl px-3 sm:px-6">
         <div className="border-b py-4 sm:py-5" style={{ borderColor: "#e2e8f0" }}>
-          {/* Compact grid: Our Fund | vs | Competitors | Mode */}
           <div className="flex flex-col gap-3 sm:grid sm:gap-4" style={{ gridTemplateColumns: "minmax(160px, 1fr) auto minmax(240px, 2fr) auto" }}>
-            {/* Our Fund -- compact */}
             <div>
               <TickerInput label="Our Fund" value={tickerA} onChange={(v) => { setTickerA(v); if (v && competitors.length > 0 && !tickerB) setTickerB(competitors[0]) }} options={tickers} placeholder="Select fund..." />
             </div>
 
-            {/* Swap / VS button */}
             <div className="flex items-end pb-2">
               <button
                 onClick={swapTickers}
                 disabled={!tickerA || !tickerB}
-                className="flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-bold transition-all hover:border-[#0f3d6b] hover:bg-[#f0f7ff] disabled:cursor-not-allowed disabled:opacity-30"
-                style={{ borderColor: "#e2e8f0", color: "#64748b" }}
-                title="Swap our fund and competitor"
+                className="flex h-10 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-bold uppercase tracking-wider transition-all disabled:opacity-30"
+                style={{ borderColor: "#e2e8f0", color: "#0f3d6b" }}
               >
-                <ArrowRightLeft className="h-3 w-3" />
-                <span className="hidden sm:inline">Swap</span>
+                <ArrowRightLeft className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">VS</span>
               </button>
             </div>
 
-            {/* Competitors section */}
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>
-                  Competitors {competitors.length > 0 ? `(${competitors.length}/5)` : ""}
-                </span>
-                {competitors.length > 1 && (
-                  <button onClick={() => { setCompetitors([]); setTickerB("") }} className="text-[10px] font-medium" style={{ color: "#94a3b8" }}>Clear all</button>
-                )}
+            <div>
+              <div className="mb-0.5 flex items-baseline gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>Competitor</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                {/* Competitor tabs */}
-                {competitors.map((comp) => {
-                  const isActive = tickerB === comp
-                  return (
-                    <div key={comp} className="group relative">
-                      <button
-                        onClick={() => setTickerB(comp)}
-                        className="flex h-10 items-center gap-1 rounded-lg border px-3 text-[12px] font-bold transition-all"
-                        style={{
-                          borderColor: isActive ? "#0f3d6b" : "#e2e8f0",
-                          backgroundColor: isActive ? "#0f3d6b" : "#fff",
-                          color: isActive ? "#fff" : "#334155",
-                          boxShadow: isActive ? "0 1px 3px rgba(15,61,107,0.2)" : "none",
-                        }}
-                      >
-                        {comp}
-                        <span
-                          role="button"
-                          onClick={(e) => { e.stopPropagation(); const next = competitors.filter(c => c !== comp); setCompetitors(next); if (tickerB === comp) setTickerB(next[0] || "") }}
-                          className="ml-0.5 rounded-full p-0.5 transition-colors"
-                          style={{ color: isActive ? "rgba(255,255,255,0.5)" : "#94a3b8" }}
-                        >
-                          <X className="h-2.5 w-2.5" />
-                        </span>
-                      </button>
-                    </div>
-                  )
-                })}
-                {/* Add competitor button/input */}
-                {competitors.length < 5 && (
-                  <div className="min-w-[160px] flex-1">
-                    <TickerInput
-                      label=""
-                      value=""
-                      onChange={(v) => {
-                        if (v && !competitors.includes(v)) {
-                          setCompetitors(prev => [...prev.slice(0, 4), v])
-                          setTickerB(v)
-                        }
-                      }}
-                      options={tickers.filter(t => t.ticker !== tickerA && !competitors.includes(t.ticker))}
-                      placeholder={competitors.length === 0 ? "Search to add competitor..." : "+ Add"}
-                    />
-                  </div>
-                )}
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <TickerInput label="" value={tickerB} onChange={v => { setTickerB(v); if (v && !competitors.includes(v)) setCompetitors(prev => [...prev.slice(0, 4), v]) }} options={tickers} placeholder="Select competitor..." />
+                </div>
               </div>
+              {competitors.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {competitors.map(t => (
+                    <button key={t} onClick={() => setTickerB(t)}
+                      className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors"
+                      style={{ backgroundColor: t === tickerB ? "#0f3d6b" : "#f1f5f9", color: t === tickerB ? "#fff" : "#475569" }}>
+                      {t}
+                      <span onClick={(e) => { e.stopPropagation(); setCompetitors(prev => prev.filter(c => c !== t)); if (tickerB === t) setTickerB("") }}
+                        className="ml-0.5 cursor-pointer opacity-50 hover:opacity-100">&times;</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Mode toggle */}
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>Mode</span>
-              <div className="flex h-10 overflow-hidden rounded-lg border text-[12px] font-semibold" style={{ borderColor: "#e2e8f0" }}>
-                <button onClick={() => setMode("internal")} className="px-3.5 transition-colors" style={{ backgroundColor: mode === "internal" ? "#0f3d6b" : "#fff", color: mode === "internal" ? "#fff" : "#64748b" }}>Internal</button>
-                <button onClick={() => setMode("advisor")} className="px-3.5 transition-colors" style={{ backgroundColor: mode === "advisor" ? "#0f3d6b" : "#fff", color: mode === "advisor" ? "#fff" : "#64748b" }}>Advisor</button>
+            <div className="flex items-end pb-2">
+              <div className="flex rounded-lg border" style={{ borderColor: "#e2e8f0" }}>
+                <button onClick={() => setMode("internal")}
+                  className="h-10 rounded-l-lg px-3 text-[11px] font-semibold uppercase tracking-wider transition-colors"
+                  style={{ backgroundColor: mode === "internal" ? "#0f3d6b" : "#fff", color: mode === "internal" ? "#fff" : "#64748b" }}>
+                  Internal
+                </button>
+                <button onClick={() => setMode("advisor")}
+                  className="h-10 rounded-r-lg px-3 text-[11px] font-semibold uppercase tracking-wider transition-colors"
+                  style={{ backgroundColor: mode === "advisor" ? "#0f3d6b" : "#fff", color: mode === "advisor" ? "#fff" : "#64748b" }}>
+                  Advisor
+                </button>
               </div>
             </div>
           </div>
         </div>
 
-        {error && <p className="pt-3 text-sm" style={{ color: "#dc2626" }}>{error}</p>}
+        {error && <p className="py-4 text-center text-sm" style={{ color: "#dc2626" }}>{error}</p>}
 
-        {!result && (
-          <div className="flex flex-col items-center justify-center py-20 text-center sm:py-28">
-            <ArrowRightLeft className="h-8 w-8" style={{ color: "#e2e8f0" }} />
-            <p className="mt-4 text-sm" style={{ color: "#94a3b8" }}>Select a fund and add competitors above to compare</p>
-          </div>
-        )}
+        {result && (
+          <div className="space-y-5 py-5 sm:space-y-6 sm:py-6">
+            <ElevatorPitch result={result} tickerA={tickerA} tickerB={tickerB} mode={mode} />
 
-        {result && mode === "internal" && (
-          <div className="space-y-4 py-4 sm:space-y-6 sm:py-6">
-            <ComparisonTable title="Key Statistics" rows={result.keyStats} tickerA={result.tickerA} tickerB={result.tickerB} highlight />
+            <ComparisonTable title="Key Statistics" rows={result.keyStats} tickerA={tickerA} tickerB={tickerB}
+              advantages={mode === "advisor" ? result.narrative.find(s => s.title === "Key Advantages")?.bullets : undefined} />
 
-            <PieWithTable title="Sector Allocation" dataA={result.pieDataA} dataB={result.pieDataB}
-              tickerA={result.tickerA} tickerB={result.tickerB}
-              rows={result.sectorAllocation} rowLabel="Sector" viewMode="internal" />
-
-            <PieWithTable title="Credit Quality" dataA={result.creditPieA} dataB={result.creditPieB}
-              tickerA={result.tickerA} tickerB={result.tickerB}
-              subtitleA={"Avg Credit Quality: " + result.avgCreditA} subtitleB={"Avg Credit Quality: " + result.avgCreditB}
-              rows={result.creditQuality} rowLabel="Rating" viewMode="internal" />
-
-            <PerformanceChart tickerA={result.tickerA} tickerB={result.tickerB} />
-            <GrowthChart tickerA={result.tickerA} tickerB={result.tickerB} mode="internal" />
-
-            <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-2">
-              <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-                <div className="border-b px-3 py-2.5 sm:px-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
-                  <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>Income</h4>
-                </div>
-                <div className="p-3 sm:p-4">
-                  <IncomeBars items={incomeItems} tickerA={result.tickerA} tickerB={result.tickerB} />
-                </div>
+            {(incomeItems.length > 0 || riskItems.length > 0) && (
+              <div className="grid grid-cols-1 gap-5 sm:gap-6 lg:grid-cols-2">
+                {incomeItems.length > 0 && <IncomeBars items={incomeItems} tickerA={tickerA} tickerB={tickerB} />}
+                {riskItems.length > 0 && <RiskTable items={riskItems} tickerA={tickerA} tickerB={tickerB} />}
               </div>
-              <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-                <div className="border-b px-3 py-2.5 sm:px-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
-                  <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#64748b" }}>{"Risk & Structure"}</h4>
-                </div>
-                <div className="p-3 sm:p-4">
-                  <RiskTable items={riskItems} tickerA={result.tickerA} tickerB={result.tickerB} />
-                </div>
-              </div>
-            </div>
+            )}
 
-            {takeaway && (
-              <div className="rounded border-l-4 p-4 sm:p-5" style={{ borderColor: "#0f3d6b", backgroundColor: "#f0f7ff" }}>
-                <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: "#0f3d6b" }}>Key Takeaway</h3>
-                <ul className="space-y-2">
-                  {takeaway.lines.map((line, i) => (
-                    <li key={i} className="flex gap-2.5 text-sm leading-relaxed" style={{ color: "#1e293b" }}>
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: "#0f3d6b" }} />
-                      {line}
-                    </li>
+            <PerformanceChart tickerA={tickerA} tickerB={tickerB} result={result} />
+            <GrowthChart tickerA={tickerA} tickerB={tickerB} />
+
+            {result.sectorData && (
+              <PieWithTable title="Sector Allocation" dataA={result.sectorData.a} dataB={result.sectorData.b}
+                tickerA={tickerA} tickerB={tickerB} subtitleA={result.sectorData.subtitleA} subtitleB={result.sectorData.subtitleB}
+                rows={result.sectorData.rows} rowLabel="Sector" viewMode={mode} />
+            )}
+            {result.creditData && (
+              <PieWithTable title="Credit Quality" dataA={result.creditData.a} dataB={result.creditData.b}
+                tickerA={tickerA} tickerB={tickerB} subtitleA={result.creditData.subtitleA} subtitleB={result.creditData.subtitleB}
+                rows={result.creditData.rows} rowLabel="Rating" viewMode={mode} />
+            )}
+
+            {mode === "internal" && warRoom && (
+              <CompetitorWarRoom warRoom={warRoom} tickerA={tickerA} tickerB={tickerB} polishing={polishing} />
+            )}
+
+            {mode === "advisor" && (
+              <FundChat tickerA={tickerA} tickerB={tickerB} result={result} />
+            )}
+
+            {takeaway && mode === "advisor" && (
+              <div className="rounded-xl border p-4 sm:p-5" style={{ borderColor: "#e2e8f0", backgroundColor: "#f0f7ff" }}>
+                <h4 className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#0f3d6b" }}>{takeaway.title}</h4>
+                <ul className="mt-2 space-y-1">
+                  {takeaway.bullets.map((b, i) => (
+                    <li key={i} className="text-[13px] leading-relaxed" style={{ color: "#334155" }}>{b}</li>
                   ))}
                 </ul>
               </div>
             )}
 
-            {warRoom && <CompetitorWarRoom warRoom={warRoom} competitorTicker={result.tickerB} ourTicker={result.tickerA} polishing={polishing} />}
-
-            <ElevatorPitch result={result} />
-
-            <FundChat result={result} />
-
-          </div>
-        )}
-
-        {result && mode === "advisor" && (
-          <div className="space-y-6 py-6 sm:space-y-8 sm:py-8">
-            <div className="text-center">
-              <div className="mb-4 text-[11px] font-bold uppercase tracking-widest sm:mb-5" style={{ color: "#94a3b8" }}>Fund Comparison</div>
-              <div className="flex items-center justify-center gap-4 sm:gap-10">
-                <div className="flex flex-col items-center">
-                  <p className="text-lg font-bold tracking-wide sm:text-xl" style={{ color: "#0f3d6b" }}>{result.tickerA}</p>
-                  <p className="mt-0.5 max-w-[140px] text-center text-[10px] leading-tight sm:max-w-[180px] sm:text-[11px]" style={{ color: "#94a3b8" }}>{result.nameA}</p>
-                </div>
-                <span className="text-xl font-light italic sm:text-2xl" style={{ color: "#cbd5e1" }}>vs.</span>
-                <div className="flex flex-col items-center">
-                  <p className="text-lg font-bold tracking-wide sm:text-xl" style={{ color: "#0f3d6b" }}>{result.tickerB}</p>
-                  <p className="mt-0.5 max-w-[140px] text-center text-[10px] leading-tight sm:max-w-[180px] sm:text-[11px]" style={{ color: "#94a3b8" }}>{result.nameB}</p>
-                </div>
-              </div>
-            </div>
-
-            <div style={{ height: 2, backgroundColor: "#0f3d6b", opacity: 0.15 }} />
-
-            <ComparisonTable title="Key Statistics" rows={result.keyStats} tickerA={result.tickerA} tickerB={result.tickerB} />
-
-            <PieWithTable title="Sector Allocation" dataA={result.pieDataA} dataB={result.pieDataB}
-              tickerA={result.tickerA} tickerB={result.tickerB}
-              rows={result.sectorAllocation} rowLabel="Sector" viewMode="advisor" />
-
-            <PieWithTable title="Credit Quality" dataA={result.creditPieA} dataB={result.creditPieB}
-              tickerA={result.tickerA} tickerB={result.tickerB}
-              subtitleA={"Avg Credit Quality: " + result.avgCreditA} subtitleB={"Avg Credit Quality: " + result.avgCreditB}
-              rows={result.creditQuality} rowLabel="Rating" viewMode="advisor" />
-
-            <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} />
-
-            <GrowthChart tickerA={result.tickerA} tickerB={result.tickerB} mode="advisor" />
-
-            {takeaway && (
-              <div className="rounded border p-4 sm:p-6" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-                <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider" style={{ color: "#0f3d6b" }}>Investment Considerations</h3>
-                <ul className="space-y-2">
-                  {takeaway.lines.map((line, i) => (
-                    <li key={i} className="flex gap-2.5 text-sm leading-relaxed" style={{ color: "#475569" }}>
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: "#94a3b8" }} />
-                      {line}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <div className="pt-4 text-center" style={{ borderTop: "1px solid #e2e8f0" }}>
+            <div className="flex flex-col items-center gap-2 pb-6 pt-4">
               <img src="/images/angel-oak-logo.svg" alt="Angel Oak Capital Advisors" className="mx-auto opacity-20 brightness-0" style={{ width: 120, height: "auto" }} />
               <p className="mt-2 text-[10px]" style={{ color: "#94a3b8" }}>For informational purposes only. Past performance is not indicative of future results.</p>
             </div>
@@ -760,7 +874,7 @@ export default function Page() {
       </div>
       )}
 
-      {/* ===== FUND MAP SECTION (inlined) ===== */}
+      {/* ===== FUND MAP SECTION ===== */}
       {section === "map" && (
         <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6 sm:py-6">
           <InlineFundMap funds={funds} onSelectFund={(t) => { setLookupTicker(t); setCameFromMap(true); setSection("lookup") }} />
@@ -777,7 +891,7 @@ export default function Page() {
             </div>
             {cameFromMap && (
               <button
-            onClick={() => setSection("map")}
+                onClick={() => setSection("map")}
                 className="mb-0.5 flex h-10 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-semibold transition-all hover:bg-[#f0f7ff]"
                 style={{ borderColor: "#e2e8f0", color: "#0f3d6b" }}
               >
@@ -801,11 +915,9 @@ export default function Page() {
           const ANGEL_OAK_TICKERS = new Set(["ANGIX", "CARY", "UYLD", "AOUIX", "ASCIX", "TRBF", "AOHY", "MBS", "FINS"])
           return <FundLookup fund={fund} allTickers={tickers} onCompare={(ticker) => {
             if (ANGEL_OAK_TICKERS.has(ticker)) {
-              // Angel Oak fund goes into "Our Fund" slot
               setTickerA(ticker)
               setTickerB("")
             } else {
-              // Non-Angel Oak fund goes into competitors
               setTickerB(ticker)
               if (!competitors.includes(ticker)) setCompetitors(prev => [...prev.slice(0, 4), ticker])
               setTickerA("")
