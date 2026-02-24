@@ -1,5 +1,5 @@
 "use client"
-// V202 restored
+
 import { useState, useMemo, useCallback, useRef, useEffect } from "react"
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
@@ -8,7 +8,7 @@ import {
 import { Search, X, SlidersHorizontal } from "lucide-react"
 import type { FundData } from "@/lib/fund-types"
 
-/* ── Helpers ── */
+/* -- Helpers -- */
 function nz(v: number | null | undefined): number { return v ?? 0 }
 
 function creditScore(fund: FundData): number | null {
@@ -27,7 +27,7 @@ function creditLabel(score: number): string {
   return CREDIT_LABELS[Math.max(0, Math.min(7, Math.round(score) - 1))]
 }
 
-/* ── Axis definitions ── */
+/* -- Axis definitions -- */
 type AxisUnit = "pct" | "pct1" | "num" | "credit" | "yrs"
 
 type AxisKey = {
@@ -61,13 +61,13 @@ const AXIS_OPTIONS: AxisKey[] = [
 
 const findAxis = (key: string) => AXIS_OPTIONS.findIndex(a => a.key === key)
 
-/* ── Presets ── */
+/* -- Presets -- */
 const PRESETS = [
   { label: "Yield vs Duration", x: "duration", y: "ytwYtm", insight: "Shows yield pickup per unit of interest rate risk -- are you getting paid enough for the duration you're taking?" },
   { label: "Credit vs Yield", x: "credit", y: "ytwYtm", insight: "Reveals whether higher yield comes from credit risk -- funds to the left offer higher quality at comparable yields." },
 ]
 
-/* ── Duration categories ── */
+/* -- Duration categories -- */
 const DURATION_CATEGORIES = [
   { label: "Ultrashort", min: 0, max: 1 },
   { label: "Short", min: 1, max: 3.5 },
@@ -75,7 +75,7 @@ const DURATION_CATEGORIES = [
   { label: "Long", min: 6, max: 100 },
 ] as const
 
-/* ── Morningstar categories ── */
+/* -- Morningstar categories -- */
 const MSTAR_CATEGORIES = [
   "Ultrashort Bond", "Short-Term Bond", "Intermediate Core Bond",
   "Intermediate Core-Plus Bond", "Intermediate Government", "Long Government",
@@ -83,7 +83,7 @@ const MSTAR_CATEGORIES = [
   "High Yield Bond", "Bank Loan",
 ] as const
 
-/* ── Colors ── */
+/* -- Colors -- */
 const PRIMARY = "#0f3d6b"
 const HIGHLIGHT = "#dc2626"
 const DOT_DEFAULT = "#3b82f6"
@@ -94,7 +94,7 @@ interface Props {
   onSelectFund?: (ticker: string) => void
 }
 
-/* ── Custom dot ── */
+/* -- Custom dot -- */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function TickerDot(props: any) {
   const { cx, cy, payload, hoveredTicker, onHover, onLeave, onClick } = props
@@ -127,7 +127,7 @@ function TickerDot(props: any) {
   )
 }
 
-/* ── Toggle chip (inside popovers) ── */
+/* -- Toggle chip (inside popovers) -- */
 function Chip({ label, active, count, onClick }: { label: string; active: boolean; count?: number; onClick: () => void }) {
   return (
     <button onClick={onClick}
@@ -145,7 +145,7 @@ function Chip({ label, active, count, onClick }: { label: string; active: boolea
   )
 }
 
-/* ── Filter popover wrapper ── */
+/* -- Filter popover wrapper -- */
 function FilterPopover({ label, activeCount, children }: { label: string; activeCount: number; children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -188,7 +188,7 @@ function FilterPopover({ label, activeCount, children }: { label: string; active
   )
 }
 
-/* ═══════════════════════════════════════ MAIN COMPONENT ═══════════════════════════════════════ */
+/* ======= MAIN COMPONENT ======= */
 export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props) {
   const [presetIdx, setPresetIdx] = useState(0)
   const [xIdx, setXIdx] = useState(findAxis("duration"))
@@ -197,33 +197,33 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
   const yAxis = AXIS_OPTIONS[yIdx]
   const [hoveredTicker, setHoveredTicker] = useState<string | null>(null)
 
-  /* ── Search ── */
+  /* -- Search -- */
   const [search, setSearch] = useState("")
   const [searchFocused, setSearchFocused] = useState(false)
 
-  /* ── Filter panel ── */
+  /* -- Filter panel -- */
   const [showFilters, setShowFilters] = useState(false)
 
-  /* ── Duration category filter ── */
+  /* -- Duration category filter -- */
   const [durationCats, setDurationCats] = useState<Set<string>>(new Set(DURATION_CATEGORIES.map(c => c.label)))
 
-  /* ── Credit quality filter ── */
+  /* -- Credit quality filter -- */
   const CREDIT_CATS = ["AAA", "AA", "A", "BBB", "BB & Below"] as const
   const [creditCats, setCreditCats] = useState<Set<string>>(new Set(CREDIT_CATS))
 
-  /* ── Morningstar category filter ── */
+  /* -- Morningstar category filter -- */
   const [mstarCats, setMstarCats] = useState<Set<string>>(new Set(MSTAR_CATEGORIES))
 
-  /* ── Star rating filter ── */
-  const [starMin, setStarMin] = useState(0) // 0 = no filter
+  /* -- Star rating filter -- */
+  const [starMin, setStarMin] = useState(0)
 
-  /* ── Preset-based range filters (null = no filter) ── */
+  /* -- Preset-based range filters (null = no filter) -- */
   const [yieldMinPreset, setYieldMinPreset] = useState<number | null>(null)
   const [expenseMaxPreset, setExpenseMaxPreset] = useState<number | null>(null)
   const [sharpeMinPreset, setSharpeMinPreset] = useState<number | null>(null)
   const [stdDevMaxPreset, setStdDevMaxPreset] = useState<number | null>(null)
 
-  /* ── Compute fund counts per Morningstar category ── */
+  /* -- Compute fund counts per Morningstar category -- */
   const mstarCatCounts = useMemo(() => {
     const counts: Record<string, number> = {}
     funds.forEach(f => {
@@ -233,20 +233,17 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
     return counts
   }, [funds])
 
-  /* ── Data pipeline ── */
-  const { sortedData, avgX, avgY } = useMemo(() => {
+  /* -- Data pipeline -- */
+  const { sortedData, avgY } = useMemo(() => {
     const searchLower = search.toLowerCase()
     let xSum = 0, ySum = 0, count = 0
     const points = funds.map(f => {
-      // Search filter (just filter the chart, don't highlight by default)
       if (search && !f.ticker.toLowerCase().includes(searchLower) && !f.name.toLowerCase().includes(searchLower)) return null
 
-      // Duration category filter
       const dur = f.duration ?? 0
       const durCat = DURATION_CATEGORIES.find(c => dur >= c.min && dur < c.max)
       if (durCat && !durationCats.has(durCat.label)) return null
 
-      // Credit quality filter
       const cs = creditScore(f)
       if (cs != null) {
         const cl = creditLabel(cs)
@@ -257,13 +254,10 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
         if (["BB", "B", "CCC", "<CCC"].includes(cl) && !creditCats.has("BB & Below")) return null
       }
 
-      // Morningstar category filter
       if (f.morningstarCategory && !mstarCats.has(f.morningstarCategory)) return null
 
-      // Star rating filter
       if (starMin > 0 && f.morningstarRating != null && f.morningstarRating < starMin) return null
 
-      // Preset-based range filters
       const yld = (f.ytwYtm ?? f.secYield ?? 0) * 100
       if (yieldMinPreset != null && yld < yieldMinPreset) return null
       if (expenseMaxPreset != null && f.expense != null && f.expense * 100 > expenseMaxPreset) return null
@@ -278,7 +272,6 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
       return {
         ticker: f.ticker, name: f.name, x: xVal, y: yVal,
         isHighlighted: f.ticker === highlightTicker,
-        // Extra stats for tooltip
         ytwYtm: f.ytwYtm != null ? f.ytwYtm * 100 : null,
         secYield: f.secYield != null ? f.secYield * 100 : null,
         duration: f.duration,
@@ -301,7 +294,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
     }
   }, [funds, xAxis, yAxis, highlightTicker, search, durationCats, creditCats, mstarCats, starMin, yieldMinPreset, expenseMaxPreset, sharpeMinPreset, stdDevMaxPreset])
 
-  /* ── Filter state checks ── */
+  /* -- Filter state checks -- */
   const allDurSelected = durationCats.size === DURATION_CATEGORIES.length
   const allCreditSelected = creditCats.size === CREDIT_CATS.length
   const allMstarSelected = mstarCats.size === MSTAR_CATEGORIES.length
@@ -323,30 +316,28 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
   const CustomTooltip = ({ active, payload }: any) => {
     if (!active || !payload?.[0]?.payload) return null
     const d = payload[0].payload
-    const fmtPct = (v: number | null) => v != null ? `${v.toFixed(2)}%` : "—"
-    const fmtNum = (v: number | null) => v != null ? v.toFixed(2) : "—"
-    // Group 1: Yield & fundamentals (paired for 2-col grid)
+    const fmtPctTip = (v: number | null) => v != null ? `${v.toFixed(2)}%` : "\u2014"
+    const fmtNumTip = (v: number | null) => v != null ? v.toFixed(2) : "\u2014"
     const fundStats: { label: string; value: string }[] = [
-      { label: "YTW / YTM", value: fmtPct(d.ytwYtm) },
-      { label: "SEC Yield", value: fmtPct(d.secYield) },
-      { label: "Duration", value: d.duration != null ? `${d.duration.toFixed(2)} yrs` : "—" },
-      { label: "Credit", value: d.creditQuality ?? "—" },
-      { label: "Expense", value: fmtPct(d.expense) },
-      { label: "Sharpe", value: fmtNum(d.sharpe) },
-      { label: "Std Dev", value: fmtNum(d.stdDev) },
-    ].filter(s => s.value !== "—")
-    // Group 2: Performance
+      { label: "YTW / YTM", value: fmtPctTip(d.ytwYtm) },
+      { label: "SEC Yield", value: fmtPctTip(d.secYield) },
+      { label: "Duration", value: d.duration != null ? `${d.duration.toFixed(2)} yrs` : "\u2014" },
+      { label: "Credit", value: d.creditQuality ?? "\u2014" },
+      { label: "Expense", value: fmtPctTip(d.expense) },
+      { label: "Sharpe", value: fmtNumTip(d.sharpe) },
+      { label: "Std Dev", value: fmtNumTip(d.stdDev) },
+    ].filter(s => s.value !== "\u2014")
     const perfStats: { label: string; value: string }[] = [
-      { label: "YTD", value: fmtPct(d.ytd) },
-      { label: "1Y", value: fmtPct(d.oneYear) },
-      { label: "3Y", value: fmtPct(d.threeYear) },
-    ].filter(s => s.value !== "—")
+      { label: "YTD", value: fmtPctTip(d.ytd) },
+      { label: "1Y", value: fmtPctTip(d.oneYear) },
+      { label: "3Y", value: fmtPctTip(d.threeYear) },
+    ].filter(s => s.value !== "\u2014")
     return (
       <div className="rounded-lg border px-3 py-2.5 shadow-lg" style={{ backgroundColor: "#fff", borderColor: "#e2e8f0", minWidth: 210 }}>
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold" style={{ color: PRIMARY }}>{d.ticker}</span>
           {d.morningstarRating != null && d.morningstarRating > 0 && (
-            <span className="text-[10px]" style={{ color: "#f59e0b" }}>{"★".repeat(d.morningstarRating)}</span>
+            <span className="text-[10px]" style={{ color: "#f59e0b" }}>{"\u2605".repeat(d.morningstarRating)}</span>
           )}
         </div>
         <div className="text-[10px] leading-snug" style={{ color: "#64748b" }}>{d.name}</div>
@@ -474,7 +465,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
         </div>
       </div>
 
-      {/* ═══ FILTER BAR ═══ */}
+      {/* FILTER BAR */}
       {showFilters && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
           {/* Category popover */}
@@ -588,7 +579,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
                 <button key={s} onClick={() => setStarMin(s === starMin ? 0 : s)}
                   className="text-lg leading-none transition-all" style={{ color: s <= starMin ? "#f59e0b" : "#d1d5db" }}
                   aria-label={`Minimum ${s} stars`}
-                >{"★"}</button>
+                >{"\u2605"}</button>
               ))}
             </div>
           </FilterPopover>
@@ -605,7 +596,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
         </div>
       )}
 
-      {/* ═══ CHART ═══ */}
+      {/* CHART */}
       {sortedData.length < 1 ? (
         <div className="flex h-[350px] flex-col items-center justify-center gap-2">
           <Search className="h-8 w-8" style={{ color: "#cbd5e1" }} />
