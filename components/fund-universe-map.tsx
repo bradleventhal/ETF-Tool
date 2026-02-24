@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react"
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
-  ResponsiveContainer, Tooltip, ZAxis, Cell, ReferenceLine, Label, Customized,
+  ResponsiveContainer, Tooltip, ZAxis, Cell, ReferenceLine, Label,
 } from "recharts"
 import { Search, X, SlidersHorizontal } from "lucide-react"
 import type { FundData } from "@/lib/fund-types"
@@ -665,21 +665,10 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
             <Tooltip content={<CustomTooltip />} cursor={false} />
             {sortedData.length >= 2 && <ReferenceLine y={avgY} stroke="#94a3b8" strokeDasharray="6 4" strokeWidth={1} />}
             {trendLine.length === 2 && (
-              <Customized
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                component={(props: any) => {
-                  const xScale = props.xAxisMap?.[0]?.scale
-                  const yScale = props.yAxisMap?.[0]?.scale
-                  if (!xScale || !yScale) return null
-                  const x1 = xScale(trendLine[0].x)
-                  const y1 = yScale(trendLine[0].y)
-                  const x2 = xScale(trendLine[1].x)
-                  const y2 = yScale(trendLine[1].y)
-                  if ([x1, y1, x2, y2].some(v => v == null || isNaN(v))) return null
-                  return (
-                    <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#0f3d6b" strokeWidth={1.5} strokeDasharray="6 3" opacity={0.5} />
-                  )
-                }}
+              <ReferenceLine
+                segment={[{ x: trendLine[0].x, y: trendLine[0].y }, { x: trendLine[1].x, y: trendLine[1].y }]}
+                stroke="#0f3d6b" strokeWidth={1.5} strokeDasharray="6 3" opacity={0.5}
+                ifOverflow="extendDomain"
               />
             )}
             <Scatter data={sortedData}
