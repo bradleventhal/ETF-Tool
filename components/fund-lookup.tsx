@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { SectorPieChart } from "@/components/sector-pie-chart"
 import { GrowthChart } from "@/components/growth-chart"
-import { Loader2, X, Plus } from "lucide-react"
+import { Loader2, X, Plus, ChevronDown } from "lucide-react"
 import type { FundData } from "@/lib/fund-types"
 
 function nz(v: number | null): number { return v == null || isNaN(v) ? 0 : v }
@@ -112,6 +112,7 @@ function StarRating({ rating }: { rating: number | null }) {
 export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; allTickers?: { ticker: string; name: string }[]; onCompare?: (competitorTicker: string) => void }) {
   const [insights, setInsights] = useState<FundInsights | null>(null)
   const [loading, setLoading] = useState(false)
+  const [excerptOpen, setExcerptOpen] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
   const mstarRating = fund.morningstarRating ?? null
   const mstarCategory = fund.morningstarCategory ?? null
@@ -401,10 +402,24 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
         </div>
         {insights?.hasCommentary && insights.commentaryPreview && (
           <div className="border-b px-3 py-2 sm:px-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#f0fdf4" }}>
-            <p className="text-[10px] italic leading-relaxed" style={{ color: "#64748b" }}>
-              <span className="font-semibold not-italic" style={{ color: "#16a34a" }}>PDF excerpt: </span>
-              {'"'}{insights.commentaryPreview.slice(0, 200)}{'..."'}
-            </p>
+            <button
+              onClick={() => setExcerptOpen(v => !v)}
+              className="flex w-full items-center justify-between text-left"
+            >
+              <p className="text-[10px] italic leading-relaxed" style={{ color: "#64748b" }}>
+                <span className="font-semibold not-italic" style={{ color: "#16a34a" }}>PDF excerpt: </span>
+                {!excerptOpen && <>{'"'}{insights.commentaryPreview.slice(0, 150)}{'..."'}</>}
+              </p>
+              <ChevronDown
+                className="h-3 w-3 shrink-0 transition-transform"
+                style={{ color: "#16a34a", transform: excerptOpen ? "rotate(180deg)" : undefined }}
+              />
+            </button>
+            {excerptOpen && (
+              <p className="mt-1.5 text-[10px] italic leading-relaxed" style={{ color: "#64748b" }}>
+                {'"'}{insights.commentaryPreview}{'"'}
+              </p>
+            )}
           </div>
         )}
         <div className="p-4 sm:p-5">
