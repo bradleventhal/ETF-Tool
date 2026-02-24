@@ -111,6 +111,7 @@ export default function Page() {
   const [lookupTicker, setLookupTicker] = useState("")
   const [cameFromMap, setCameFromMap] = useState(false)
   const mapStateRef = useRef<Record<string, unknown> | null>(null)
+  /* v3-chart-fix */
 
   useEffect(() => {
     fetch("/api/funds")

@@ -92,6 +92,8 @@ interface Props {
   funds: FundData[]
   highlightTicker?: string
   onSelectFund?: (ticker: string) => void
+  savedState?: Record<string, unknown> | null
+  onStateChange?: (s: Record<string, unknown>) => void
 }
 
 /* ── Custom dot ── */
@@ -243,10 +245,8 @@ function CustomTooltip({ active, payload }: any) {
   )
 }
 
-type SavedMapState = Record<string, unknown>
-
 /* ═══════════════════════════════════════ MAIN COMPONENT ═══════════════════════════════════════ */
-export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedState, onStateChange }: Props & { savedState?: SavedMapState | null; onStateChange?: (s: SavedMapState) => void }) {
+export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedState, onStateChange }: Props) {
   // Restore from savedState on mount, otherwise use defaults
   const s = savedState
   const [presetIdx, setPresetIdx] = useState(() => typeof s?.presetIdx === "number" ? s.presetIdx : 0)
@@ -283,7 +283,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
   const [stdDevMaxPreset, setStdDevMaxPreset] = useState<number | null>(() => typeof s?.stdDevMaxPreset === "number" ? s.stdDevMaxPreset : null)
 
   // Keep a ref of current state for the unmount callback
-  const stateSnap = useRef<SavedMapState>({})
+  const stateSnap = useRef<Record<string, unknown>>({})
   stateSnap.current = {
     presetIdx, xIdx, yIdx, search, showFilters,
     durationCats, creditCats, mstarCats, starMin,
