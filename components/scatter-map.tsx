@@ -52,7 +52,7 @@ const AXIS_OPTIONS: AxisOption[] = [
   { key: "oneYear", label: "1Y Return", isCredit: false, format: fmtPct, tickFormat: fmtPct, getValue: f => f.oneYear },
   { key: "threeYear", label: "3Y Return", isCredit: false, format: fmtPct, tickFormat: fmtPct, getValue: f => f.threeYear },
   { key: "correlation", label: "Correlation", isCredit: false, format: fmtNum, tickFormat: fmtNum, getValue: f => f.correlation },
-  { key: "morningstarRating", label: "Star Rating", isCredit: false, format: v => `${v.toFixed(0)}★`, tickFormat: v => Number.isInteger(v) ? `${v}★` : "", getValue: f => f.morningstarRating },
+  { key: "morningstarRating", label: "Star Rating", isCredit: false, format: v => `${v.toFixed(0)}\u2605`, tickFormat: v => Number.isInteger(v) ? `${v}\u2605` : "", getValue: f => f.morningstarRating },
 ]
 
 const findAxis = (key: AxisKey) => AXIS_OPTIONS.findIndex(a => a.key === key)
@@ -65,9 +65,9 @@ const PRESETS = [
 
 /* ── Duration categories ── */
 const DURATION_CATEGORIES = [
-  { label: "Ultra-Short (0–1 yr)", min: 0, max: 1 },
-  { label: "Short (1–3.5 yrs)", min: 1, max: 3.5 },
-  { label: "Intermediate (3.5–6 yrs)", min: 3.5, max: 6 },
+  { label: "Ultra-Short (0\u20131 yr)", min: 0, max: 1 },
+  { label: "Short (1\u20133.5 yrs)", min: 1, max: 3.5 },
+  { label: "Intermediate (3.5\u20136 yrs)", min: 3.5, max: 6 },
   { label: "Long (6+ yrs)", min: 6, max: 100 },
 ]
 
@@ -122,7 +122,7 @@ function TickerDot(props: any) {
 
 /* ── Tooltip ── */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function CustomTooltip({ active, payload }: any) {
+function MapTooltip({ active, payload }: any) {
   if (!active || !payload?.[0]?.payload) return null
   const d = payload[0].payload
   const fp = (v: number | null) => v != null ? `${v.toFixed(2)}%` : "\u2014"
@@ -146,7 +146,7 @@ function CustomTooltip({ active, payload }: any) {
       <div className="flex items-center gap-2">
         <span className="text-xs font-bold" style={{ color: PRIMARY }}>{d.ticker}</span>
         {d.morningstarRating != null && d.morningstarRating > 0 && (
-          <span className="text-[10px]" style={{ color: "#f59e0b" }}>{"★".repeat(d.morningstarRating)}</span>
+          <span className="text-[10px]" style={{ color: "#f59e0b" }}>{"\u2605".repeat(d.morningstarRating)}</span>
         )}
       </div>
       <div className="text-[10px] leading-snug" style={{ color: "#64748b" }}>{d.name}</div>
@@ -175,7 +175,7 @@ function CustomTooltip({ active, payload }: any) {
   )
 }
 
-/* ═══════════════════════════════════════ MAIN COMPONENT ═══════════════════════════════════════ */
+/* ======= MAIN COMPONENT ======= */
 export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props) {
   const [presetIdx, setPresetIdx] = useState(0)
   const [xIdx, setXIdx] = useState(findAxis("duration"))
@@ -184,53 +184,37 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
   const yAxis = AXIS_OPTIONS[yIdx]
   const [hoveredTicker, setHoveredTicker] = useState<string | null>(null)
 
-  /* ── Search ── */
   const [search, setSearch] = useState("")
   const [searchFocused, setSearchFocused] = useState(false)
-
-  /* ── Filter panel ── */
   const [showFilters, setShowFilters] = useState(false)
 
-  /* ── Duration category filter ── */
   const [durationCats, setDurationCats] = useState<Set<string>>(new Set(DURATION_CATEGORIES.map(c => c.label)))
-
-  /* ── Credit quality filter ── */
   const CREDIT_CATS = ["AAA", "AA", "A", "BBB", "BB & Below"] as const
   const [creditCats, setCreditCats] = useState<Set<string>>(new Set(CREDIT_CATS))
-
-  /* ── Morningstar category filter ── */
   const [mstarCats, setMstarCats] = useState<Set<string>>(new Set(MSTAR_CATEGORIES))
-
-  /* ── Star rating filter ── */
   const [starMin, setStarMin] = useState(0)
-
-  /* ── Range filters ── */
   const [yieldMinPreset, setYieldMinPreset] = useState<number | null>(null)
   const [expenseMaxPreset, setExpenseMaxPreset] = useState<number | null>(null)
   const [sharpeMinPreset, setSharpeMinPreset] = useState<number | null>(null)
   const [stdDevMaxPreset, setStdDevMaxPreset] = useState<number | null>(null)
 
-  /* ── Preset handler ── */
   const applyPreset = useCallback((idx: number) => {
     setPresetIdx(idx)
     const p = PRESETS[idx]
     if (p) { setXIdx(findAxis(p.x as AxisKey)); setYIdx(findAxis(p.y as AxisKey)) }
   }, [])
 
-  /* ── Data computation ── */
   const { sortedData, avgY } = useMemo(() => {
     const matchesSearch = (f: FundData) => {
       if (!search) return true
       const q = search.toLowerCase()
       return f.ticker.toLowerCase().includes(q) || f.name.toLowerCase().includes(q)
     }
-
     const matchesDuration = (f: FundData) => {
       if (durationCats.size === DURATION_CATEGORIES.length) return true
       if (f.duration == null) return false
       return DURATION_CATEGORIES.some(c => durationCats.has(c.label) && f.duration! >= c.min && f.duration! < c.max)
     }
-
     const matchesCredit = (f: FundData) => {
       if (creditCats.size === 5) return true
       const cs = creditScore(f)
@@ -243,17 +227,14 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
       if (creditCats.has("BB & Below") && rounded >= 5) return true
       return false
     }
-
     const matchesMstar = (f: FundData) => {
       if (mstarCats.size === MSTAR_CATEGORIES.length) return true
       return f.morningstarCategory ? mstarCats.has(f.morningstarCategory) : false
     }
-
     const matchesStar = (f: FundData) => {
       if (starMin <= 0) return true
       return (f.morningstarRating ?? 0) >= starMin
     }
-
     const matchesRange = (f: FundData) => {
       if (yieldMinPreset != null && (f.ytwYtm ?? -Infinity) < yieldMinPreset) return false
       if (expenseMaxPreset != null && (f.expense ?? Infinity) > expenseMaxPreset) return false
@@ -288,7 +269,6 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
     return { sortedData: sorted, avgY: aY }
   }, [funds, xAxis, yAxis, search, highlightTicker, durationCats, creditCats, mstarCats, starMin, yieldMinPreset, expenseMaxPreset, sharpeMinPreset, stdDevMaxPreset])
 
-  /* ── Reset ── */
   const resetFilters = useCallback(() => {
     setSearch(""); setDurationCats(new Set(DURATION_CATEGORIES.map(c => c.label)))
     setCreditCats(new Set(["AAA", "AA", "A", "BBB", "BB & Below"]))
@@ -300,7 +280,6 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
     mstarCats.size < MSTAR_CATEGORIES.length || starMin > 0 ||
     yieldMinPreset != null || expenseMaxPreset != null || sharpeMinPreset != null || stdDevMaxPreset != null
 
-  /* ═══ RENDER ═══ */
   return (
     <div className="rounded-xl border p-4 sm:p-5" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
       {/* Header */}
@@ -327,14 +306,12 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
 
       {/* Controls row */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        {/* X axis */}
         <span className="flex h-7 w-7 items-center justify-center rounded-md text-[10px] font-bold text-white" style={{ backgroundColor: PRIMARY }}>X</span>
         <select value={xIdx} onChange={e => { setXIdx(Number(e.target.value)); setPresetIdx(-1) }}
           className="h-7 rounded-md border px-2 text-xs" style={{ borderColor: "#e2e8f0" }}>
           {AXIS_OPTIONS.map((a, i) => <option key={a.key} value={i}>{a.label}</option>)}
         </select>
 
-        {/* Swap button */}
         <button
           onClick={() => { const prev = xIdx; setXIdx(yIdx); setYIdx(prev); setPresetIdx(-1) }}
           className="flex h-7 items-center gap-1 rounded-md border px-2 text-[10px] font-bold transition-all hover:border-[#0f3d6b] hover:bg-[#f0f7ff]"
@@ -344,7 +321,6 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
           <ArrowRightLeft className="h-3 w-3" />
         </button>
 
-        {/* Y axis */}
         <span className="flex h-7 w-7 items-center justify-center rounded-md text-[10px] font-bold text-white" style={{ backgroundColor: PRIMARY }}>Y</span>
         <select value={yIdx} onChange={e => { setYIdx(Number(e.target.value)); setPresetIdx(-1) }}
           className="h-7 rounded-md border px-2 text-xs" style={{ borderColor: "#e2e8f0" }}>
@@ -353,12 +329,11 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
 
         <div className="flex-1" />
 
-        {/* Search */}
         <div className="relative">
           <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2" style={{ color: "#94a3b8" }} />
           <input value={search} onChange={e => setSearch(e.target.value)}
             onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
-            placeholder="Search ticker or nam\u2026"
+            placeholder="Search ticker or name..."
             className="h-7 w-40 rounded-md border pl-7 pr-2 text-xs outline-none transition-colors focus:border-[#0f3d6b]"
             style={{ borderColor: searchFocused ? PRIMARY : "#e2e8f0" }} />
           {search && (
@@ -368,7 +343,6 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
           )}
         </div>
 
-        {/* Filters */}
         <button onClick={() => setShowFilters(v => !v)}
           className="flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors"
           style={{ borderColor: showFilters ? PRIMARY : "#e2e8f0", color: showFilters ? PRIMARY : "#64748b", backgroundColor: showFilters ? "#f0f7ff" : "#fff" }}>
@@ -381,7 +355,6 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
       {showFilters && (
         <div className="mb-4 rounded-lg border p-3 text-xs" style={{ borderColor: "#e2e8f0", backgroundColor: "#f8fafc" }}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Duration */}
             <div>
               <div className="mb-1.5 font-semibold" style={{ color: "#334155" }}>Duration</div>
               {DURATION_CATEGORIES.map(c => (
@@ -393,7 +366,6 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
                 </label>
               ))}
             </div>
-            {/* Credit */}
             <div>
               <div className="mb-1.5 font-semibold" style={{ color: "#334155" }}>Credit Quality</div>
               {(["AAA", "AA", "A", "BBB", "BB & Below"] as const).map(c => (
@@ -405,7 +377,6 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
                 </label>
               ))}
             </div>
-            {/* Category */}
             <div>
               <div className="mb-1.5 font-semibold" style={{ color: "#334155" }}>Morningstar Category</div>
               <div className="max-h-36 overflow-y-auto pr-1">
@@ -419,7 +390,6 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
                 ))}
               </div>
             </div>
-            {/* Range filters */}
             <div>
               <div className="mb-1.5 font-semibold" style={{ color: "#334155" }}>Range Filters</div>
               <div className="space-y-2">
@@ -444,7 +414,6 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
                     className="mt-0.5 h-6 w-full rounded border px-1.5 text-xs" style={{ borderColor: "#e2e8f0" }} />
                 </div>
               </div>
-              {/* Star rating */}
               <div className="mt-2">
                 <div className="text-[10px] font-medium" style={{ color: "#64748b" }}>Min Star Rating</div>
                 <div className="mt-1 flex gap-1">
@@ -452,7 +421,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
                     <button key={v} onClick={() => setStarMin(v)}
                       className="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors"
                       style={starMin === v ? { backgroundColor: PRIMARY, color: "#fff" } : { backgroundColor: "#f1f5f9", color: "#64748b" }}>
-                      {v === 0 ? "Any" : "★".repeat(v)}
+                      {v === 0 ? "Any" : "\u2605".repeat(v)}
                     </button>
                   ))}
                 </div>
@@ -467,7 +436,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
         </div>
       )}
 
-      {/* ═══ CHART ═══ */}
+      {/* CHART */}
       {sortedData.length < 1 ? (
         <div className="flex h-[400px] items-center justify-center rounded-lg border border-dashed" style={{ borderColor: "#e2e8f0" }}>
           <p className="text-sm" style={{ color: "#94a3b8" }}>No funds match current filters. Try broadening your criteria.</p>
@@ -478,11 +447,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
             <XAxis
               type="number" dataKey="x" name={xAxis.label}
-              domain={
-                xAxis.isCredit
-                  ? [0.5, 8.5]
-                  : [(dataMin: number) => Math.max(0, Math.floor(dataMin * 0.9 * 10) / 10), (dataMax: number) => Math.ceil(dataMax * 1.1 * 10) / 10]
-              }
+              domain={xAxis.isCredit ? [0.5, 8.5] : [(dataMin: number) => Math.max(0, Math.floor(dataMin * 0.9 * 10) / 10), (dataMax: number) => Math.ceil(dataMax * 1.1 * 10) / 10]}
               ticks={xAxis.isCredit ? [1, 2, 3, 4, 5, 6, 7, 8] : undefined}
               tick={{ fontSize: 11, fill: "#94a3b8" }}
               tickFormatter={v => xAxis.tickFormat(v)}
@@ -493,11 +458,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
             </XAxis>
             <YAxis
               type="number" dataKey="y" name={yAxis.label}
-              domain={
-                yAxis.isCredit
-                  ? [0.5, 8.5]
-                  : undefined
-              }
+              domain={yAxis.isCredit ? [0.5, 8.5] : undefined}
               ticks={yAxis.isCredit ? [1, 2, 3, 4, 5, 6, 7, 8] : undefined}
               tick={{ fontSize: 11, fill: "#94a3b8" }}
               tickFormatter={v => yAxis.tickFormat(v)}
@@ -508,7 +469,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
               <Label value={yAxis.label} angle={-90} position="insideLeft" offset={-5} style={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} />
             </YAxis>
             <ZAxis range={[50, 50]} />
-            <Tooltip content={<CustomTooltip />} cursor={false} />
+            <Tooltip content={<MapTooltip />} cursor={false} />
             {sortedData.length >= 2 && <ReferenceLine y={avgY} stroke="#94a3b8" strokeDasharray="6 4" strokeWidth={1} />}
             <Scatter data={sortedData}
               shape={<TickerDot hoveredTicker={hoveredTicker} onHover={setHoveredTicker} onLeave={() => setHoveredTicker(null)} onClick={onSelectFund} />}
