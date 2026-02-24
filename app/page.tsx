@@ -16,7 +16,7 @@ import { CompetitorWarRoom } from "@/components/competitor-war-room"
 import { FundChat } from "@/components/fund-chat"
 import { ElevatorPitch } from "@/components/elevator-pitch"
 import { FundLookup } from "@/components/fund-lookup"
-import { FundUniverseMap } from "@/components/fund-universe-map"
+import { UniverseChart } from "@/components/universe-chart"
 import type { FundData, AnalysisMode, AnalysisResult, WarRoom, YahooAnalytics } from "@/lib/fund-types"
 import { Upload, X, Loader2, ArrowRightLeft, Search, BarChart3, Crosshair, Star } from "lucide-react"
 
@@ -554,7 +554,7 @@ export default function Page() {
 
       {/* ===== FUND MAP SECTION (always mounted to preserve state) ===== */}
       <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6 sm:py-6" style={{ display: section === "map" ? undefined : "none" }}>
-        <FundUniverseMap
+        <UniverseChart
           funds={funds}
           highlightTicker={undefined}
           onSelectFund={(t) => {
