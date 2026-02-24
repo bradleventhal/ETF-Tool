@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { TickerInput } from "@/components/ticker-input"
 import { ComparisonTable } from "@/components/comparison-table"
 import { PerformanceChart } from "@/components/performance-chart"
@@ -110,7 +110,6 @@ export default function Page() {
   const [section, setSection] = useState<"comparison" | "lookup" | "map">("lookup")
   const [lookupTicker, setLookupTicker] = useState("")
   const [cameFromMap, setCameFromMap] = useState(false)
-  const mapStateRef = useRef<Record<string, unknown> | null>(null)
 
   useEffect(() => {
     fetch("/api/funds")
@@ -553,14 +552,11 @@ export default function Page() {
       </div>
       )}
 
-      {/* ===== FUND MAP SECTION ===== */}
-      {section === "map" && (
-      <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6 sm:py-6">
+      {/* ===== FUND MAP SECTION (always mounted to preserve state) ===== */}
+      <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6 sm:py-6" style={{ display: section === "map" ? undefined : "none" }}>
         <FundUniverseMap
           funds={funds}
           highlightTicker={undefined}
-          savedState={mapStateRef.current}
-          onStateChange={(s) => { mapStateRef.current = s }}
           onSelectFund={(t) => {
             setLookupTicker(t)
             setCameFromMap(true)
@@ -568,7 +564,6 @@ export default function Page() {
           }}
         />
       </div>
-      )}
 
       {/* ===== FUND LOOKUP SECTION ===== */}
       {section === "lookup" && (

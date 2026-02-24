@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback, useRef, useEffect } from "react"
+import { useState, useMemo, useCallback } from "react"
 import {
   ScatterChart, Scatter, XAxis, YAxis, CartesianGrid,
   ResponsiveContainer, Tooltip, ZAxis, Cell, ReferenceLine, Label,
@@ -8,51 +8,54 @@ import {
 import { Search, X, SlidersHorizontal, ArrowRightLeft } from "lucide-react"
 import type { FundData } from "@/lib/fund-types"
 
-/* ── Helpers ── */
-function nz(v: number | null | undefined): number { return v ?? 0 }
+/* ── Credit helpers ── */
+const CREDIT_LABELS = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC", "Below CCC"]
 
-function creditScore(fund: FundData): number | null {
-  const buckets = [
-    { w: 1, v: nz(fund.aaa) }, { w: 2, v: nz(fund.aa) }, { w: 3, v: nz(fund.a) },
-    { w: 4, v: nz(fund.bbb) }, { w: 5, v: nz(fund.bb) }, { w: 6, v: nz(fund.b) },
-    { w: 7, v: nz(fund.ccc) }, { w: 8, v: nz(fund.belowCcc) },
+function creditScore(f: FundData): number | null {
+  const w: [keyof FundData, number][] = [
+    ["aaa", 1], ["aa", 2], ["a", 3], ["bbb", 4], ["bb", 5], ["b", 6], ["ccc", 7], ["belowCcc", 8],
   ]
-  const total = buckets.reduce((s, b) => s + b.v, 0)
-  if (total < 0.01) return null
-  return buckets.reduce((s, b) => s + b.w * b.v, 0) / total
+  let total = 0, sumW = 0
+  for (const [k, s] of w) { const v = f[k] as number | null; if (v != null && v > 0) { total += s * v; sumW += v } }
+  return sumW > 0 ? total / sumW : null
 }
 
-const CREDIT_LABELS = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC", "<CCC"]
 function creditLabel(score: number): string {
-  return CREDIT_LABELS[Math.max(0, Math.min(7, Math.round(score) - 1))]
+  const idx = Math.round(score) - 1
+  return CREDIT_LABELS[idx] ?? score.toFixed(1)
 }
 
-/* ── Axis definitions ── */
-type AxisKey = {
-  key: string
-  label: string
+/* ── Axis system ── */
+type AxisKey = "duration" | "ytwYtm" | "secYield" | "expense" | "sharpe" | "stdDev" | "credit" |
+  "ytd" | "oneYear" | "threeYear" | "correlation" | "morningstarRating"
+
+interface AxisOption {
+  key: AxisKey; label: string; isCredit: boolean
   format: (v: number) => string
-  getValue: (fund: FundData) => number | null
-  isCredit?: boolean
+  tickFormat: (v: number) => string
+  getValue: (f: FundData) => number | null
 }
 
-const AXIS_OPTIONS: AxisKey[] = [
-  { key: "secYield", label: "30-Day SEC Yield", format: v => `${v.toFixed(2)}%`, getValue: f => f.secYield != null ? f.secYield * 100 : null },
-  { key: "distYield", label: "Distribution Yield", format: v => `${v.toFixed(2)}%`, getValue: f => f.distributionYield != null ? f.distributionYield * 100 : null },
-  { key: "ytwYtm", label: "YTW / YTM", format: v => `${v.toFixed(2)}%`, getValue: f => f.ytwYtm != null ? f.ytwYtm * 100 : f.secYield != null ? f.secYield * 100 : null },
-  { key: "duration", label: "Duration (yrs)", format: v => v.toFixed(2), getValue: f => f.duration },
-  { key: "stdDev", label: "Standard Deviation", format: v => v.toFixed(2), getValue: f => f.stdDev },
-  { key: "sharpe", label: "Sharpe Ratio", format: v => v.toFixed(2), getValue: f => f.sharpe },
-  { key: "expense", label: "Expense Ratio", format: v => `${v.toFixed(2)}%`, getValue: f => f.expense != null ? f.expense * 100 : null },
-  { key: "credit", label: "Credit Quality", format: v => creditLabel(v), getValue: f => creditScore(f), isCredit: true },
-  { key: "ytd", label: "YTD Return", format: v => `${v.toFixed(2)}%`, getValue: f => f.ytd != null ? f.ytd * 100 : null },
-  { key: "oneYear", label: "1-Year Return", format: v => `${v.toFixed(2)}%`, getValue: f => f.oneYear != null ? f.oneYear * 100 : null },
-  { key: "threeYear", label: "3-Year Return", format: v => `${v.toFixed(2)}%`, getValue: f => f.threeYear != null ? f.threeYear * 100 : null },
-  { key: "securitized", label: "Securitized %", format: v => `${v.toFixed(1)}%`, getValue: f => f.securitized != null ? f.securitized * 100 : null },
-  { key: "corpCredit", label: "Corp Credit %", format: v => `${v.toFixed(1)}%`, getValue: f => f.corporateCredit != null ? f.corporateCredit * 100 : null },
+const fmtPct = (v: number) => `${v.toFixed(2)}%`
+const fmtNum = (v: number) => v.toFixed(2)
+const fmtYrs = (v: number) => `${v.toFixed(2)} yrs`
+
+const AXIS_OPTIONS: AxisOption[] = [
+  { key: "duration", label: "Duration (yrs)", isCredit: false, format: fmtYrs, tickFormat: fmtNum, getValue: f => f.duration },
+  { key: "ytwYtm", label: "YTW / YTM", isCredit: false, format: fmtPct, tickFormat: fmtPct, getValue: f => f.ytwYtm },
+  { key: "secYield", label: "SEC Yield", isCredit: false, format: fmtPct, tickFormat: fmtPct, getValue: f => f.secYield },
+  { key: "expense", label: "Expense Ratio", isCredit: false, format: fmtPct, tickFormat: fmtPct, getValue: f => f.expense },
+  { key: "sharpe", label: "Sharpe Ratio", isCredit: false, format: fmtNum, tickFormat: fmtNum, getValue: f => f.sharpe },
+  { key: "stdDev", label: "Std Dev", isCredit: false, format: fmtNum, tickFormat: fmtNum, getValue: f => f.stdDev },
+  { key: "credit", label: "Credit Quality", isCredit: true, format: v => creditLabel(v), tickFormat: v => { const r = Math.round(v); return r >= 1 && r <= 8 ? creditLabel(r) : "" }, getValue: f => creditScore(f) },
+  { key: "ytd", label: "YTD Return", isCredit: false, format: fmtPct, tickFormat: fmtPct, getValue: f => f.ytd },
+  { key: "oneYear", label: "1Y Return", isCredit: false, format: fmtPct, tickFormat: fmtPct, getValue: f => f.oneYear },
+  { key: "threeYear", label: "3Y Return", isCredit: false, format: fmtPct, tickFormat: fmtPct, getValue: f => f.threeYear },
+  { key: "correlation", label: "Correlation", isCredit: false, format: fmtNum, tickFormat: fmtNum, getValue: f => f.correlation },
+  { key: "morningstarRating", label: "Star Rating", isCredit: false, format: v => `${v.toFixed(0)}★`, tickFormat: v => Number.isInteger(v) ? `${v}★` : "", getValue: f => f.morningstarRating },
 ]
 
-const findAxis = (key: string) => AXIS_OPTIONS.findIndex(a => a.key === key)
+const findAxis = (key: AxisKey) => AXIS_OPTIONS.findIndex(a => a.key === key)
 
 /* ── Presets ── */
 const PRESETS = [
@@ -62,19 +65,19 @@ const PRESETS = [
 
 /* ── Duration categories ── */
 const DURATION_CATEGORIES = [
-  { label: "Ultrashort", min: 0, max: 1 },
-  { label: "Short", min: 1, max: 3.5 },
-  { label: "Intermediate", min: 3.5, max: 6 },
-  { label: "Long", min: 6, max: 100 },
-] as const
+  { label: "Ultra-Short (0–1 yr)", min: 0, max: 1 },
+  { label: "Short (1–3.5 yrs)", min: 1, max: 3.5 },
+  { label: "Intermediate (3.5–6 yrs)", min: 3.5, max: 6 },
+  { label: "Long (6+ yrs)", min: 6, max: 100 },
+]
 
 /* ── Morningstar categories ── */
 const MSTAR_CATEGORIES = [
-  "Ultrashort Bond", "Short-Term Bond", "Intermediate Core Bond",
-  "Intermediate Core-Plus Bond", "Intermediate Government", "Long Government",
-  "Short Government", "Nontraditional Bond", "Multisector Bond",
-  "High Yield Bond", "Bank Loan",
-] as const
+  "Nontraditional Bond", "Multisector Bond", "Short-Term Bond", "Ultrashort Bond",
+  "High Yield Bond", "Intermediate Core Bond", "Intermediate Core-Plus Bond",
+  "Corporate Bond", "Intermediate Government", "Bank Loan", "Emerging Markets Bond",
+  "Preferred Stock", "Long-Term Bond",
+]
 
 /* ── Colors ── */
 const PRIMARY = "#0f3d6b"
@@ -85,98 +88,87 @@ interface Props {
   funds: FundData[]
   highlightTicker?: string
   onSelectFund?: (ticker: string) => void
-  savedState?: Record<string, unknown> | null
-  onStateChange?: (s: Record<string, unknown>) => void
 }
 
-/* ── Custom dot ── */
+/* ── TickerDot ── */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function TickerDot(props: any) {
   const { cx, cy, payload, hoveredTicker, onHover, onLeave, onClick } = props
   if (cx == null || cy == null || !payload || isNaN(cx) || isNaN(cy)) return null
-  const isHighlighted = payload.isHighlighted
-  const isHovered = payload.ticker === hoveredTicker
-  const r = isHighlighted ? 7 : isHovered ? 6 : 4.5
-  const fill = isHighlighted ? HIGHLIGHT : DOT_DEFAULT
-
+  const isHovered = hoveredTicker === payload.ticker
+  const r = isHovered ? 7 : 4.5
   return (
-    <g>
-      <circle
-        cx={cx} cy={cy} r={r} fill={fill}
-        stroke={isHovered ? PRIMARY : "transparent"} strokeWidth={isHovered ? 2 : 0}
-        fillOpacity={isHighlighted ? 1 : 0.75}
-        style={{ cursor: "pointer", transition: "r 0.15s" }}
-        onMouseEnter={() => onHover?.(payload.ticker)}
-        onMouseLeave={() => onLeave?.()}
-        onClick={() => onClick?.(payload.ticker)}
-      />
-      {(isHighlighted || isHovered) && (
-        <g>
-          <rect x={cx - 20} y={cy - 22} width={40} height={16} rx={3} fill={isHighlighted ? HIGHLIGHT : PRIMARY} />
-          <text x={cx} y={cy - 11} textAnchor="middle" fontSize={9} fontWeight={700} fill="#fff">
-            {payload.ticker}
-          </text>
-        </g>
+    <g
+      onMouseEnter={() => onHover(payload.ticker)}
+      onMouseLeave={onLeave}
+      onClick={() => onClick?.(payload.ticker)}
+      style={{ cursor: onClick ? "pointer" : "default" }}
+    >
+      <circle cx={cx} cy={cy} r={r + 6} fill="transparent" />
+      <circle cx={cx} cy={cy} r={r} fill={payload.isHighlighted ? HIGHLIGHT : DOT_DEFAULT}
+        stroke="#fff" strokeWidth={1.5} opacity={isHovered ? 1 : 0.75}
+        style={{ transition: "r 0.15s, opacity 0.15s" }} />
+      {isHovered && (
+        <>
+          <rect x={cx - 20} y={cy - 22} width={40} height={16} rx={3}
+            fill={PRIMARY} opacity={0.9} />
+          <text x={cx} y={cy - 11} textAnchor="middle" fill="#fff"
+            fontSize={9} fontWeight={700}>{payload.ticker}</text>
+        </>
       )}
     </g>
   )
 }
 
-/* ── Toggle chip ── */
-function Chip({ label, active, count, onClick }: { label: string; active: boolean; count?: number; onClick: () => void }) {
+/* ── Tooltip ── */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function CustomTooltip({ active, payload }: any) {
+  if (!active || !payload?.[0]?.payload) return null
+  const d = payload[0].payload
+  const fp = (v: number | null) => v != null ? `${v.toFixed(2)}%` : "\u2014"
+  const fn = (v: number | null) => v != null ? v.toFixed(2) : "\u2014"
+  const fundStats = [
+    { label: "YTW / YTM", value: fp(d.ytwYtm) },
+    { label: "SEC Yield", value: fp(d.secYield) },
+    { label: "Duration", value: d.duration != null ? `${d.duration.toFixed(2)} yrs` : "\u2014" },
+    { label: "Credit", value: d.creditQuality ?? "\u2014" },
+    { label: "Expense", value: fp(d.expense) },
+    { label: "Sharpe", value: fn(d.sharpe) },
+    { label: "Std Dev", value: fn(d.stdDev) },
+  ].filter(s => s.value !== "\u2014")
+  const perfStats = [
+    { label: "YTD", value: fp(d.ytd) },
+    { label: "1Y", value: fp(d.oneYear) },
+    { label: "3Y", value: fp(d.threeYear) },
+  ].filter(s => s.value !== "\u2014")
   return (
-    <button onClick={onClick}
-      className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-medium transition-all"
-      style={{
-        backgroundColor: active ? PRIMARY : "#f1f5f9",
-        color: active ? "#fff" : "#64748b",
-      }}
-    >
-      {label}
-      {count !== undefined && (
-        <span className="text-[9px] font-bold tabular-nums" style={{ opacity: 0.7 }}>{count}</span>
-      )}
-    </button>
-  )
-}
-
-/* ── Filter popover wrapper ── */
-function FilterPopover({ label, activeCount, children }: { label: string; activeCount: number; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [open])
-
-  const hasActive = activeCount > 0
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        onClick={() => setOpen(!open)}
-        className="flex h-7 items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-all"
-        style={{
-          borderColor: hasActive ? PRIMARY : "#e2e8f0",
-          color: hasActive ? PRIMARY : "#64748b",
-          backgroundColor: hasActive ? "#f0f7ff" : open ? "#f8fafc" : "#fff",
-        }}
-      >
-        {label}
-        {hasActive && (
-          <span className="flex h-4 min-w-4 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ backgroundColor: PRIMARY }}>
-            {activeCount}
-          </span>
+    <div className="rounded-lg border px-3 py-2.5 shadow-lg" style={{ backgroundColor: "#fff", borderColor: "#e2e8f0", minWidth: 210 }}>
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-bold" style={{ color: PRIMARY }}>{d.ticker}</span>
+        {d.morningstarRating != null && d.morningstarRating > 0 && (
+          <span className="text-[10px]" style={{ color: "#f59e0b" }}>{"★".repeat(d.morningstarRating)}</span>
         )}
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full z-40 mt-1.5 min-w-[200px] rounded-lg border bg-white p-3 shadow-xl" style={{ borderColor: "#e2e8f0" }}>
-          {children}
+      </div>
+      <div className="text-[10px] leading-snug" style={{ color: "#64748b" }}>{d.name}</div>
+      {d.morningstarCategory && (
+        <div className="mt-0.5 text-[9px] font-medium" style={{ color: "#94a3b8" }}>{d.morningstarCategory}</div>
+      )}
+      <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-0.5 border-t pt-1.5" style={{ borderColor: "#f1f5f9" }}>
+        {fundStats.map(s => (
+          <div key={s.label} className="flex items-baseline justify-between gap-2">
+            <span className="text-[9px]" style={{ color: "#94a3b8" }}>{s.label}</span>
+            <span className="text-[10px] font-semibold tabular-nums" style={{ color: "#334155" }}>{s.value}</span>
+          </div>
+        ))}
+      </div>
+      {perfStats.length > 0 && (
+        <div className="mt-1 flex gap-3 border-t pt-1" style={{ borderColor: "#f1f5f9" }}>
+          {perfStats.map(s => (
+            <div key={s.label} className="flex items-baseline gap-1">
+              <span className="text-[9px]" style={{ color: "#94a3b8" }}>{s.label}</span>
+              <span className="text-[10px] font-semibold tabular-nums" style={{ color: "#334155" }}>{s.value}</span>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -184,216 +176,165 @@ function FilterPopover({ label, activeCount, children }: { label: string; active
 }
 
 /* ═══════════════════════════════════════ MAIN COMPONENT ═══════════════════════════════════════ */
-export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedState, onStateChange }: Props) {
-  console.log("[v0] FundUniverseMap V4 LOADED - funds:", funds.length)
-  const s = savedState
-  const [presetIdx, setPresetIdx] = useState(() => typeof s?.presetIdx === "number" ? s.presetIdx : 0)
-  const [xIdx, setXIdx] = useState(() => typeof s?.xIdx === "number" ? s.xIdx : findAxis("duration"))
-  const [yIdx, setYIdx] = useState(() => typeof s?.yIdx === "number" ? s.yIdx : findAxis("ytwYtm"))
+export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props) {
+  const [presetIdx, setPresetIdx] = useState(0)
+  const [xIdx, setXIdx] = useState(findAxis("duration"))
+  const [yIdx, setYIdx] = useState(findAxis("ytwYtm"))
   const xAxis = AXIS_OPTIONS[xIdx]
   const yAxis = AXIS_OPTIONS[yIdx]
   const [hoveredTicker, setHoveredTicker] = useState<string | null>(null)
 
-  const [search, setSearch] = useState(() => typeof s?.search === "string" ? s.search : "")
+  /* ── Search ── */
+  const [search, setSearch] = useState("")
   const [searchFocused, setSearchFocused] = useState(false)
-  const [showFilters, setShowFilters] = useState(() => typeof s?.showFilters === "boolean" ? s.showFilters : false)
 
-  const [durationCats, setDurationCats] = useState<Set<string>>(() => s?.durationCats instanceof Set ? s.durationCats as Set<string> : new Set(DURATION_CATEGORIES.map(c => c.label)))
+  /* ── Filter panel ── */
+  const [showFilters, setShowFilters] = useState(false)
+
+  /* ── Duration category filter ── */
+  const [durationCats, setDurationCats] = useState<Set<string>>(new Set(DURATION_CATEGORIES.map(c => c.label)))
+
+  /* ── Credit quality filter ── */
   const CREDIT_CATS = ["AAA", "AA", "A", "BBB", "BB & Below"] as const
-  const [creditCats, setCreditCats] = useState<Set<string>>(() => s?.creditCats instanceof Set ? s.creditCats as Set<string> : new Set(CREDIT_CATS))
-  const [mstarCats, setMstarCats] = useState<Set<string>>(() => s?.mstarCats instanceof Set ? s.mstarCats as Set<string> : new Set(MSTAR_CATEGORIES))
-  const [starMin, setStarMin] = useState(() => typeof s?.starMin === "number" ? s.starMin : 0)
-  const [yieldMinPreset, setYieldMinPreset] = useState<number | null>(() => typeof s?.yieldMinPreset === "number" ? s.yieldMinPreset : null)
-  const [expenseMaxPreset, setExpenseMaxPreset] = useState<number | null>(() => typeof s?.expenseMaxPreset === "number" ? s.expenseMaxPreset : null)
-  const [sharpeMinPreset, setSharpeMinPreset] = useState<number | null>(() => typeof s?.sharpeMinPreset === "number" ? s.sharpeMinPreset : null)
-  const [stdDevMaxPreset, setStdDevMaxPreset] = useState<number | null>(() => typeof s?.stdDevMaxPreset === "number" ? s.stdDevMaxPreset : null)
+  const [creditCats, setCreditCats] = useState<Set<string>>(new Set(CREDIT_CATS))
 
-  // Persist state on unmount
-  const stateSnap = useRef<Record<string, unknown>>({})
-  stateSnap.current = {
-    presetIdx, xIdx, yIdx, search, showFilters,
-    durationCats, creditCats, mstarCats, starMin,
-    yieldMinPreset, expenseMaxPreset, sharpeMinPreset, stdDevMaxPreset,
-  }
-  useEffect(() => {
-    return () => { onStateChange?.(stateSnap.current) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  /* ── Morningstar category filter ── */
+  const [mstarCats, setMstarCats] = useState<Set<string>>(new Set(MSTAR_CATEGORIES))
+
+  /* ── Star rating filter ── */
+  const [starMin, setStarMin] = useState(0)
+
+  /* ── Range filters ── */
+  const [yieldMinPreset, setYieldMinPreset] = useState<number | null>(null)
+  const [expenseMaxPreset, setExpenseMaxPreset] = useState<number | null>(null)
+  const [sharpeMinPreset, setSharpeMinPreset] = useState<number | null>(null)
+  const [stdDevMaxPreset, setStdDevMaxPreset] = useState<number | null>(null)
+
+  /* ── Preset handler ── */
+  const applyPreset = useCallback((idx: number) => {
+    setPresetIdx(idx)
+    const p = PRESETS[idx]
+    if (p) { setXIdx(findAxis(p.x as AxisKey)); setYIdx(findAxis(p.y as AxisKey)) }
   }, [])
 
-  const mstarCatCounts = useMemo(() => {
-    const counts: Record<string, number> = {}
-    funds.forEach(f => { const cat = f.morningstarCategory; if (cat) counts[cat] = (counts[cat] || 0) + 1 })
-    return counts
-  }, [funds])
+  /* ── Data computation ── */
+  const { sortedData, avgY } = useMemo(() => {
+    const matchesSearch = (f: FundData) => {
+      if (!search) return true
+      const q = search.toLowerCase()
+      return f.ticker.toLowerCase().includes(q) || f.name.toLowerCase().includes(q)
+    }
 
-  /* ── Tooltip (defined inside component for access to xAxis/yAxis) ── */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const CustomTooltip = useCallback(({ active, payload }: any) => {
-    if (!active || !payload?.[0]?.payload) return null
-    const d = payload[0].payload
-    const fp = (v: number | null) => v != null ? `${v.toFixed(2)}%` : "\u2014"
-    const fn = (v: number | null) => v != null ? v.toFixed(2) : "\u2014"
-    const fundStats = [
-      { label: "YTW / YTM", value: fp(d.ytwYtm) },
-      { label: "SEC Yield", value: fp(d.secYield) },
-      { label: "Duration", value: d.duration != null ? `${d.duration.toFixed(2)} yrs` : "\u2014" },
-      { label: "Credit", value: d.creditQuality ?? "\u2014" },
-      { label: "Expense", value: fp(d.expense) },
-      { label: "Sharpe", value: fn(d.sharpe) },
-      { label: "Std Dev", value: fn(d.stdDev) },
-    ].filter(ss => ss.value !== "\u2014")
-    const perfStats = [
-      { label: "YTD", value: fp(d.ytd) },
-      { label: "1Y", value: fp(d.oneYear) },
-      { label: "3Y", value: fp(d.threeYear) },
-    ].filter(ss => ss.value !== "\u2014")
-    return (
-      <div className="rounded-lg border px-3 py-2.5 shadow-lg" style={{ backgroundColor: "#fff", borderColor: "#e2e8f0", minWidth: 210 }}>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold" style={{ color: PRIMARY }}>{d.ticker}</span>
-          {d.morningstarRating != null && d.morningstarRating > 0 && (
-            <span className="text-[10px]" style={{ color: "#f59e0b" }}>{"★".repeat(d.morningstarRating)}</span>
-          )}
-        </div>
-        <div className="text-[10px] leading-snug" style={{ color: "#64748b" }}>{d.name}</div>
-        {d.morningstarCategory && (
-          <div className="mt-0.5 text-[9px] font-medium" style={{ color: "#94a3b8" }}>{d.morningstarCategory}</div>
-        )}
-        <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-0.5 border-t pt-1.5" style={{ borderColor: "#f1f5f9" }}>
-          {fundStats.map(ss => (
-            <div key={ss.label} className="flex items-baseline justify-between gap-2">
-              <span className="text-[9px]" style={{ color: "#94a3b8" }}>{ss.label}</span>
-              <span className="text-[10px] font-semibold tabular-nums" style={{ color: "#334155" }}>{ss.value}</span>
-            </div>
-          ))}
-        </div>
-        {perfStats.length > 0 && (
-          <div className="mt-1 flex gap-3 border-t pt-1" style={{ borderColor: "#f1f5f9" }}>
-            {perfStats.map(ss => (
-              <div key={ss.label} className="flex items-baseline gap-1">
-                <span className="text-[9px]" style={{ color: "#94a3b8" }}>{ss.label}</span>
-                <span className="text-[10px] font-semibold tabular-nums" style={{ color: "#334155" }}>{ss.value}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }, [])
+    const matchesDuration = (f: FundData) => {
+      if (durationCats.size === DURATION_CATEGORIES.length) return true
+      if (f.duration == null) return false
+      return DURATION_CATEGORIES.some(c => durationCats.has(c.label) && f.duration! >= c.min && f.duration! < c.max)
+    }
 
-  /* ── Data pipeline ── */
-  const { sortedData, avgY, trendLine } = useMemo(() => {
-    const searchLower = search.toLowerCase()
-    let xSum = 0, ySum = 0, count = 0
-    const points = funds.map(f => {
-      if (search && !f.ticker.toLowerCase().includes(searchLower) && !f.name.toLowerCase().includes(searchLower)) return null
-      const dur = f.duration ?? 0
-      const durCat = DURATION_CATEGORIES.find(c => dur >= c.min && dur < c.max)
-      if (durCat && !durationCats.has(durCat.label)) return null
+    const matchesCredit = (f: FundData) => {
+      if (creditCats.size === 5) return true
       const cs = creditScore(f)
-      if (cs != null) {
-        const cl = creditLabel(cs)
-        if (cl === "AAA" && !creditCats.has("AAA")) return null
-        if (cl === "AA" && !creditCats.has("AA")) return null
-        if (cl === "A" && !creditCats.has("A")) return null
-        if (cl === "BBB" && !creditCats.has("BBB")) return null
-        if (["BB", "B", "CCC", "<CCC"].includes(cl) && !creditCats.has("BB & Below")) return null
-      }
-      if (f.morningstarCategory && !mstarCats.has(f.morningstarCategory)) return null
-      if (starMin > 0 && f.morningstarRating != null && f.morningstarRating < starMin) return null
-      const yld = (f.ytwYtm ?? f.secYield ?? 0) * 100
-      if (yieldMinPreset != null && yld < yieldMinPreset) return null
-      if (expenseMaxPreset != null && f.expense != null && f.expense * 100 > expenseMaxPreset) return null
-      if (sharpeMinPreset != null && f.sharpe != null && f.sharpe < sharpeMinPreset) return null
-      if (stdDevMaxPreset != null && f.stdDev != null && f.stdDev > stdDevMaxPreset) return null
+      if (cs == null) return false
+      const rounded = Math.round(cs)
+      if (creditCats.has("AAA") && rounded === 1) return true
+      if (creditCats.has("AA") && rounded === 2) return true
+      if (creditCats.has("A") && rounded === 3) return true
+      if (creditCats.has("BBB") && rounded === 4) return true
+      if (creditCats.has("BB & Below") && rounded >= 5) return true
+      return false
+    }
+
+    const matchesMstar = (f: FundData) => {
+      if (mstarCats.size === MSTAR_CATEGORIES.length) return true
+      return f.morningstarCategory ? mstarCats.has(f.morningstarCategory) : false
+    }
+
+    const matchesStar = (f: FundData) => {
+      if (starMin <= 0) return true
+      return (f.morningstarRating ?? 0) >= starMin
+    }
+
+    const matchesRange = (f: FundData) => {
+      if (yieldMinPreset != null && (f.ytwYtm ?? -Infinity) < yieldMinPreset) return false
+      if (expenseMaxPreset != null && (f.expense ?? Infinity) > expenseMaxPreset) return false
+      if (sharpeMinPreset != null && (f.sharpe ?? -Infinity) < sharpeMinPreset) return false
+      if (stdDevMaxPreset != null && (f.stdDev ?? Infinity) > stdDevMaxPreset) return false
+      return true
+    }
+
+    const points: { x: number; y: number; ticker: string; name: string; isHighlighted: boolean;
+      duration: number | null; ytwYtm: number | null; secYield: number | null; expense: number | null;
+      sharpe: number | null; stdDev: number | null; ytd: number | null; oneYear: number | null; threeYear: number | null;
+      creditQuality: string | null; morningstarRating: number | null; morningstarCategory: string | null }[] = []
+    let ySum = 0, count = 0
+    for (const f of funds) {
+      if (!matchesSearch(f) || !matchesDuration(f) || !matchesCredit(f) || !matchesMstar(f) || !matchesStar(f) || !matchesRange(f)) continue
       const xVal = xAxis.getValue(f)
       const yVal = yAxis.getValue(f)
-      if (xVal == null || yVal == null) return null
-      xSum += xVal; ySum += yVal; count++
-      return {
-        ticker: f.ticker, name: f.name, x: xVal, y: yVal,
-        isHighlighted: f.ticker === highlightTicker,
-        ytwYtm: f.ytwYtm != null ? f.ytwYtm * 100 : null,
-        secYield: f.secYield != null ? f.secYield * 100 : null,
-        duration: f.duration,
-        expense: f.expense != null ? f.expense * 100 : null,
-        stdDev: f.stdDev, sharpe: f.sharpe,
+      if (xVal == null || yVal == null) continue
+      const cs = creditScore(f)
+      points.push({
+        x: xVal, y: yVal, ticker: f.ticker, name: f.name,
+        isHighlighted: highlightTicker === f.ticker,
+        duration: f.duration, ytwYtm: f.ytwYtm, secYield: f.secYield, expense: f.expense,
+        sharpe: f.sharpe, stdDev: f.stdDev, ytd: f.ytd, oneYear: f.oneYear, threeYear: f.threeYear,
         creditQuality: cs != null ? creditLabel(cs) : null,
-        morningstarRating: f.morningstarRating,
-        morningstarCategory: f.morningstarCategory,
-        ytd: f.ytd != null ? f.ytd * 100 : null,
-        oneYear: f.oneYear != null ? f.oneYear * 100 : null,
-        threeYear: f.threeYear != null ? f.threeYear * 100 : null,
-      }
-    }).filter(Boolean) as Array<{
-      ticker: string; name: string; x: number; y: number; isHighlighted: boolean
-      ytwYtm: number | null; secYield: number | null; duration: number | null
-      expense: number | null; stdDev: number | null; sharpe: number | null
-      creditQuality: string | null; morningstarRating: number | null
-      morningstarCategory: string | null; ytd: number | null
-      oneYear: number | null; threeYear: number | null
-    }>
-
+        morningstarRating: f.morningstarRating, morningstarCategory: f.morningstarCategory,
+      })
+      ySum += yVal; count++
+    }
     const sorted = points.sort((a, b) => a.x - b.x)
-    const aX = count > 0 ? xSum / count : 0
     const aY = count > 0 ? ySum / count : 0
+    return { sortedData: sorted, avgY: aY }
+  }, [funds, xAxis, yAxis, search, highlightTicker, durationCats, creditCats, mstarCats, starMin, yieldMinPreset, expenseMaxPreset, sharpeMinPreset, stdDevMaxPreset])
 
-    // Linear regression
-    let ssXX = 0, ssXY = 0
-    for (const p of sorted) { ssXX += (p.x - aX) ** 2; ssXY += (p.x - aX) * (p.y - aY) }
-    const slope = ssXX > 0 ? ssXY / ssXX : 0
-    const intercept = aY - slope * aX
-    const tl = sorted.length >= 3
-      ? [{ x: sorted[0].x, y: slope * sorted[0].x + intercept }, { x: sorted[sorted.length - 1].x, y: slope * sorted[sorted.length - 1].x + intercept }]
-      : []
-
-    return { sortedData: sorted, avgY: aY, trendLine: tl }
-  }, [funds, xAxis, yAxis, highlightTicker, search, durationCats, creditCats, mstarCats, starMin, yieldMinPreset, expenseMaxPreset, sharpeMinPreset, stdDevMaxPreset])
-
-  const allDurSelected = durationCats.size === DURATION_CATEGORIES.length
-  const allCreditSelected = creditCats.size === CREDIT_CATS.length
-  const allMstarSelected = mstarCats.size === MSTAR_CATEGORIES.length
-  const hasRangeFilters = yieldMinPreset != null || expenseMaxPreset != null || sharpeMinPreset != null || stdDevMaxPreset != null
-  const hasActiveFilters = !!search || !allDurSelected || !allCreditSelected || !allMstarSelected || starMin > 0 || hasRangeFilters
-  const activeFilterCount = [!allDurSelected, !allCreditSelected, !allMstarSelected, starMin > 0, hasRangeFilters, !!search].filter(Boolean).length
-
-  const clearFilters = useCallback(() => {
+  /* ── Reset ── */
+  const resetFilters = useCallback(() => {
     setSearch(""); setDurationCats(new Set(DURATION_CATEGORIES.map(c => c.label)))
-    setCreditCats(new Set(CREDIT_CATS)); setMstarCats(new Set(MSTAR_CATEGORIES))
-    setStarMin(0); setYieldMinPreset(null); setExpenseMaxPreset(null)
-    setSharpeMinPreset(null); setStdDevMaxPreset(null)
+    setCreditCats(new Set(["AAA", "AA", "A", "BBB", "BB & Below"]))
+    setMstarCats(new Set(MSTAR_CATEGORIES)); setStarMin(0)
+    setYieldMinPreset(null); setExpenseMaxPreset(null); setSharpeMinPreset(null); setStdDevMaxPreset(null)
   }, [])
 
+  const hasActiveFilters = search || durationCats.size < DURATION_CATEGORIES.length || creditCats.size < 5 ||
+    mstarCats.size < MSTAR_CATEGORIES.length || starMin > 0 ||
+    yieldMinPreset != null || expenseMaxPreset != null || sharpeMinPreset != null || stdDevMaxPreset != null
+
+  /* ═══ RENDER ═══ */
   return (
-    <div className="rounded-xl border p-5" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+    <div className="rounded-xl border p-4 sm:p-5" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-bold uppercase tracking-wide" style={{ color: PRIMARY }}>Fund Universe Map</h3>
-        <span className="text-[11px] font-semibold tabular-nums" style={{ color: DOT_DEFAULT }}>
-          {sortedData.length} of {funds.length} funds plotted
-        </span>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-bold tracking-wide" style={{ color: PRIMARY }}>FUND UNIVERSE MAP</h2>
+        <span className="text-xs font-medium" style={{ color: "#0f3d6b" }}>{sortedData.length} of {funds.length} funds plotted</span>
       </div>
 
       {/* Presets */}
-      <div className="mb-3 flex flex-wrap gap-2">
+      <div className="mb-2 flex flex-wrap gap-2">
         {PRESETS.map((p, i) => (
-          <button key={p.label} onClick={() => { setPresetIdx(i); setXIdx(findAxis(p.x)); setYIdx(findAxis(p.y)) }}
-            className="rounded-full px-3.5 py-1.5 text-xs font-semibold transition-all"
-            style={{ backgroundColor: presetIdx === i ? PRIMARY : "#fff", color: presetIdx === i ? "#fff" : "#64748b", border: `1px solid ${presetIdx === i ? PRIMARY : "#e2e8f0"}` }}
-          >{p.label}</button>
+          <button key={p.label} onClick={() => applyPreset(i)}
+            className="rounded-full px-3 py-1 text-xs font-semibold transition-colors"
+            style={presetIdx === i
+              ? { backgroundColor: PRIMARY, color: "#fff" }
+              : { backgroundColor: "#f1f5f9", color: "#475569" }}>
+            {p.label}
+          </button>
         ))}
       </div>
-      <p className="mb-4 text-[11px] italic leading-relaxed" style={{ color: "#64748b" }}>{PRESETS[presetIdx]?.insight}</p>
+      {PRESETS[presetIdx] && (
+        <p className="mb-3 text-xs italic" style={{ color: "#64748b" }}>{PRESETS[presetIdx].insight}</p>
+      )}
 
-      {/* Axis selectors + search + filter toggle */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1.5">
-          <span className="flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold text-white" style={{ backgroundColor: PRIMARY }}>X</span>
-          <select value={xIdx} onChange={e => { setXIdx(+e.target.value); setPresetIdx(-1) }}
-            className="h-8 rounded-md border px-2 text-xs" style={{ borderColor: "#e2e8f0", color: "#334155" }}>
-            {AXIS_OPTIONS.map((a, i) => <option key={a.key} value={i}>{a.label}</option>)}
-          </select>
-        </div>
+      {/* Controls row */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {/* X axis */}
+        <span className="flex h-7 w-7 items-center justify-center rounded-md text-[10px] font-bold text-white" style={{ backgroundColor: PRIMARY }}>X</span>
+        <select value={xIdx} onChange={e => { setXIdx(Number(e.target.value)); setPresetIdx(-1) }}
+          className="h-7 rounded-md border px-2 text-xs" style={{ borderColor: "#e2e8f0" }}>
+          {AXIS_OPTIONS.map((a, i) => <option key={a.key} value={i}>{a.label}</option>)}
+        </select>
+
+        {/* Swap button */}
         <button
           onClick={() => { const prev = xIdx; setXIdx(yIdx); setYIdx(prev); setPresetIdx(-1) }}
           className="flex h-7 items-center gap-1 rounded-md border px-2 text-[10px] font-bold transition-all hover:border-[#0f3d6b] hover:bg-[#f0f7ff]"
@@ -402,170 +343,125 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
         >
           <ArrowRightLeft className="h-3 w-3" />
         </button>
-        <div className="flex items-center gap-1.5">
-          <span className="flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold text-white" style={{ backgroundColor: PRIMARY }}>Y</span>
-          <select value={yIdx} onChange={e => { setYIdx(+e.target.value); setPresetIdx(-1) }}
-            className="h-8 rounded-md border px-2 text-xs" style={{ borderColor: "#e2e8f0", color: "#334155" }}>
-            {AXIS_OPTIONS.map((a, i) => <option key={a.key} value={i}>{a.label}</option>)}
-          </select>
+
+        {/* Y axis */}
+        <span className="flex h-7 w-7 items-center justify-center rounded-md text-[10px] font-bold text-white" style={{ backgroundColor: PRIMARY }}>Y</span>
+        <select value={yIdx} onChange={e => { setYIdx(Number(e.target.value)); setPresetIdx(-1) }}
+          className="h-7 rounded-md border px-2 text-xs" style={{ borderColor: "#e2e8f0" }}>
+          {AXIS_OPTIONS.map((a, i) => <option key={a.key} value={i}>{a.label}</option>)}
+        </select>
+
+        <div className="flex-1" />
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2" style={{ color: "#94a3b8" }} />
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            onFocus={() => setSearchFocused(true)} onBlur={() => setSearchFocused(false)}
+            placeholder="Search ticker or nam\u2026"
+            className="h-7 w-40 rounded-md border pl-7 pr-2 text-xs outline-none transition-colors focus:border-[#0f3d6b]"
+            style={{ borderColor: searchFocused ? PRIMARY : "#e2e8f0" }} />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full p-0.5 hover:bg-gray-100">
+              <X className="h-3 w-3" style={{ color: "#94a3b8" }} />
+            </button>
+          )}
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2" style={{ color: "#94a3b8" }} />
-            <input
-              type="text" value={search}
-              onChange={e => setSearch(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
-              placeholder="Search ticker or name..."
-              className="h-8 w-[180px] rounded-md border pl-8 pr-7 text-xs"
-              style={{ borderColor: "#e2e8f0", color: "#334155" }}
-            />
-            {search && (
-              <button onClick={() => setSearch("")} className="absolute right-2 top-1/2 z-10 -translate-y-1/2">
-                <X className="h-3.5 w-3.5" style={{ color: "#94a3b8" }} />
-              </button>
-            )}
-            {searchFocused && search.length > 0 && (
-              <div className="absolute left-0 top-full z-30 mt-1 max-h-[180px] w-[240px] overflow-y-auto rounded-lg border shadow-xl" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-                {(() => {
-                  const sl = search.toLowerCase()
-                  const matches = funds.filter(f => f.ticker.toLowerCase().includes(sl) || f.name.toLowerCase().includes(sl))
-                  return matches.length === 0 ? (
-                    <div className="px-3 py-2 text-[11px]" style={{ color: "#94a3b8" }}>No matches</div>
-                  ) : matches.slice(0, 8).map(f => (
-                    <button key={f.ticker}
-                      onMouseDown={e => { e.preventDefault(); setSearch(f.ticker); setSearchFocused(false) }}
-                      className="block w-full px-3 py-2 text-left text-[11px] font-medium transition-colors hover:bg-[#f0f7ff]"
-                      style={{ color: "#334155" }}
-                    >
-                      <span className="font-bold">{f.ticker}</span>{" "}
-                      <span style={{ color: "#94a3b8" }}>{f.name.slice(0, 30)}</span>
-                    </button>
-                  ))
-                })()}
-              </div>
-            )}
-          </div>
-          <button onClick={() => setShowFilters(!showFilters)}
-            className="flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-semibold transition-all"
-            style={{
-              borderColor: hasActiveFilters ? PRIMARY : "#e2e8f0",
-              color: hasActiveFilters ? PRIMARY : "#64748b",
-              backgroundColor: hasActiveFilters ? "#f0f7ff" : "#fff",
-            }}
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            Filters
-            {activeFilterCount > 0 && (
-              <span className="flex h-4 min-w-4 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ backgroundColor: PRIMARY }}>
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-        </div>
+        {/* Filters */}
+        <button onClick={() => setShowFilters(v => !v)}
+          className="flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors"
+          style={{ borderColor: showFilters ? PRIMARY : "#e2e8f0", color: showFilters ? PRIMARY : "#64748b", backgroundColor: showFilters ? "#f0f7ff" : "#fff" }}>
+          <SlidersHorizontal className="h-3 w-3" /> Filters
+          {hasActiveFilters && <span className="ml-0.5 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: "#ef4444" }} />}
+        </button>
       </div>
 
-      {/* ═══ FILTER BAR ═══ */}
+      {/* Filter panel */}
       {showFilters && (
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <FilterPopover label="Category" activeCount={allMstarSelected ? 0 : MSTAR_CATEGORIES.length - mstarCats.size}>
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Morningstar Category</span>
-              <button onClick={() => setMstarCats(allMstarSelected ? new Set() : new Set(MSTAR_CATEGORIES))}
-                className="text-[10px] font-semibold" style={{ color: PRIMARY }}>{allMstarSelected ? "Clear" : "Select All"}</button>
-            </div>
-            <div className="flex max-w-[320px] flex-wrap gap-1.5">
-              {MSTAR_CATEGORIES.map(c => (
-                <Chip key={c} label={c} active={mstarCats.has(c)} count={mstarCatCounts[c] || 0}
-                  onClick={() => { const ns = new Set(mstarCats); ns.has(c) ? ns.delete(c) : ns.add(c); setMstarCats(ns) }} />
-              ))}
-            </div>
-          </FilterPopover>
-
-          <FilterPopover label="Duration" activeCount={allDurSelected ? 0 : DURATION_CATEGORIES.length - durationCats.size}>
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Duration Range</span>
-              <button onClick={() => setDurationCats(allDurSelected ? new Set() : new Set(DURATION_CATEGORIES.map(c => c.label)))}
-                className="text-[10px] font-semibold" style={{ color: PRIMARY }}>{allDurSelected ? "Clear" : "Select All"}</button>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
+        <div className="mb-4 rounded-lg border p-3 text-xs" style={{ borderColor: "#e2e8f0", backgroundColor: "#f8fafc" }}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Duration */}
+            <div>
+              <div className="mb-1.5 font-semibold" style={{ color: "#334155" }}>Duration</div>
               {DURATION_CATEGORIES.map(c => (
-                <Chip key={c.label} label={`${c.label} (${c.min}-${c.max === 100 ? "6+" : c.max}y)`} active={durationCats.has(c.label)}
-                  onClick={() => { const ns = new Set(durationCats); ns.has(c.label) ? ns.delete(c.label) : ns.add(c.label); setDurationCats(ns) }} />
+                <label key={c.label} className="flex cursor-pointer items-center gap-1.5 py-0.5">
+                  <input type="checkbox" checked={durationCats.has(c.label)}
+                    onChange={() => { const n = new Set(durationCats); n.has(c.label) ? n.delete(c.label) : n.add(c.label); setDurationCats(n) }}
+                    className="rounded" />
+                  <span style={{ color: "#475569" }}>{c.label}</span>
+                </label>
               ))}
             </div>
-          </FilterPopover>
-
-          <FilterPopover label="Credit" activeCount={allCreditSelected ? 0 : CREDIT_CATS.length - creditCats.size}>
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Credit Quality</span>
-              <button onClick={() => setCreditCats(allCreditSelected ? new Set() : new Set(CREDIT_CATS))}
-                className="text-[10px] font-semibold" style={{ color: PRIMARY }}>{allCreditSelected ? "Clear" : "Select All"}</button>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {CREDIT_CATS.map(c => (
-                <Chip key={c} label={c} active={creditCats.has(c)}
-                  onClick={() => { const ns = new Set(creditCats); ns.has(c) ? ns.delete(c) : ns.add(c); setCreditCats(ns) }} />
+            {/* Credit */}
+            <div>
+              <div className="mb-1.5 font-semibold" style={{ color: "#334155" }}>Credit Quality</div>
+              {(["AAA", "AA", "A", "BBB", "BB & Below"] as const).map(c => (
+                <label key={c} className="flex cursor-pointer items-center gap-1.5 py-0.5">
+                  <input type="checkbox" checked={creditCats.has(c)}
+                    onChange={() => { const n = new Set(creditCats); n.has(c) ? n.delete(c) : n.add(c); setCreditCats(n) }}
+                    className="rounded" />
+                  <span style={{ color: "#475569" }}>{c}</span>
+                </label>
               ))}
             </div>
-          </FilterPopover>
-
-          <FilterPopover label="Yield" activeCount={yieldMinPreset != null ? 1 : 0}>
-            <div className="mb-2"><span className="text-[11px] font-bold" style={{ color: "#334155" }}>Minimum Yield</span></div>
-            <div className="flex flex-wrap gap-1.5">
-              {[3, 4, 5, 6, 7].map(v => (
-                <Chip key={v} label={`${v}%+`} active={yieldMinPreset === v} onClick={() => setYieldMinPreset(yieldMinPreset === v ? null : v)} />
-              ))}
+            {/* Category */}
+            <div>
+              <div className="mb-1.5 font-semibold" style={{ color: "#334155" }}>Morningstar Category</div>
+              <div className="max-h-36 overflow-y-auto pr-1">
+                {MSTAR_CATEGORIES.map(c => (
+                  <label key={c} className="flex cursor-pointer items-center gap-1.5 py-0.5">
+                    <input type="checkbox" checked={mstarCats.has(c)}
+                      onChange={() => { const n = new Set(mstarCats); n.has(c) ? n.delete(c) : n.add(c); setMstarCats(n) }}
+                      className="rounded" />
+                    <span style={{ color: "#475569" }}>{c}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-          </FilterPopover>
-
-          <FilterPopover label="Expense" activeCount={expenseMaxPreset != null ? 1 : 0}>
-            <div className="mb-2"><span className="text-[11px] font-bold" style={{ color: "#334155" }}>Max Expense Ratio</span></div>
-            <div className="flex flex-wrap gap-1.5">
-              {[{ v: 0.25, l: "<0.25%" }, { v: 0.5, l: "<0.5%" }, { v: 1, l: "<1%" }].map(({ v, l }) => (
-                <Chip key={v} label={l} active={expenseMaxPreset === v} onClick={() => setExpenseMaxPreset(expenseMaxPreset === v ? null : v)} />
-              ))}
+            {/* Range filters */}
+            <div>
+              <div className="mb-1.5 font-semibold" style={{ color: "#334155" }}>Range Filters</div>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-[10px]" style={{ color: "#64748b" }}>Min YTW / YTM (%)</label>
+                  <input type="number" step="0.1" value={yieldMinPreset ?? ""} onChange={e => setYieldMinPreset(e.target.value ? Number(e.target.value) : null)}
+                    className="mt-0.5 h-6 w-full rounded border px-1.5 text-xs" style={{ borderColor: "#e2e8f0" }} />
+                </div>
+                <div>
+                  <label className="text-[10px]" style={{ color: "#64748b" }}>Max Expense (%)</label>
+                  <input type="number" step="0.1" value={expenseMaxPreset ?? ""} onChange={e => setExpenseMaxPreset(e.target.value ? Number(e.target.value) : null)}
+                    className="mt-0.5 h-6 w-full rounded border px-1.5 text-xs" style={{ borderColor: "#e2e8f0" }} />
+                </div>
+                <div>
+                  <label className="text-[10px]" style={{ color: "#64748b" }}>Min Sharpe</label>
+                  <input type="number" step="0.1" value={sharpeMinPreset ?? ""} onChange={e => setSharpeMinPreset(e.target.value ? Number(e.target.value) : null)}
+                    className="mt-0.5 h-6 w-full rounded border px-1.5 text-xs" style={{ borderColor: "#e2e8f0" }} />
+                </div>
+                <div>
+                  <label className="text-[10px]" style={{ color: "#64748b" }}>Max Std Dev</label>
+                  <input type="number" step="0.1" value={stdDevMaxPreset ?? ""} onChange={e => setStdDevMaxPreset(e.target.value ? Number(e.target.value) : null)}
+                    className="mt-0.5 h-6 w-full rounded border px-1.5 text-xs" style={{ borderColor: "#e2e8f0" }} />
+                </div>
+              </div>
+              {/* Star rating */}
+              <div className="mt-2">
+                <div className="text-[10px] font-medium" style={{ color: "#64748b" }}>Min Star Rating</div>
+                <div className="mt-1 flex gap-1">
+                  {[0, 1, 2, 3, 4, 5].map(v => (
+                    <button key={v} onClick={() => setStarMin(v)}
+                      className="rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors"
+                      style={starMin === v ? { backgroundColor: PRIMARY, color: "#fff" } : { backgroundColor: "#f1f5f9", color: "#64748b" }}>
+                      {v === 0 ? "Any" : "★".repeat(v)}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-          </FilterPopover>
-
-          <FilterPopover label="Sharpe" activeCount={sharpeMinPreset != null ? 1 : 0}>
-            <div className="mb-2"><span className="text-[11px] font-bold" style={{ color: "#334155" }}>Min Sharpe Ratio</span></div>
-            <div className="flex flex-wrap gap-1.5">
-              {[0, 0.5, 1, 1.5].map(v => (
-                <Chip key={v} label={`>${v}`} active={sharpeMinPreset === v} onClick={() => setSharpeMinPreset(sharpeMinPreset === v ? null : v)} />
-              ))}
-            </div>
-          </FilterPopover>
-
-          <FilterPopover label="Std Dev" activeCount={stdDevMaxPreset != null ? 1 : 0}>
-            <div className="mb-2"><span className="text-[11px] font-bold" style={{ color: "#334155" }}>Max Std Deviation</span></div>
-            <div className="flex flex-wrap gap-1.5">
-              {[2, 3, 5].map(v => (
-                <Chip key={v} label={`<${v}`} active={stdDevMaxPreset === v} onClick={() => setStdDevMaxPreset(stdDevMaxPreset === v ? null : v)} />
-              ))}
-            </div>
-          </FilterPopover>
-
-          <FilterPopover label="Stars" activeCount={starMin > 0 ? 1 : 0}>
-            <div className="mb-2"><span className="text-[11px] font-bold" style={{ color: "#334155" }}>Min Morningstar Rating</span></div>
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map(sv => (
-                <button key={sv} onClick={() => setStarMin(sv === starMin ? 0 : sv)}
-                  className="text-lg leading-none transition-all" style={{ color: sv <= starMin ? "#f59e0b" : "#d1d5db" }}
-                  aria-label={`Minimum ${sv} stars`}
-                >{"★"}</button>
-              ))}
-            </div>
-          </FilterPopover>
-
+          </div>
           {hasActiveFilters && (
-            <button onClick={clearFilters}
-              className="ml-1 flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold transition-all"
-              style={{ color: "#dc2626", backgroundColor: "#fef2f2" }}
-            >
-              <X className="h-3 w-3" /> Reset
+            <button onClick={resetFilters} className="mt-3 flex items-center gap-1 text-xs font-medium" style={{ color: "#ef4444" }}>
+              <X className="h-3 w-3" /> Reset all filters
             </button>
           )}
         </div>
@@ -573,24 +469,23 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
 
       {/* ═══ CHART ═══ */}
       {sortedData.length < 1 ? (
-        <div className="flex h-[350px] flex-col items-center justify-center gap-2">
-          <Search className="h-8 w-8" style={{ color: "#cbd5e1" }} />
-          <p className="text-sm font-medium" style={{ color: "#94a3b8" }}>No funds match your filters</p>
-          {hasActiveFilters && (
-            <button onClick={clearFilters} className="text-xs font-semibold underline" style={{ color: PRIMARY }}>Clear filters</button>
-          )}
+        <div className="flex h-[400px] items-center justify-center rounded-lg border border-dashed" style={{ borderColor: "#e2e8f0" }}>
+          <p className="text-sm" style={{ color: "#94a3b8" }}>No funds match current filters. Try broadening your criteria.</p>
         </div>
       ) : (
-        <div style={{ width: "100%", minHeight: 420 }}>
-        <ResponsiveContainer width="100%" height={420}>
-          <ScatterChart margin={{ top: 20, right: 25, bottom: 30, left: 20 }}>
+        <ResponsiveContainer width="100%" height={400}>
+          <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
             <XAxis
               type="number" dataKey="x" name={xAxis.label}
-              domain={xAxis.isCredit ? [0.5, 8.5] as [number, number] : [(dataMin: number) => Math.max(0, Math.floor(dataMin * 0.9 * 10) / 10), (dataMax: number) => Math.ceil(dataMax * 1.1 * 10) / 10]}
+              domain={
+                xAxis.isCredit
+                  ? [0.5, 8.5]
+                  : [(dataMin: number) => Math.max(0, Math.floor(dataMin * 0.9 * 10) / 10), (dataMax: number) => Math.ceil(dataMax * 1.1 * 10) / 10]
+              }
               ticks={xAxis.isCredit ? [1, 2, 3, 4, 5, 6, 7, 8] : undefined}
               tick={{ fontSize: 11, fill: "#94a3b8" }}
-              tickFormatter={v => xAxis.format(v)}
+              tickFormatter={v => xAxis.tickFormat(v)}
               tickLine={{ stroke: "#e2e8f0" }}
               axisLine={{ stroke: "#e2e8f0" }}
             >
@@ -598,10 +493,14 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
             </XAxis>
             <YAxis
               type="number" dataKey="y" name={yAxis.label}
-              domain={yAxis.isCredit ? [0.5, 8.5] as [number, number] : undefined}
+              domain={
+                yAxis.isCredit
+                  ? [0.5, 8.5]
+                  : undefined
+              }
               ticks={yAxis.isCredit ? [1, 2, 3, 4, 5, 6, 7, 8] : undefined}
               tick={{ fontSize: 11, fill: "#94a3b8" }}
-              tickFormatter={v => yAxis.format(v)}
+              tickFormatter={v => yAxis.tickFormat(v)}
               tickLine={{ stroke: "#e2e8f0" }}
               axisLine={{ stroke: "#e2e8f0" }}
               width={yAxis.isCredit ? 45 : undefined}
@@ -620,30 +519,19 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
             </Scatter>
           </ScatterChart>
         </ResponsiveContainer>
-        </div>
       )}
 
       {/* Legend */}
-      <div className="mt-3 flex items-center justify-between border-t pt-3" style={{ borderColor: "#f1f5f9" }}>
-        <div className="flex items-center gap-4 text-[10px]" style={{ color: "#94a3b8" }}>
+      <div className="mt-2 flex flex-wrap items-center justify-between text-[10px]" style={{ color: "#94a3b8" }}>
+        <div className="flex items-center gap-4">
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: DOT_DEFAULT }} /> Funds in universe
+            <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: DOT_DEFAULT }} /> Funds in universe
           </span>
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-[1px] w-5" style={{ backgroundColor: "#94a3b8", borderTop: "2px dashed #94a3b8" }} /> Average
           </span>
-          {trendLine.length === 2 && (
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-[1px] w-5" style={{ borderTop: "2px dashed #0f3d6b", opacity: 0.5 }} /> Trend
-            </span>
-          )}
-          {highlightTicker && (
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: HIGHLIGHT }} /> {highlightTicker}
-            </span>
-          )}
         </div>
-        <span className="text-[10px] italic" style={{ color: "#94a3b8" }}>Click any fund to view details</span>
+        <span className="italic">Click any fund to view details</span>
       </div>
     </div>
   )
