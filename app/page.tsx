@@ -552,7 +552,7 @@ export default function Page() {
       </div>
       )}
 
-      {/* ===== FUND MAP SECTION (always mounted to preserve state) ===== */}
+      {/* ===== FUND MAP SECTION ===== */}
       <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6 sm:py-6" style={{ display: section === "map" ? undefined : "none" }}>
         <FundUniverseMap
           funds={funds}
