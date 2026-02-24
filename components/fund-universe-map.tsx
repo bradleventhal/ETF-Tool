@@ -188,6 +188,61 @@ function FilterPopover({ label, activeCount, children }: { label: string; active
   )
 }
 
+/* ── Custom tooltip for scatter chart ── */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function CustomTooltip({ active, payload }: any) {
+  if (!active || !payload?.[0]?.payload) return null
+  const d = payload[0].payload
+  const fmtP = (v: number | null) => v != null ? `${v.toFixed(2)}%` : "—"
+  const fmtN = (v: number | null) => v != null ? v.toFixed(2) : "—"
+  const fundStats: { label: string; value: string }[] = [
+    { label: "YTW / YTM", value: fmtP(d.ytwYtm) },
+    { label: "SEC Yield", value: fmtP(d.secYield) },
+    { label: "Duration", value: d.duration != null ? `${d.duration.toFixed(2)} yrs` : "—" },
+    { label: "Credit", value: d.creditQuality ?? "—" },
+    { label: "Expense", value: fmtP(d.expense) },
+    { label: "Sharpe", value: fmtN(d.sharpe) },
+    { label: "Std Dev", value: fmtN(d.stdDev) },
+  ].filter(s => s.value !== "—")
+  const perfStats: { label: string; value: string }[] = [
+    { label: "YTD", value: fmtP(d.ytd) },
+    { label: "1Y", value: fmtP(d.oneYear) },
+    { label: "3Y", value: fmtP(d.threeYear) },
+  ].filter(s => s.value !== "—")
+  return (
+    <div className="rounded-lg border px-3 py-2.5 shadow-lg" style={{ backgroundColor: "#fff", borderColor: "#e2e8f0", minWidth: 210 }}>
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-bold" style={{ color: PRIMARY }}>{d.ticker}</span>
+        {d.morningstarRating != null && d.morningstarRating > 0 && (
+          <span className="text-[10px]" style={{ color: "#f59e0b" }}>{"★".repeat(d.morningstarRating)}</span>
+        )}
+      </div>
+      <div className="text-[10px] leading-snug" style={{ color: "#64748b" }}>{d.name}</div>
+      {d.morningstarCategory && (
+        <div className="mt-0.5 text-[9px] font-medium" style={{ color: "#94a3b8" }}>{d.morningstarCategory}</div>
+      )}
+      <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-0.5 border-t pt-1.5" style={{ borderColor: "#f1f5f9" }}>
+        {fundStats.map(s => (
+          <div key={s.label} className="flex items-baseline justify-between gap-2">
+            <span className="text-[9px]" style={{ color: "#94a3b8" }}>{s.label}</span>
+            <span className="text-[10px] font-semibold tabular-nums" style={{ color: "#334155" }}>{s.value}</span>
+          </div>
+        ))}
+      </div>
+      {perfStats.length > 0 && (
+        <div className="mt-1 flex gap-3 border-t pt-1" style={{ borderColor: "#f1f5f9" }}>
+          {perfStats.map(s => (
+            <div key={s.label} className="flex items-baseline gap-1">
+              <span className="text-[9px]" style={{ color: "#94a3b8" }}>{s.label}</span>
+              <span className="text-[10px] font-semibold tabular-nums" style={{ color: "#334155" }}>{s.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ── Chart with trend line overlay ── */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function TrendLineChart({ sortedData, trendLine, avgY, xAxis, yAxis, hoveredTicker, setHoveredTicker, onSelectFund }: any) {
@@ -322,7 +377,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
   /* ── Duration category filter ── */
   const [durationCats, setDurationCats] = useState<Set<string>>(() => s?.durationCats instanceof Set ? s.durationCats as Set<string> : new Set(DURATION_CATEGORIES.map(c => c.label)))
 
-  /* ── Credit quality filter ── */
+  /* ── Credit quality filter ─�� */
   const CREDIT_CATS = ["AAA", "AA", "A", "BBB", "BB & Below"] as const
   const [creditCats, setCreditCats] = useState<Set<string>>(() => s?.creditCats instanceof Set ? s.creditCats as Set<string> : new Set(CREDIT_CATS))
 
@@ -338,17 +393,17 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
   const [sharpeMinPreset, setSharpeMinPreset] = useState<number | null>(() => typeof s?.sharpeMinPreset === "number" ? s.sharpeMinPreset : null)
   const [stdDevMaxPreset, setStdDevMaxPreset] = useState<number | null>(() => typeof s?.stdDevMaxPreset === "number" ? s.stdDevMaxPreset : null)
 
-  // Persist state to parent on unmount
+  // Keep a ref of current state for the unmount callback
+  const stateSnap = useRef<SavedMapState>({})
+  stateSnap.current = {
+    presetIdx, xIdx, yIdx, search, showFilters,
+    durationCats, creditCats, mstarCats, starMin,
+    yieldMinPreset, expenseMaxPreset, sharpeMinPreset, stdDevMaxPreset,
+  }
   useEffect(() => {
-    return () => {
-      onStateChange?.({
-        presetIdx, xIdx, yIdx, search, showFilters,
-        durationCats, creditCats, mstarCats, starMin,
-        yieldMinPreset, expenseMaxPreset, sharpeMinPreset, stdDevMaxPreset,
-      })
-    }
+    return () => { onStateChange?.(stateSnap.current) }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presetIdx, xIdx, yIdx, search, showFilters, durationCats, creditCats, mstarCats, starMin, yieldMinPreset, expenseMaxPreset, sharpeMinPreset, stdDevMaxPreset])
+  }, [])
 
   /* ── Compute fund counts per Morningstar category ── */
   const mstarCatCounts = useMemo(() => {
@@ -458,61 +513,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
     setSharpeMinPreset(null); setStdDevMaxPreset(null)
   }, [])
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (!active || !payload?.[0]?.payload) return null
-    const d = payload[0].payload
-    const fmtPct = (v: number | null) => v != null ? `${v.toFixed(2)}%` : "—"
-    const fmtNum = (v: number | null) => v != null ? v.toFixed(2) : "—"
-    // Group 1: Yield & fundamentals (paired for 2-col grid)
-    const fundStats: { label: string; value: string }[] = [
-      { label: "YTW / YTM", value: fmtPct(d.ytwYtm) },
-      { label: "SEC Yield", value: fmtPct(d.secYield) },
-      { label: "Duration", value: d.duration != null ? `${d.duration.toFixed(2)} yrs` : "—" },
-      { label: "Credit", value: d.creditQuality ?? "—" },
-      { label: "Expense", value: fmtPct(d.expense) },
-      { label: "Sharpe", value: fmtNum(d.sharpe) },
-      { label: "Std Dev", value: fmtNum(d.stdDev) },
-    ].filter(s => s.value !== "—")
-    // Group 2: Performance
-    const perfStats: { label: string; value: string }[] = [
-      { label: "YTD", value: fmtPct(d.ytd) },
-      { label: "1Y", value: fmtPct(d.oneYear) },
-      { label: "3Y", value: fmtPct(d.threeYear) },
-    ].filter(s => s.value !== "—")
-    return (
-      <div className="rounded-lg border px-3 py-2.5 shadow-lg" style={{ backgroundColor: "#fff", borderColor: "#e2e8f0", minWidth: 210 }}>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold" style={{ color: PRIMARY }}>{d.ticker}</span>
-          {d.morningstarRating != null && d.morningstarRating > 0 && (
-            <span className="text-[10px]" style={{ color: "#f59e0b" }}>{"★".repeat(d.morningstarRating)}</span>
-          )}
-        </div>
-        <div className="text-[10px] leading-snug" style={{ color: "#64748b" }}>{d.name}</div>
-        {d.morningstarCategory && (
-          <div className="mt-0.5 text-[9px] font-medium" style={{ color: "#94a3b8" }}>{d.morningstarCategory}</div>
-        )}
-        <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-0.5 border-t pt-1.5" style={{ borderColor: "#f1f5f9" }}>
-          {fundStats.map(s => (
-            <div key={s.label} className="flex items-baseline justify-between gap-2">
-              <span className="text-[9px]" style={{ color: "#94a3b8" }}>{s.label}</span>
-              <span className="text-[10px] font-semibold tabular-nums" style={{ color: "#334155" }}>{s.value}</span>
-            </div>
-          ))}
-        </div>
-        {perfStats.length > 0 && (
-          <div className="mt-1 flex gap-3 border-t pt-1" style={{ borderColor: "#f1f5f9" }}>
-            {perfStats.map(s => (
-              <div key={s.label} className="flex items-baseline gap-1">
-                <span className="text-[9px]" style={{ color: "#94a3b8" }}>{s.label}</span>
-                <span className="text-[10px] font-semibold tabular-nums" style={{ color: "#334155" }}>{s.value}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
+
 
   return (
     <div className="rounded-xl border p-5" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
