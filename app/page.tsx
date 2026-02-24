@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback, useEffect } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import { TickerInput } from "@/components/ticker-input"
 import { ComparisonTable } from "@/components/comparison-table"
 import { PerformanceChart } from "@/components/performance-chart"
@@ -18,7 +18,7 @@ import { ElevatorPitch } from "@/components/elevator-pitch"
 import { FundLookup } from "@/components/fund-lookup"
 import {
   ScatterChart, Scatter, XAxis as RXAxis, YAxis as RYAxis, CartesianGrid,
-  ResponsiveContainer, Tooltip as RTooltip, ZAxis, Cell, ReferenceLine, Label,
+  Tooltip as RTooltip, ZAxis, Cell, ReferenceLine, Label,
 } from "recharts"
 import { SlidersHorizontal } from "lucide-react"
 import type { FundData, AnalysisMode, AnalysisResult, WarRoom, YahooAnalytics } from "@/lib/fund-types"
@@ -211,6 +211,23 @@ function MapTip({ active, payload }: any) {
 }
 
 function InlineFundMap({ funds, onSelectFund }: { funds: FundData[]; onSelectFund?: (t: string) => void }) {
+  const chartWrapRef = useRef<HTMLDivElement>(null)
+  const [chartWidth, setChartWidth] = useState(0)
+  useEffect(() => {
+    const el = chartWrapRef.current
+    if (!el) return
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width
+        if (w > 0) setChartWidth(w)
+      }
+    })
+    ro.observe(el)
+    // Initial measure
+    const w = el.getBoundingClientRect().width
+    if (w > 0) setChartWidth(w)
+    return () => ro.disconnect()
+  }, [])
   const [presetIdx, setPresetIdx] = useState(0)
   const [xIdx, setXIdx] = useState(findMapAxis("duration"))
   const [yIdx, setYIdx] = useState(findMapAxis("ytwYtm"))
@@ -453,51 +470,51 @@ function InlineFundMap({ funds, onSelectFund }: { funds: FundData[]; onSelectFun
       )}
 
       {/* Chart */}
+      <div ref={chartWrapRef} style={{ width: "100%", minHeight: 400 }}>
       {sortedData.length < 1 ? (
         <div className="flex h-[400px] items-center justify-center rounded-lg border border-dashed" style={{ borderColor: "#e2e8f0" }}>
           <p className="text-sm" style={{ color: "#94a3b8" }}>No funds match current filters.</p>
         </div>
-      ) : (
-        <ResponsiveContainer width="100%" height={400}>
-          <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <RXAxis
-              type="number" dataKey="x" name={xAxis.label}
-              domain={xAxis.isCredit ? [0.5, 8.5] : [(dMin: number) => Math.max(0, Math.floor(dMin * 0.9 * 10) / 10), (dMax: number) => Math.ceil(dMax * 1.1 * 10) / 10]}
-              ticks={xAxis.isCredit ? [1,2,3,4,5,6,7,8] : undefined}
-              tick={{ fontSize: 11, fill: "#94a3b8" }}
-              tickFormatter={(v: number) => xAxis.tickFmt(v)}
-              tickLine={{ stroke: "#e2e8f0" }}
-              axisLine={{ stroke: "#e2e8f0" }}
-            >
-              <Label value={xAxis.label} position="bottom" offset={12} style={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} />
-            </RXAxis>
-            <RYAxis
-              type="number" dataKey="y" name={yAxis.label}
-              domain={yAxis.isCredit ? [0.5, 8.5] : undefined}
-              ticks={yAxis.isCredit ? [1,2,3,4,5,6,7,8] : undefined}
-              tick={{ fontSize: 11, fill: "#94a3b8" }}
-              tickFormatter={(v: number) => yAxis.tickFmt(v)}
-              tickLine={{ stroke: "#e2e8f0" }}
-              axisLine={{ stroke: "#e2e8f0" }}
-              width={yAxis.isCredit ? 45 : undefined}
-            >
-              <Label value={yAxis.label} angle={-90} position="insideLeft" offset={-5} style={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} />
-            </RYAxis>
-            <ZAxis range={[50, 50]} />
-            <RTooltip content={<MapTip />} cursor={false} />
-            {sortedData.length >= 2 && <ReferenceLine y={avgY} stroke="#94a3b8" strokeDasharray="6 4" strokeWidth={1} />}
-            <Scatter
-              data={sortedData}
-              shape={<MapDot hoveredTicker={hoveredTicker} onHover={setHoveredTicker} onLeave={() => setHoveredTicker(null)} onClick={onSelectFund} />}
-            >
-              {sortedData.map(d => (
-                <Cell key={d.ticker} fill={d.isHighlighted ? MAP_HL : MAP_DOT} />
-              ))}
-            </Scatter>
-          </ScatterChart>
-        </ResponsiveContainer>
-      )}
+      ) : chartWidth > 0 ? (
+        <ScatterChart width={chartWidth} height={400} margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+          <RXAxis
+            type="number" dataKey="x" name={xAxis.label}
+            domain={xAxis.isCredit ? [0.5, 8.5] : [(dMin: number) => Math.max(0, Math.floor(dMin * 0.9 * 10) / 10), (dMax: number) => Math.ceil(dMax * 1.1 * 10) / 10]}
+            ticks={xAxis.isCredit ? [1,2,3,4,5,6,7,8] : undefined}
+            tick={{ fontSize: 11, fill: "#94a3b8" }}
+            tickFormatter={(v: number) => xAxis.tickFmt(v)}
+            tickLine={{ stroke: "#e2e8f0" }}
+            axisLine={{ stroke: "#e2e8f0" }}
+          >
+            <Label value={xAxis.label} position="bottom" offset={12} style={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} />
+          </RXAxis>
+          <RYAxis
+            type="number" dataKey="y" name={yAxis.label}
+            domain={yAxis.isCredit ? [0.5, 8.5] : undefined}
+            ticks={yAxis.isCredit ? [1,2,3,4,5,6,7,8] : undefined}
+            tick={{ fontSize: 11, fill: "#94a3b8" }}
+            tickFormatter={(v: number) => yAxis.tickFmt(v)}
+            tickLine={{ stroke: "#e2e8f0" }}
+            axisLine={{ stroke: "#e2e8f0" }}
+            width={yAxis.isCredit ? 45 : undefined}
+          >
+            <Label value={yAxis.label} angle={-90} position="insideLeft" offset={-5} style={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} />
+          </RYAxis>
+          <ZAxis range={[50, 50]} />
+          <RTooltip content={<MapTip />} cursor={false} />
+          {sortedData.length >= 2 && <ReferenceLine y={avgY} stroke="#94a3b8" strokeDasharray="6 4" strokeWidth={1} />}
+          <Scatter
+            data={sortedData}
+            shape={<MapDot hoveredTicker={hoveredTicker} onHover={setHoveredTicker} onLeave={() => setHoveredTicker(null)} onClick={onSelectFund} />}
+          >
+            {sortedData.map(d => (
+              <Cell key={d.ticker} fill={d.isHighlighted ? MAP_HL : MAP_DOT} />
+            ))}
+          </Scatter>
+        </ScatterChart>
+      ) : null}
+      </div>
 
       {/* Legend */}
       <div className="mt-2 flex flex-wrap items-center justify-between text-[10px]" style={{ color: "#94a3b8" }}>
