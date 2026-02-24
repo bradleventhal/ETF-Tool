@@ -185,6 +185,7 @@ function FilterPopover({ label, activeCount, children }: { label: string; active
 
 /* ═══════════════════════════════════════ MAIN COMPONENT ═══════════════════════════════════════ */
 export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedState, onStateChange }: Props) {
+  console.log("[v0] FundUniverseMap V4 LOADED - funds:", funds.length)
   const s = savedState
   const [presetIdx, setPresetIdx] = useState(() => typeof s?.presetIdx === "number" ? s.presetIdx : 0)
   const [xIdx, setXIdx] = useState(() => typeof s?.xIdx === "number" ? s.xIdx : findAxis("duration"))
@@ -580,6 +581,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
           )}
         </div>
       ) : (
+        <div style={{ width: "100%", minHeight: 420 }}>
         <ResponsiveContainer width="100%" height={420}>
           <ScatterChart margin={{ top: 20, right: 25, bottom: 30, left: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
@@ -618,6 +620,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
             </Scatter>
           </ScatterChart>
         </ResponsiveContainer>
+        </div>
       )}
 
       {/* Legend */}
