@@ -305,7 +305,7 @@ function InlineFundMap({ funds, onSelectFund }: { funds: FundData[]; onSelectFun
       if (!matchSearch(f) || !matchDuration(f) || !matchCredit(f) || !matchMstar(f) || !matchStars(f) || !matchRange(f)) continue
       const xV = xAxis.getValue(f)
       const yV = yAxis.getValue(f)
-      if (xV == null || yV == null) continue
+      if (xV == null || yV == null || !isFinite(xV) || !isFinite(yV)) continue
       const cs = creditScore(f)
       pts.push({
         x: xV, y: yV, ticker: f.ticker, name: f.name, isHighlighted: false,
@@ -470,6 +470,7 @@ function InlineFundMap({ funds, onSelectFund }: { funds: FundData[]; onSelectFun
       )}
 
       {/* Chart */}
+      {console.log("[v0] InlineFundMap chartWidth:", chartWidth, "sortedData:", sortedData.length, "sample:", sortedData[0])}
       <div ref={chartWrapRef} style={{ width: "100%", minHeight: 400 }}>
       {sortedData.length < 1 ? (
         <div className="flex h-[400px] items-center justify-center rounded-lg border border-dashed" style={{ borderColor: "#e2e8f0" }}>
@@ -480,7 +481,7 @@ function InlineFundMap({ funds, onSelectFund }: { funds: FundData[]; onSelectFun
           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
           <RXAxis
             type="number" dataKey="x" name={xAxis.label}
-            domain={xAxis.isCredit ? [0.5, 8.5] : [(dMin: number) => Math.max(0, Math.floor(dMin * 0.9 * 10) / 10), (dMax: number) => Math.ceil(dMax * 1.1 * 10) / 10]}
+            domain={xAxis.isCredit ? [0.5, 8.5] : [(dMin: number) => isFinite(dMin) ? Math.max(0, Math.floor(dMin * 0.9 * 10) / 10) : 0, (dMax: number) => isFinite(dMax) ? Math.ceil(dMax * 1.1 * 10) / 10 : 10]}
             ticks={xAxis.isCredit ? [1,2,3,4,5,6,7,8] : undefined}
             tick={{ fontSize: 11, fill: "#94a3b8" }}
             tickFormatter={(v: number) => xAxis.tickFmt(v)}
