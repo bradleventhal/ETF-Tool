@@ -671,17 +671,6 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
             <ZAxis range={[50, 50]} />
             <Tooltip content={<CustomTooltip />} cursor={false} />
             {sortedData.length >= 2 && <ReferenceLine y={avgY} stroke="#94a3b8" strokeDasharray="6 4" strokeWidth={1} />}
-            {trendLine.length === 2 && (
-              <Scatter
-                data={trendLine}
-                dataKey="y"
-                line={{ stroke: "#0f3d6b", strokeWidth: 1.5, strokeDasharray: "6 3", opacity: 0.5 }}
-                shape={() => <circle r={0} />}
-                isAnimationActive={false}
-                legendType="none"
-                tooltipType="none"
-              />
-            )}
             <Scatter data={sortedData}
               shape={<TickerDot hoveredTicker={hoveredTicker} onHover={setHoveredTicker} onLeave={() => setHoveredTicker(null)} onClick={onSelectFund} />}
             >
@@ -702,9 +691,11 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-[1px] w-5" style={{ backgroundColor: "#94a3b8", borderTop: "2px dashed #94a3b8" }} /> Average
           </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block h-[1px] w-5" style={{ borderTop: "2px dashed #0f3d6b", opacity: 0.5 }} /> Trend
-          </span>
+          {trendLine.length === 2 && (
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block h-[1px] w-5" style={{ borderTop: "2px dashed #0f3d6b", opacity: 0.5 }} /> Trend
+            </span>
+          )}
           {highlightTicker && (
             <span className="flex items-center gap-1.5">
               <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ backgroundColor: HIGHLIGHT }} /> {highlightTicker}

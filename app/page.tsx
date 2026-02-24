@@ -110,6 +110,11 @@ export default function Page() {
   const [section, setSection] = useState<"comparison" | "lookup" | "map">("lookup")
   const [lookupTicker, setLookupTicker] = useState("")
   const [cameFromMap, setCameFromMap] = useState(false)
+  const switchToMap = useCallback(() => {
+    setSection("map")
+    // ResponsiveContainer needs a resize event to recalculate after display:none
+    setTimeout(() => window.dispatchEvent(new Event("resize")), 50)
+  }, [])
 
   useEffect(() => {
     fetch("/api/funds")
@@ -312,7 +317,7 @@ export default function Page() {
             Fund Comparison
           </button>
           <button
-            onClick={() => setSection("map")}
+                onClick={switchToMap}
             className="flex min-h-[44px] items-center gap-1.5 border-b-2 px-4 py-2.5 text-[12px] font-semibold uppercase tracking-wider transition-colors sm:text-[13px]"
             style={{
               borderColor: section === "map" ? "#0f3d6b" : "transparent",
@@ -575,7 +580,7 @@ export default function Page() {
             </div>
             {cameFromMap && (
               <button
-                onClick={() => setSection("map")}
+            onClick={switchToMap}
                 className="mb-0.5 flex h-10 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-semibold transition-all hover:bg-[#f0f7ff]"
                 style={{ borderColor: "#e2e8f0", color: "#0f3d6b" }}
               >
