@@ -28,35 +28,28 @@ function creditLabel(score: number): string {
 }
 
 /* ── Axis definitions ── */
-type AxisUnit = "pct" | "pct1" | "num" | "credit" | "yrs"
-
 type AxisKey = {
-  key: string; label: string; unit: AxisUnit
+  key: string
+  label: string
   format: (v: number) => string
-  tickFormat: (v: number) => string
   getValue: (fund: FundData) => number | null
+  isCredit?: boolean
 }
 
-const fmtPct = (v: number) => `${v.toFixed(2)}%`
-const fmtPct1 = (v: number) => `${v.toFixed(1)}%`
-const fmtNum = (v: number) => v.toFixed(2)
-const tickPct = (v: number) => `${Number(v.toFixed(1))}%`
-const tickNum = (v: number) => String(Number(v.toFixed(1)))
-
 const AXIS_OPTIONS: AxisKey[] = [
-  { key: "secYield", label: "30-Day SEC Yield", unit: "pct", format: fmtPct, tickFormat: tickPct, getValue: f => f.secYield != null ? f.secYield * 100 : null },
-  { key: "distYield", label: "Distribution Yield", unit: "pct", format: fmtPct, tickFormat: tickPct, getValue: f => f.distributionYield != null ? f.distributionYield * 100 : null },
-  { key: "ytwYtm", label: "YTW / YTM", unit: "pct", format: fmtPct, tickFormat: tickPct, getValue: f => f.ytwYtm != null ? f.ytwYtm * 100 : f.secYield != null ? f.secYield * 100 : null },
-  { key: "duration", label: "Duration (yrs)", unit: "yrs", format: v => `${v.toFixed(2)} yrs`, tickFormat: v => `${Number(v.toFixed(1))}`, getValue: f => f.duration },
-  { key: "stdDev", label: "Standard Deviation", unit: "num", format: fmtNum, tickFormat: tickNum, getValue: f => f.stdDev },
-  { key: "sharpe", label: "Sharpe Ratio", unit: "num", format: fmtNum, tickFormat: tickNum, getValue: f => f.sharpe },
-  { key: "expense", label: "Expense Ratio", unit: "pct", format: fmtPct, tickFormat: tickPct, getValue: f => f.expense != null ? f.expense * 100 : null },
-  { key: "credit", label: "Credit Quality", unit: "credit", format: v => creditLabel(v), tickFormat: v => { const r = Math.round(v); return r >= 1 && r <= 8 ? creditLabel(r) : "" }, getValue: f => creditScore(f) },
-  { key: "ytd", label: "YTD Return", unit: "pct", format: fmtPct, tickFormat: tickPct, getValue: f => f.ytd != null ? f.ytd * 100 : null },
-  { key: "oneYear", label: "1-Year Return", unit: "pct", format: fmtPct, tickFormat: tickPct, getValue: f => f.oneYear != null ? f.oneYear * 100 : null },
-  { key: "threeYear", label: "3-Year Return", unit: "pct", format: fmtPct, tickFormat: tickPct, getValue: f => f.threeYear != null ? f.threeYear * 100 : null },
-  { key: "securitized", label: "Securitized %", unit: "pct1", format: fmtPct1, tickFormat: tickPct, getValue: f => f.securitized != null ? f.securitized * 100 : null },
-  { key: "corpCredit", label: "Corp Credit %", unit: "pct1", format: fmtPct1, tickFormat: tickPct, getValue: f => f.corporateCredit != null ? f.corporateCredit * 100 : null },
+  { key: "secYield", label: "30-Day SEC Yield", format: v => `${v.toFixed(2)}%`, getValue: f => f.secYield != null ? f.secYield * 100 : null },
+  { key: "distYield", label: "Distribution Yield", format: v => `${v.toFixed(2)}%`, getValue: f => f.distributionYield != null ? f.distributionYield * 100 : null },
+  { key: "ytwYtm", label: "YTW / YTM", format: v => `${v.toFixed(2)}%`, getValue: f => f.ytwYtm != null ? f.ytwYtm * 100 : f.secYield != null ? f.secYield * 100 : null },
+  { key: "duration", label: "Duration (yrs)", format: v => v.toFixed(2), getValue: f => f.duration },
+  { key: "stdDev", label: "Standard Deviation", format: v => v.toFixed(2), getValue: f => f.stdDev },
+  { key: "sharpe", label: "Sharpe Ratio", format: v => v.toFixed(2), getValue: f => f.sharpe },
+  { key: "expense", label: "Expense Ratio", format: v => `${v.toFixed(2)}%`, getValue: f => f.expense != null ? f.expense * 100 : null },
+  { key: "credit", label: "Credit Quality", format: v => creditLabel(v), getValue: f => creditScore(f), isCredit: true },
+  { key: "ytd", label: "YTD Return", format: v => `${v.toFixed(2)}%`, getValue: f => f.ytd != null ? f.ytd * 100 : null },
+  { key: "oneYear", label: "1-Year Return", format: v => `${v.toFixed(2)}%`, getValue: f => f.oneYear != null ? f.oneYear * 100 : null },
+  { key: "threeYear", label: "3-Year Return", format: v => `${v.toFixed(2)}%`, getValue: f => f.threeYear != null ? f.threeYear * 100 : null },
+  { key: "securitized", label: "Securitized %", format: v => `${v.toFixed(1)}%`, getValue: f => f.securitized != null ? f.securitized * 100 : null },
+  { key: "corpCredit", label: "Corp Credit %", format: v => `${v.toFixed(1)}%`, getValue: f => f.corporateCredit != null ? f.corporateCredit * 100 : null },
 ]
 
 const findAxis = (key: string) => AXIS_OPTIONS.findIndex(a => a.key === key)
@@ -129,7 +122,7 @@ function TickerDot(props: any) {
   )
 }
 
-/* ── Toggle chip (inside popovers) ── */
+/* ── Toggle chip ── */
 function Chip({ label, active, count, onClick }: { label: string; active: boolean; count?: number; onClick: () => void }) {
   return (
     <button onClick={onClick}
@@ -190,64 +183,8 @@ function FilterPopover({ label, activeCount, children }: { label: string; active
   )
 }
 
-/* ── Custom tooltip for scatter chart ── */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function CustomTooltip({ active, payload }: any) {
-  if (!active || !payload?.[0]?.payload) return null
-  const d = payload[0].payload
-  const fmtP = (v: number | null) => v != null ? `${v.toFixed(2)}%` : "—"
-  const fmtN = (v: number | null) => v != null ? v.toFixed(2) : "—"
-  const fundStats: { label: string; value: string }[] = [
-    { label: "YTW / YTM", value: fmtP(d.ytwYtm) },
-    { label: "SEC Yield", value: fmtP(d.secYield) },
-    { label: "Duration", value: d.duration != null ? `${d.duration.toFixed(2)} yrs` : "—" },
-    { label: "Credit", value: d.creditQuality ?? "—" },
-    { label: "Expense", value: fmtP(d.expense) },
-    { label: "Sharpe", value: fmtN(d.sharpe) },
-    { label: "Std Dev", value: fmtN(d.stdDev) },
-  ].filter(s => s.value !== "—")
-  const perfStats: { label: string; value: string }[] = [
-    { label: "YTD", value: fmtP(d.ytd) },
-    { label: "1Y", value: fmtP(d.oneYear) },
-    { label: "3Y", value: fmtP(d.threeYear) },
-  ].filter(s => s.value !== "—")
-  return (
-    <div className="rounded-lg border px-3 py-2.5 shadow-lg" style={{ backgroundColor: "#fff", borderColor: "#e2e8f0", minWidth: 210 }}>
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-bold" style={{ color: PRIMARY }}>{d.ticker}</span>
-        {d.morningstarRating != null && d.morningstarRating > 0 && (
-          <span className="text-[10px]" style={{ color: "#f59e0b" }}>{"★".repeat(d.morningstarRating)}</span>
-        )}
-      </div>
-      <div className="text-[10px] leading-snug" style={{ color: "#64748b" }}>{d.name}</div>
-      {d.morningstarCategory && (
-        <div className="mt-0.5 text-[9px] font-medium" style={{ color: "#94a3b8" }}>{d.morningstarCategory}</div>
-      )}
-      <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-0.5 border-t pt-1.5" style={{ borderColor: "#f1f5f9" }}>
-        {fundStats.map(s => (
-          <div key={s.label} className="flex items-baseline justify-between gap-2">
-            <span className="text-[9px]" style={{ color: "#94a3b8" }}>{s.label}</span>
-            <span className="text-[10px] font-semibold tabular-nums" style={{ color: "#334155" }}>{s.value}</span>
-          </div>
-        ))}
-      </div>
-      {perfStats.length > 0 && (
-        <div className="mt-1 flex gap-3 border-t pt-1" style={{ borderColor: "#f1f5f9" }}>
-          {perfStats.map(s => (
-            <div key={s.label} className="flex items-baseline gap-1">
-              <span className="text-[9px]" style={{ color: "#94a3b8" }}>{s.label}</span>
-              <span className="text-[10px] font-semibold tabular-nums" style={{ color: "#334155" }}>{s.value}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 /* ═══════════════════════════════════════ MAIN COMPONENT ═══════════════════════════════════════ */
 export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedState, onStateChange }: Props) {
-  // Restore from savedState on mount, otherwise use defaults
   const s = savedState
   const [presetIdx, setPresetIdx] = useState(() => typeof s?.presetIdx === "number" ? s.presetIdx : 0)
   const [xIdx, setXIdx] = useState(() => typeof s?.xIdx === "number" ? s.xIdx : findAxis("duration"))
@@ -256,33 +193,21 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
   const yAxis = AXIS_OPTIONS[yIdx]
   const [hoveredTicker, setHoveredTicker] = useState<string | null>(null)
 
-  /* ── Search ── */
   const [search, setSearch] = useState(() => typeof s?.search === "string" ? s.search : "")
   const [searchFocused, setSearchFocused] = useState(false)
-
-  /* ── Filter panel ── */
   const [showFilters, setShowFilters] = useState(() => typeof s?.showFilters === "boolean" ? s.showFilters : false)
 
-  /* ── Duration category filter ── */
   const [durationCats, setDurationCats] = useState<Set<string>>(() => s?.durationCats instanceof Set ? s.durationCats as Set<string> : new Set(DURATION_CATEGORIES.map(c => c.label)))
-
-  /* ── Credit quality filter ─�� */
   const CREDIT_CATS = ["AAA", "AA", "A", "BBB", "BB & Below"] as const
   const [creditCats, setCreditCats] = useState<Set<string>>(() => s?.creditCats instanceof Set ? s.creditCats as Set<string> : new Set(CREDIT_CATS))
-
-  /* ── Morningstar category filter ── */
   const [mstarCats, setMstarCats] = useState<Set<string>>(() => s?.mstarCats instanceof Set ? s.mstarCats as Set<string> : new Set(MSTAR_CATEGORIES))
-
-  /* ── Star rating filter ── */
   const [starMin, setStarMin] = useState(() => typeof s?.starMin === "number" ? s.starMin : 0)
-
-  /* ── Preset-based range filters (null = no filter) ── */
   const [yieldMinPreset, setYieldMinPreset] = useState<number | null>(() => typeof s?.yieldMinPreset === "number" ? s.yieldMinPreset : null)
   const [expenseMaxPreset, setExpenseMaxPreset] = useState<number | null>(() => typeof s?.expenseMaxPreset === "number" ? s.expenseMaxPreset : null)
   const [sharpeMinPreset, setSharpeMinPreset] = useState<number | null>(() => typeof s?.sharpeMinPreset === "number" ? s.sharpeMinPreset : null)
   const [stdDevMaxPreset, setStdDevMaxPreset] = useState<number | null>(() => typeof s?.stdDevMaxPreset === "number" ? s.stdDevMaxPreset : null)
 
-  // Keep a ref of current state for the unmount callback
+  // Persist state on unmount
   const stateSnap = useRef<Record<string, unknown>>({})
   stateSnap.current = {
     presetIdx, xIdx, yIdx, search, showFilters,
@@ -294,30 +219,76 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  /* ── Compute fund counts per Morningstar category ── */
   const mstarCatCounts = useMemo(() => {
     const counts: Record<string, number> = {}
-    funds.forEach(f => {
-      const cat = f.morningstarCategory
-      if (cat) counts[cat] = (counts[cat] || 0) + 1
-    })
+    funds.forEach(f => { const cat = f.morningstarCategory; if (cat) counts[cat] = (counts[cat] || 0) + 1 })
     return counts
   }, [funds])
+
+  /* ── Tooltip (defined inside component for access to xAxis/yAxis) ── */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const CustomTooltip = useCallback(({ active, payload }: any) => {
+    if (!active || !payload?.[0]?.payload) return null
+    const d = payload[0].payload
+    const fp = (v: number | null) => v != null ? `${v.toFixed(2)}%` : "\u2014"
+    const fn = (v: number | null) => v != null ? v.toFixed(2) : "\u2014"
+    const fundStats = [
+      { label: "YTW / YTM", value: fp(d.ytwYtm) },
+      { label: "SEC Yield", value: fp(d.secYield) },
+      { label: "Duration", value: d.duration != null ? `${d.duration.toFixed(2)} yrs` : "\u2014" },
+      { label: "Credit", value: d.creditQuality ?? "\u2014" },
+      { label: "Expense", value: fp(d.expense) },
+      { label: "Sharpe", value: fn(d.sharpe) },
+      { label: "Std Dev", value: fn(d.stdDev) },
+    ].filter(ss => ss.value !== "\u2014")
+    const perfStats = [
+      { label: "YTD", value: fp(d.ytd) },
+      { label: "1Y", value: fp(d.oneYear) },
+      { label: "3Y", value: fp(d.threeYear) },
+    ].filter(ss => ss.value !== "\u2014")
+    return (
+      <div className="rounded-lg border px-3 py-2.5 shadow-lg" style={{ backgroundColor: "#fff", borderColor: "#e2e8f0", minWidth: 210 }}>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold" style={{ color: PRIMARY }}>{d.ticker}</span>
+          {d.morningstarRating != null && d.morningstarRating > 0 && (
+            <span className="text-[10px]" style={{ color: "#f59e0b" }}>{"★".repeat(d.morningstarRating)}</span>
+          )}
+        </div>
+        <div className="text-[10px] leading-snug" style={{ color: "#64748b" }}>{d.name}</div>
+        {d.morningstarCategory && (
+          <div className="mt-0.5 text-[9px] font-medium" style={{ color: "#94a3b8" }}>{d.morningstarCategory}</div>
+        )}
+        <div className="mt-1.5 grid grid-cols-2 gap-x-4 gap-y-0.5 border-t pt-1.5" style={{ borderColor: "#f1f5f9" }}>
+          {fundStats.map(ss => (
+            <div key={ss.label} className="flex items-baseline justify-between gap-2">
+              <span className="text-[9px]" style={{ color: "#94a3b8" }}>{ss.label}</span>
+              <span className="text-[10px] font-semibold tabular-nums" style={{ color: "#334155" }}>{ss.value}</span>
+            </div>
+          ))}
+        </div>
+        {perfStats.length > 0 && (
+          <div className="mt-1 flex gap-3 border-t pt-1" style={{ borderColor: "#f1f5f9" }}>
+            {perfStats.map(ss => (
+              <div key={ss.label} className="flex items-baseline gap-1">
+                <span className="text-[9px]" style={{ color: "#94a3b8" }}>{ss.label}</span>
+                <span className="text-[10px] font-semibold tabular-nums" style={{ color: "#334155" }}>{ss.value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }, [])
 
   /* ── Data pipeline ── */
   const { sortedData, avgY, trendLine } = useMemo(() => {
     const searchLower = search.toLowerCase()
     let xSum = 0, ySum = 0, count = 0
     const points = funds.map(f => {
-      // Search filter (just filter the chart, don't highlight by default)
       if (search && !f.ticker.toLowerCase().includes(searchLower) && !f.name.toLowerCase().includes(searchLower)) return null
-
-      // Duration category filter
       const dur = f.duration ?? 0
       const durCat = DURATION_CATEGORIES.find(c => dur >= c.min && dur < c.max)
       if (durCat && !durationCats.has(durCat.label)) return null
-
-      // Credit quality filter
       const cs = creditScore(f)
       if (cs != null) {
         const cl = creditLabel(cs)
@@ -327,35 +298,25 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
         if (cl === "BBB" && !creditCats.has("BBB")) return null
         if (["BB", "B", "CCC", "<CCC"].includes(cl) && !creditCats.has("BB & Below")) return null
       }
-
-      // Morningstar category filter
       if (f.morningstarCategory && !mstarCats.has(f.morningstarCategory)) return null
-
-      // Star rating filter
       if (starMin > 0 && f.morningstarRating != null && f.morningstarRating < starMin) return null
-
-      // Preset-based range filters
       const yld = (f.ytwYtm ?? f.secYield ?? 0) * 100
       if (yieldMinPreset != null && yld < yieldMinPreset) return null
       if (expenseMaxPreset != null && f.expense != null && f.expense * 100 > expenseMaxPreset) return null
       if (sharpeMinPreset != null && f.sharpe != null && f.sharpe < sharpeMinPreset) return null
       if (stdDevMaxPreset != null && f.stdDev != null && f.stdDev > stdDevMaxPreset) return null
-
       const xVal = xAxis.getValue(f)
       const yVal = yAxis.getValue(f)
       if (xVal == null || yVal == null) return null
-
       xSum += xVal; ySum += yVal; count++
       return {
         ticker: f.ticker, name: f.name, x: xVal, y: yVal,
         isHighlighted: f.ticker === highlightTicker,
-        // Extra stats for tooltip
         ytwYtm: f.ytwYtm != null ? f.ytwYtm * 100 : null,
         secYield: f.secYield != null ? f.secYield * 100 : null,
         duration: f.duration,
         expense: f.expense != null ? f.expense * 100 : null,
-        stdDev: f.stdDev,
-        sharpe: f.sharpe,
+        stdDev: f.stdDev, sharpe: f.sharpe,
         creditQuality: cs != null ? creditLabel(cs) : null,
         morningstarRating: f.morningstarRating,
         morningstarCategory: f.morningstarCategory,
@@ -363,28 +324,31 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
         oneYear: f.oneYear != null ? f.oneYear * 100 : null,
         threeYear: f.threeYear != null ? f.threeYear * 100 : null,
       }
-    }).filter(Boolean) as { ticker: string; name: string; x: number; y: number; isHighlighted: boolean; ytwYtm: number | null; secYield: number | null; duration: number | null; expense: number | null; stdDev: number | null; sharpe: number | null; creditQuality: string | null; morningstarRating: number | null; morningstarCategory: string | null; ytd: number | null; oneYear: number | null; threeYear: number | null }[]
+    }).filter(Boolean) as Array<{
+      ticker: string; name: string; x: number; y: number; isHighlighted: boolean
+      ytwYtm: number | null; secYield: number | null; duration: number | null
+      expense: number | null; stdDev: number | null; sharpe: number | null
+      creditQuality: string | null; morningstarRating: number | null
+      morningstarCategory: string | null; ytd: number | null
+      oneYear: number | null; threeYear: number | null
+    }>
 
     const sorted = points.sort((a, b) => a.x - b.x)
     const aX = count > 0 ? xSum / count : 0
     const aY = count > 0 ? ySum / count : 0
 
-    // Linear regression (least squares)
+    // Linear regression
     let ssXX = 0, ssXY = 0
     for (const p of sorted) { ssXX += (p.x - aX) ** 2; ssXY += (p.x - aX) * (p.y - aY) }
     const slope = ssXX > 0 ? ssXY / ssXX : 0
     const intercept = aY - slope * aX
-    const trendLine = sorted.length >= 3
-      ? [
-          { x: sorted[0].x, y: slope * sorted[0].x + intercept },
-          { x: sorted[sorted.length - 1].x, y: slope * sorted[sorted.length - 1].x + intercept },
-        ]
+    const tl = sorted.length >= 3
+      ? [{ x: sorted[0].x, y: slope * sorted[0].x + intercept }, { x: sorted[sorted.length - 1].x, y: slope * sorted[sorted.length - 1].x + intercept }]
       : []
 
-    return { sortedData: sorted, avgX: aX, avgY: aY, trendLine }
+    return { sortedData: sorted, avgY: aY, trendLine: tl }
   }, [funds, xAxis, yAxis, highlightTicker, search, durationCats, creditCats, mstarCats, starMin, yieldMinPreset, expenseMaxPreset, sharpeMinPreset, stdDevMaxPreset])
 
-  /* ── Filter state checks ── */
   const allDurSelected = durationCats.size === DURATION_CATEGORIES.length
   const allCreditSelected = creditCats.size === CREDIT_CATS.length
   const allMstarSelected = mstarCats.size === MSTAR_CATEGORIES.length
@@ -393,16 +357,11 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
   const activeFilterCount = [!allDurSelected, !allCreditSelected, !allMstarSelected, starMin > 0, hasRangeFilters, !!search].filter(Boolean).length
 
   const clearFilters = useCallback(() => {
-    setSearch("")
-    setDurationCats(new Set(DURATION_CATEGORIES.map(c => c.label)))
-    setCreditCats(new Set(CREDIT_CATS))
-    setMstarCats(new Set(MSTAR_CATEGORIES))
-    setStarMin(0)
-    setYieldMinPreset(null); setExpenseMaxPreset(null)
+    setSearch(""); setDurationCats(new Set(DURATION_CATEGORIES.map(c => c.label)))
+    setCreditCats(new Set(CREDIT_CATS)); setMstarCats(new Set(MSTAR_CATEGORIES))
+    setStarMin(0); setYieldMinPreset(null); setExpenseMaxPreset(null)
     setSharpeMinPreset(null); setStdDevMaxPreset(null)
   }, [])
-
-
 
   return (
     <div className="rounded-xl border p-5" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
@@ -451,7 +410,6 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          {/* Search with autocomplete */}
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 z-10 h-3.5 w-3.5 -translate-y-1/2" style={{ color: "#94a3b8" }} />
             <input
@@ -489,8 +447,6 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
               </div>
             )}
           </div>
-
-          {/* Filter toggle */}
           <button onClick={() => setShowFilters(!showFilters)}
             className="flex h-8 items-center gap-1.5 rounded-md border px-3 text-xs font-semibold transition-all"
             style={{
@@ -513,7 +469,6 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
       {/* ═══ FILTER BAR ═══ */}
       {showFilters && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          {/* Category popover */}
           <FilterPopover label="Category" activeCount={allMstarSelected ? 0 : MSTAR_CATEGORIES.length - mstarCats.size}>
             <div className="mb-2 flex items-center justify-between">
               <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Morningstar Category</span>
@@ -523,12 +478,11 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
             <div className="flex max-w-[320px] flex-wrap gap-1.5">
               {MSTAR_CATEGORIES.map(c => (
                 <Chip key={c} label={c} active={mstarCats.has(c)} count={mstarCatCounts[c] || 0}
-                  onClick={() => { const s = new Set(mstarCats); s.has(c) ? s.delete(c) : s.add(c); setMstarCats(s) }} />
+                  onClick={() => { const ns = new Set(mstarCats); ns.has(c) ? ns.delete(c) : ns.add(c); setMstarCats(ns) }} />
               ))}
             </div>
           </FilterPopover>
 
-          {/* Duration popover */}
           <FilterPopover label="Duration" activeCount={allDurSelected ? 0 : DURATION_CATEGORIES.length - durationCats.size}>
             <div className="mb-2 flex items-center justify-between">
               <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Duration Range</span>
@@ -538,12 +492,11 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
             <div className="flex flex-wrap gap-1.5">
               {DURATION_CATEGORIES.map(c => (
                 <Chip key={c.label} label={`${c.label} (${c.min}-${c.max === 100 ? "6+" : c.max}y)`} active={durationCats.has(c.label)}
-                  onClick={() => { const s = new Set(durationCats); s.has(c.label) ? s.delete(c.label) : s.add(c.label); setDurationCats(s) }} />
+                  onClick={() => { const ns = new Set(durationCats); ns.has(c.label) ? ns.delete(c.label) : ns.add(c.label); setDurationCats(ns) }} />
               ))}
             </div>
           </FilterPopover>
 
-          {/* Credit popover */}
           <FilterPopover label="Credit" activeCount={allCreditSelected ? 0 : CREDIT_CATS.length - creditCats.size}>
             <div className="mb-2 flex items-center justify-between">
               <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Credit Quality</span>
@@ -553,83 +506,59 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
             <div className="flex flex-wrap gap-1.5">
               {CREDIT_CATS.map(c => (
                 <Chip key={c} label={c} active={creditCats.has(c)}
-                  onClick={() => { const s = new Set(creditCats); s.has(c) ? s.delete(c) : s.add(c); setCreditCats(s) }} />
+                  onClick={() => { const ns = new Set(creditCats); ns.has(c) ? ns.delete(c) : ns.add(c); setCreditCats(ns) }} />
               ))}
             </div>
           </FilterPopover>
 
-          {/* Yield popover */}
           <FilterPopover label="Yield" activeCount={yieldMinPreset != null ? 1 : 0}>
-            <div className="mb-2">
-              <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Minimum Yield</span>
-            </div>
+            <div className="mb-2"><span className="text-[11px] font-bold" style={{ color: "#334155" }}>Minimum Yield</span></div>
             <div className="flex flex-wrap gap-1.5">
               {[3, 4, 5, 6, 7].map(v => (
-                <Chip key={v} label={`${v}%+`} active={yieldMinPreset === v}
-                  onClick={() => setYieldMinPreset(yieldMinPreset === v ? null : v)} />
+                <Chip key={v} label={`${v}%+`} active={yieldMinPreset === v} onClick={() => setYieldMinPreset(yieldMinPreset === v ? null : v)} />
               ))}
             </div>
           </FilterPopover>
 
-          {/* Expense popover */}
           <FilterPopover label="Expense" activeCount={expenseMaxPreset != null ? 1 : 0}>
-            <div className="mb-2">
-              <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Max Expense Ratio</span>
-            </div>
+            <div className="mb-2"><span className="text-[11px] font-bold" style={{ color: "#334155" }}>Max Expense Ratio</span></div>
             <div className="flex flex-wrap gap-1.5">
-              {[
-                { v: 0.25, l: "<0.25%" },
-                { v: 0.5, l: "<0.5%" },
-                { v: 1, l: "<1%" },
-              ].map(({ v, l }) => (
-                <Chip key={v} label={l} active={expenseMaxPreset === v}
-                  onClick={() => setExpenseMaxPreset(expenseMaxPreset === v ? null : v)} />
+              {[{ v: 0.25, l: "<0.25%" }, { v: 0.5, l: "<0.5%" }, { v: 1, l: "<1%" }].map(({ v, l }) => (
+                <Chip key={v} label={l} active={expenseMaxPreset === v} onClick={() => setExpenseMaxPreset(expenseMaxPreset === v ? null : v)} />
               ))}
             </div>
           </FilterPopover>
 
-          {/* Sharpe popover */}
           <FilterPopover label="Sharpe" activeCount={sharpeMinPreset != null ? 1 : 0}>
-            <div className="mb-2">
-              <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Min Sharpe Ratio</span>
-            </div>
+            <div className="mb-2"><span className="text-[11px] font-bold" style={{ color: "#334155" }}>Min Sharpe Ratio</span></div>
             <div className="flex flex-wrap gap-1.5">
               {[0, 0.5, 1, 1.5].map(v => (
-                <Chip key={v} label={`>${v}`} active={sharpeMinPreset === v}
-                  onClick={() => setSharpeMinPreset(sharpeMinPreset === v ? null : v)} />
+                <Chip key={v} label={`>${v}`} active={sharpeMinPreset === v} onClick={() => setSharpeMinPreset(sharpeMinPreset === v ? null : v)} />
               ))}
             </div>
           </FilterPopover>
 
-          {/* Std Dev popover */}
           <FilterPopover label="Std Dev" activeCount={stdDevMaxPreset != null ? 1 : 0}>
-            <div className="mb-2">
-              <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Max Std Deviation</span>
-            </div>
+            <div className="mb-2"><span className="text-[11px] font-bold" style={{ color: "#334155" }}>Max Std Deviation</span></div>
             <div className="flex flex-wrap gap-1.5">
               {[2, 3, 5].map(v => (
-                <Chip key={v} label={`<${v}`} active={stdDevMaxPreset === v}
-                  onClick={() => setStdDevMaxPreset(stdDevMaxPreset === v ? null : v)} />
+                <Chip key={v} label={`<${v}`} active={stdDevMaxPreset === v} onClick={() => setStdDevMaxPreset(stdDevMaxPreset === v ? null : v)} />
               ))}
             </div>
           </FilterPopover>
 
-          {/* Stars popover */}
           <FilterPopover label="Stars" activeCount={starMin > 0 ? 1 : 0}>
-            <div className="mb-2">
-              <span className="text-[11px] font-bold" style={{ color: "#334155" }}>Min Morningstar Rating</span>
-            </div>
+            <div className="mb-2"><span className="text-[11px] font-bold" style={{ color: "#334155" }}>Min Morningstar Rating</span></div>
             <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map(s => (
-                <button key={s} onClick={() => setStarMin(s === starMin ? 0 : s)}
-                  className="text-lg leading-none transition-all" style={{ color: s <= starMin ? "#f59e0b" : "#d1d5db" }}
-                  aria-label={`Minimum ${s} stars`}
+              {[1, 2, 3, 4, 5].map(sv => (
+                <button key={sv} onClick={() => setStarMin(sv === starMin ? 0 : sv)}
+                  className="text-lg leading-none transition-all" style={{ color: sv <= starMin ? "#f59e0b" : "#d1d5db" }}
+                  aria-label={`Minimum ${sv} stars`}
                 >{"★"}</button>
               ))}
             </div>
           </FilterPopover>
 
-          {/* Reset button */}
           {hasActiveFilters && (
             <button onClick={clearFilters}
               className="ml-1 flex h-7 items-center gap-1 rounded-full px-2.5 text-[11px] font-semibold transition-all"
@@ -651,19 +580,15 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
           )}
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={400}>
-          <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 20 }}>
+        <ResponsiveContainer width="100%" height={420}>
+          <ScatterChart margin={{ top: 20, right: 25, bottom: 30, left: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
             <XAxis
               type="number" dataKey="x" name={xAxis.label}
-              domain={
-                xAxis.unit === "credit"
-                  ? [0.5, 8.5] as [number, number]
-                  : [(dataMin: number) => Math.max(0, Math.floor(dataMin * 0.9 * 10) / 10), (dataMax: number) => Math.ceil(dataMax * 1.1 * 10) / 10]
-              }
-              ticks={xAxis.unit === "credit" ? [1, 2, 3, 4, 5, 6, 7, 8] : undefined}
+              domain={xAxis.isCredit ? [0.5, 8.5] as [number, number] : [(dataMin: number) => Math.max(0, Math.floor(dataMin * 0.9 * 10) / 10), (dataMax: number) => Math.ceil(dataMax * 1.1 * 10) / 10]}
+              ticks={xAxis.isCredit ? [1, 2, 3, 4, 5, 6, 7, 8] : undefined}
               tick={{ fontSize: 11, fill: "#94a3b8" }}
-              tickFormatter={(v: number) => xAxis.tickFormat(v)}
+              tickFormatter={v => xAxis.format(v)}
               tickLine={{ stroke: "#e2e8f0" }}
               axisLine={{ stroke: "#e2e8f0" }}
             >
@@ -671,13 +596,13 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund, savedSta
             </XAxis>
             <YAxis
               type="number" dataKey="y" name={yAxis.label}
-              domain={yAxis.unit === "credit" ? [0.5, 8.5] as [number, number] : undefined}
-              ticks={yAxis.unit === "credit" ? [1, 2, 3, 4, 5, 6, 7, 8] : undefined}
+              domain={yAxis.isCredit ? [0.5, 8.5] as [number, number] : undefined}
+              ticks={yAxis.isCredit ? [1, 2, 3, 4, 5, 6, 7, 8] : undefined}
               tick={{ fontSize: 11, fill: "#94a3b8" }}
-              tickFormatter={(v: number) => yAxis.tickFormat(v)}
+              tickFormatter={v => yAxis.format(v)}
               tickLine={{ stroke: "#e2e8f0" }}
               axisLine={{ stroke: "#e2e8f0" }}
-              width={yAxis.unit === "credit" ? 45 : undefined}
+              width={yAxis.isCredit ? 45 : undefined}
             >
               <Label value={yAxis.label} angle={-90} position="insideLeft" offset={-5} style={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} />
             </YAxis>
