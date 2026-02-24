@@ -552,18 +552,20 @@ export default function Page() {
       </div>
       )}
 
-      {/* ===== FUND MAP SECTION (always mounted to preserve state) ===== */}
-      <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6 sm:py-6" style={{ display: section === "map" ? undefined : "none" }}>
-        <FundUniverseMap
-          funds={funds}
-          highlightTicker={undefined}
-          onSelectFund={(t) => {
-            setLookupTicker(t)
-            setCameFromMap(true)
-            setSection("lookup")
-          }}
-        />
-      </div>
+      {/* ===== FUND MAP SECTION ===== */}
+      {section === "map" && (
+        <div className="mx-auto max-w-6xl px-3 py-5 sm:px-6 sm:py-6">
+          <FundUniverseMap
+            funds={funds}
+            highlightTicker={undefined}
+            onSelectFund={(t) => {
+              setLookupTicker(t)
+              setCameFromMap(true)
+              setSection("lookup")
+            }}
+          />
+        </div>
+      )}
 
       {/* ===== FUND LOOKUP SECTION ===== */}
       {section === "lookup" && (
