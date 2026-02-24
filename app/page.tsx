@@ -16,7 +16,7 @@ import { CompetitorWarRoom } from "@/components/competitor-war-room"
 import { FundChat } from "@/components/fund-chat"
 import { ElevatorPitch } from "@/components/elevator-pitch"
 import { FundLookup } from "@/components/fund-lookup"
-import { FundUniverseMap } from "@/components/fund-map"
+import { FundUniverseMap } from "@/components/fund-universe-map"
 import type { FundData, AnalysisMode, AnalysisResult, WarRoom, YahooAnalytics } from "@/lib/fund-types"
 import { Upload, X, Loader2, ArrowRightLeft, Search, BarChart3, Crosshair, Star } from "lucide-react"
 
