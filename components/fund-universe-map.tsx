@@ -672,10 +672,14 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
             <Tooltip content={<CustomTooltip />} cursor={false} />
             {sortedData.length >= 2 && <ReferenceLine y={avgY} stroke="#94a3b8" strokeDasharray="6 4" strokeWidth={1} />}
             {trendLine.length === 2 && (
-              <ReferenceLine
-                segment={[{ x: trendLine[0].x, y: trendLine[0].y }, { x: trendLine[1].x, y: trendLine[1].y }]}
-                stroke="#0f3d6b" strokeWidth={1.5} strokeDasharray="6 3" opacity={0.5}
-                ifOverflow="extendDomain"
+              <Scatter
+                data={trendLine}
+                dataKey="y"
+                line={{ stroke: "#0f3d6b", strokeWidth: 1.5, strokeDasharray: "6 3", opacity: 0.5 }}
+                shape={() => <circle r={0} />}
+                isAnimationActive={false}
+                legendType="none"
+                tooltipType="none"
               />
             )}
             <Scatter data={sortedData}
