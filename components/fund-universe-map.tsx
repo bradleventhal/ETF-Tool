@@ -28,26 +28,35 @@ function creditLabel(score: number): string {
 }
 
 /* ── Axis definitions ── */
+type AxisUnit = "pct" | "pct1" | "num" | "credit" | "yrs"
+
 type AxisKey = {
-  key: string; label: string
+  key: string; label: string; unit: AxisUnit
   format: (v: number) => string
+  tickFormat: (v: number) => string
   getValue: (fund: FundData) => number | null
 }
 
+const fmtPct = (v: number) => `${v.toFixed(2)}%`
+const fmtPct1 = (v: number) => `${v.toFixed(1)}%`
+const fmtNum = (v: number) => v.toFixed(2)
+const tickPct = (v: number) => `${Number(v.toFixed(1))}%`
+const tickNum = (v: number) => String(Number(v.toFixed(1)))
+
 const AXIS_OPTIONS: AxisKey[] = [
-  { key: "secYield", label: "30-Day SEC Yield", format: v => `${v.toFixed(2)}%`, getValue: f => f.secYield != null ? f.secYield * 100 : null },
-  { key: "distYield", label: "Distribution Yield", format: v => `${v.toFixed(2)}%`, getValue: f => f.distributionYield != null ? f.distributionYield * 100 : null },
-  { key: "ytwYtm", label: "YTW / YTM", format: v => `${v.toFixed(2)}%`, getValue: f => f.ytwYtm != null ? f.ytwYtm * 100 : f.secYield != null ? f.secYield * 100 : null },
-  { key: "duration", label: "Duration (yrs)", format: v => v.toFixed(2), getValue: f => f.duration },
-  { key: "stdDev", label: "Standard Deviation", format: v => v.toFixed(2), getValue: f => f.stdDev },
-  { key: "sharpe", label: "Sharpe Ratio", format: v => v.toFixed(2), getValue: f => f.sharpe },
-  { key: "expense", label: "Expense Ratio", format: v => `${v.toFixed(2)}%`, getValue: f => f.expense != null ? f.expense * 100 : null },
-  { key: "credit", label: "Credit Quality", format: v => creditLabel(v), getValue: f => creditScore(f) },
-  { key: "ytd", label: "YTD Return", format: v => `${v.toFixed(2)}%`, getValue: f => f.ytd != null ? f.ytd * 100 : null },
-  { key: "oneYear", label: "1-Year Return", format: v => `${v.toFixed(2)}%`, getValue: f => f.oneYear != null ? f.oneYear * 100 : null },
-  { key: "threeYear", label: "3-Year Return", format: v => `${v.toFixed(2)}%`, getValue: f => f.threeYear != null ? f.threeYear * 100 : null },
-  { key: "securitized", label: "Securitized %", format: v => `${v.toFixed(1)}%`, getValue: f => f.securitized != null ? f.securitized * 100 : null },
-  { key: "corpCredit", label: "Corp Credit %", format: v => `${v.toFixed(1)}%`, getValue: f => f.corporateCredit != null ? f.corporateCredit * 100 : null },
+  { key: "secYield", label: "30-Day SEC Yield", unit: "pct", format: fmtPct, tickFormat: tickPct, getValue: f => f.secYield != null ? f.secYield * 100 : null },
+  { key: "distYield", label: "Distribution Yield", unit: "pct", format: fmtPct, tickFormat: tickPct, getValue: f => f.distributionYield != null ? f.distributionYield * 100 : null },
+  { key: "ytwYtm", label: "YTW / YTM", unit: "pct", format: fmtPct, tickFormat: tickPct, getValue: f => f.ytwYtm != null ? f.ytwYtm * 100 : f.secYield != null ? f.secYield * 100 : null },
+  { key: "duration", label: "Duration (yrs)", unit: "yrs", format: v => `${v.toFixed(2)} yrs`, tickFormat: v => `${Number(v.toFixed(1))}`, getValue: f => f.duration },
+  { key: "stdDev", label: "Standard Deviation", unit: "num", format: fmtNum, tickFormat: tickNum, getValue: f => f.stdDev },
+  { key: "sharpe", label: "Sharpe Ratio", unit: "num", format: fmtNum, tickFormat: tickNum, getValue: f => f.sharpe },
+  { key: "expense", label: "Expense Ratio", unit: "pct", format: fmtPct, tickFormat: tickPct, getValue: f => f.expense != null ? f.expense * 100 : null },
+  { key: "credit", label: "Credit Quality", unit: "credit", format: v => creditLabel(v), tickFormat: v => { const r = Math.round(v); return r >= 1 && r <= 8 ? creditLabel(r) : "" }, getValue: f => creditScore(f) },
+  { key: "ytd", label: "YTD Return", unit: "pct", format: fmtPct, tickFormat: tickPct, getValue: f => f.ytd != null ? f.ytd * 100 : null },
+  { key: "oneYear", label: "1-Year Return", unit: "pct", format: fmtPct, tickFormat: tickPct, getValue: f => f.oneYear != null ? f.oneYear * 100 : null },
+  { key: "threeYear", label: "3-Year Return", unit: "pct", format: fmtPct, tickFormat: tickPct, getValue: f => f.threeYear != null ? f.threeYear * 100 : null },
+  { key: "securitized", label: "Securitized %", unit: "pct1", format: fmtPct1, tickFormat: tickPct, getValue: f => f.securitized != null ? f.securitized * 100 : null },
+  { key: "corpCredit", label: "Corp Credit %", unit: "pct1", format: fmtPct1, tickFormat: tickPct, getValue: f => f.corporateCredit != null ? f.corporateCredit * 100 : null },
 ]
 
 const findAxis = (key: string) => AXIS_OPTIONS.findIndex(a => a.key === key)
@@ -314,30 +323,30 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
   const CustomTooltip = ({ active, payload }: any) => {
     if (!active || !payload?.[0]?.payload) return null
     const d = payload[0].payload
-    const fmtPct = (v: number | null) => v != null ? `${v.toFixed(2)}%` : "—"
-    const fmtNum = (v: number | null) => v != null ? v.toFixed(2) : "—"
+    const fmtPct = (v: number | null) => v != null ? `${v.toFixed(2)}%` : "\u2014"
+    const fmtNum = (v: number | null) => v != null ? v.toFixed(2) : "\u2014"
     // Group 1: Yield & fundamentals (paired for 2-col grid)
     const fundStats: { label: string; value: string }[] = [
       { label: "YTW / YTM", value: fmtPct(d.ytwYtm) },
       { label: "SEC Yield", value: fmtPct(d.secYield) },
-      { label: "Duration", value: d.duration != null ? `${d.duration.toFixed(2)} yrs` : "—" },
-      { label: "Credit", value: d.creditQuality ?? "—" },
+      { label: "Duration", value: d.duration != null ? `${d.duration.toFixed(2)} yrs` : "\u2014" },
+      { label: "Credit", value: d.creditQuality ?? "\u2014" },
       { label: "Expense", value: fmtPct(d.expense) },
       { label: "Sharpe", value: fmtNum(d.sharpe) },
       { label: "Std Dev", value: fmtNum(d.stdDev) },
-    ].filter(s => s.value !== "—")
+    ].filter(s => s.value !== "\u2014")
     // Group 2: Performance
     const perfStats: { label: string; value: string }[] = [
       { label: "YTD", value: fmtPct(d.ytd) },
       { label: "1Y", value: fmtPct(d.oneYear) },
       { label: "3Y", value: fmtPct(d.threeYear) },
-    ].filter(s => s.value !== "—")
+    ].filter(s => s.value !== "\u2014")
     return (
       <div className="rounded-lg border px-3 py-2.5 shadow-lg" style={{ backgroundColor: "#fff", borderColor: "#e2e8f0", minWidth: 210 }}>
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold" style={{ color: PRIMARY }}>{d.ticker}</span>
           {d.morningstarRating != null && d.morningstarRating > 0 && (
-            <span className="text-[10px]" style={{ color: "#f59e0b" }}>{"★".repeat(d.morningstarRating)}</span>
+            <span className="text-[10px]" style={{ color: "#f59e0b" }}>{"\u2605".repeat(d.morningstarRating)}</span>
           )}
         </div>
         <div className="text-[10px] leading-snug" style={{ color: "#64748b" }}>{d.name}</div>
@@ -465,7 +474,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
         </div>
       </div>
 
-      {/* ═══ FILTER BAR ═══ */}
+      {/* Filter bar */}
       {showFilters && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
           {/* Category popover */}
@@ -579,7 +588,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
                 <button key={s} onClick={() => setStarMin(s === starMin ? 0 : s)}
                   className="text-lg leading-none transition-all" style={{ color: s <= starMin ? "#f59e0b" : "#d1d5db" }}
                   aria-label={`Minimum ${s} stars`}
-                >{"★"}</button>
+                >{"\u2605"}</button>
               ))}
             </div>
           </FilterPopover>
@@ -596,7 +605,7 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
         </div>
       )}
 
-      {/* ═══ CHART ═══ */}
+      {/* Chart */}
       {sortedData.length < 1 ? (
         <div className="flex h-[350px] flex-col items-center justify-center gap-2">
           <Search className="h-8 w-8" style={{ color: "#cbd5e1" }} />
@@ -611,12 +620,14 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
             <XAxis
               type="number" dataKey="x" name={xAxis.label}
-              domain={[
-                (dataMin: number) => Math.max(0, Math.floor(dataMin * 0.9 * 10) / 10),
-                (dataMax: number) => Math.ceil(dataMax * 1.1 * 10) / 10,
-              ]}
+              domain={
+                xAxis.unit === "credit"
+                  ? [0.5, 8.5]
+                  : [(dataMin: number) => Math.max(0, Math.floor(dataMin * 0.9 * 10) / 10), (dataMax: number) => Math.ceil(dataMax * 1.1 * 10) / 10]
+              }
+              ticks={xAxis.unit === "credit" ? [1, 2, 3, 4, 5, 6, 7, 8] : undefined}
               tick={{ fontSize: 11, fill: "#94a3b8" }}
-              tickFormatter={v => xAxis.format(v)}
+              tickFormatter={v => xAxis.tickFormat(v)}
               tickLine={{ stroke: "#e2e8f0" }}
               axisLine={{ stroke: "#e2e8f0" }}
             >
@@ -624,10 +635,17 @@ export function FundUniverseMap({ funds, highlightTicker, onSelectFund }: Props)
             </XAxis>
             <YAxis
               type="number" dataKey="y" name={yAxis.label}
+              domain={
+                yAxis.unit === "credit"
+                  ? [0.5, 8.5]
+                  : undefined
+              }
+              ticks={yAxis.unit === "credit" ? [1, 2, 3, 4, 5, 6, 7, 8] : undefined}
               tick={{ fontSize: 11, fill: "#94a3b8" }}
-              tickFormatter={v => yAxis.format(v)}
+              tickFormatter={v => yAxis.tickFormat(v)}
               tickLine={{ stroke: "#e2e8f0" }}
               axisLine={{ stroke: "#e2e8f0" }}
+              width={yAxis.unit === "credit" ? 45 : undefined}
             >
               <Label value={yAxis.label} angle={-90} position="insideLeft" offset={-5} style={{ fontSize: 11, fill: "#64748b", fontWeight: 600 }} />
             </YAxis>

@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+// cache-bust
 const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
