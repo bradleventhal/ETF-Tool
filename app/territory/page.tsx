@@ -1,182 +1,118 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
-import { Search, ArrowLeft, SortAsc } from "lucide-react"
-import type { TripSummary } from "@/lib/territory-types"
-import { TRIP_METRO_MAP, MOCK_CONTACTS, MOCK_OFFICES, MOCK_PEER_DATA, MOCK_INDUSTRY_AUM } from "@/lib/territory-mock-data"
-import { TripList } from "@/components/territory/trip-list"
-import { TripDetail } from "@/components/territory/trip-detail"
+import { ArrowLeft, Users, MapPin, Plane, Target, Building2, TrendingUp, ChevronDown, ChevronUp, Search } from "lucide-react"
 
-/* ═══════════════════════ EAST / WEST TRIP LISTS ═══════════════════════ */
+/* ═══════════════════════ TYPES ═══════════════════════ */
 
-const EAST_TRIPS = new Set(["NYC", "Boston", "Philly", "DC", "Pitt-Cle", "Indi/Cincy/Columbus", "Charlotte", "Atlanta", "Miami", "Tampa", "Nashville", "Raleigh-Durham", "Detroit-Midwest"])
-
-type Rep = "all" | "Brad" | "Bernie"
-type StatusFilter = "all" | "clients" | "warm" | "pipeline" | "cold" | "nextTime"
-type SortMode = "aum" | "opportunity" | "market" | "contacts"
-
-/* ═══════════════════════ BUILD TRIP SUMMARIES ═══════════════════════ */
-
-function buildTripSummaries(): TripSummary[] {
-  return Object.entries(TRIP_METRO_MAP).map(([tripName, metros]) => {
-    const metroNames = Object.keys(metros)
-    const allCities = Object.values(metros).flat()
-    const rep = EAST_TRIPS.has(tripName) ? "Brad" as const : "Bernie" as const
-
-    // Contacts for this trip
-    const tripContacts = MOCK_CONTACTS.filter((c) => c.trip === tripName)
-    const clients = tripContacts.filter((c) => c.client).length
-    const pipeline = tripContacts.filter((c) => c.pipeline).length
-    const warm = tripContacts.filter((c) => c.warm).length
-    const cold = tripContacts.filter((c) => c.cold).length
-    const nextTime = tripContacts.filter((c) => c.nextTime).length
-    const totalAoAum = tripContacts.reduce((sum, c) => sum + (c.aoAum || 0), 0)
-
-    // Offices for this trip (match by city+state)
-    const tripOffices = MOCK_OFFICES.filter((o) =>
-      allCities.some((city) => city.toLowerCase() === o.city.toLowerCase()) || (o.isFidelityClearing && o.rep === rep)
-    )
-    const totalOfficeAum = tripOffices.reduce((sum, o) => sum + o.assetBalance, 0)
-    const monthlyNet = tripOffices.reduce((sum, o) => sum + o.monthlyNet, 0)
-
-    // Peer data for this trip (match by city)
-    const tripPeer = MOCK_PEER_DATA.filter((p) => allCities.some((city) => city.toLowerCase() === p.city.toLowerCase()))
-    const ultrashortPeerAum = tripPeer.reduce((sum, p) => sum + p.ultrashortActiveETF + p.ultrashortPassiveETF + p.aaaETF + p.ultrashortFunds, 0)
-    const incomeCorePeerAum = tripPeer.reduce((sum, p) => sum + p.shortTermBondFunds + p.corePlusFunds, 0)
-    const hyPeerAum = tripPeer.reduce((sum, p) => sum + p.hyETFs + p.hyFunds + p.intervalFunds, 0)
-
-    // Industry AUM
-    const tripIndustry = MOCK_INDUSTRY_AUM.filter((ia) => allCities.some((city) => city.toLowerCase() === ia.city.toLowerCase()))
-    const industryAum = tripIndustry.reduce((sum, ia) => sum + ia.industryAssets, 0)
-
-    const penetration = industryAum > 0 ? totalOfficeAum / industryAum : 0
-    const opportunityScore = (ultrashortPeerAum / 1_000_000) * (1 - totalOfficeAum / (industryAum + 1))
-
-    return {
-      tripName,
-      rep,
-      metros: metroNames,
-      cities: allCities,
-      totalContacts: tripContacts.length,
-      clients,
-      pipeline,
-      warm,
-      cold,
-      nextTime,
-      totalAoAum,
-      totalOfficeAum,
-      monthlyNet,
-      industryAum,
-      ultrashortPeerAum,
-      incomeCorePeerAum,
-      hyPeerAum,
-      hasClients: clients > 0,
-      hasWarm: warm > 0,
-      hasPipeline: pipeline > 0,
-      opportunityScore,
-      penetration,
-    }
-  })
+interface TerritoryData {
+  overview: {
+    totalContacts: number
+    totalMetros: number
+    totalTrips: number
+    totalPipeline: number
+    totalClient: number
+    totalWarm: number
+    totalCold: number
+    totalDrip: number
+    totalUntagged: number
+  }
+  tripMetroMap: Record<string, Record<string, string[]>>
+  tripStats: Record<string, { total: number; pipeline: number; client: number; warm: number; cold: number; drip: number; untagged: number; firmCount: number; metroCount: number }>
+  metroStats: Record<string, { total: number; pipeline: number; client: number; warm: number; cold: number; trip: string; firmCount: number }>
+  topFirms: { name: string; total: number; pipeline: number; client: number; warm: number; cold: number }[]
+  topFirmsByAUM: { name: string; aum: number }[]
+  taggedContacts: { id: string; firstName: string; lastName: string; firmName: string; city: string; state: string; metro: string; trip: string; email: string; pipeline: boolean; client: boolean; warm: boolean; cold: boolean }[]
 }
 
-const ALL_TRIP_SUMMARIES = buildTripSummaries()
+/* ═══════════════════════ HELPERS ═══════════════════════ */
 
-/* ═══════════════════════ SEARCH LOGIC ═══════════════════════ */
-
-function matchesSearch(trip: TripSummary, query: string): boolean {
-  if (!query) return true
-  const q = query.toLowerCase()
-
-  // Match trip name
-  if (trip.tripName.toLowerCase().includes(q)) return true
-
-  // Match metro name
-  if (trip.metros.some((m) => m.toLowerCase().includes(q))) return true
-
-  // Match city name
-  if (trip.cities.some((c) => c.toLowerCase().includes(q))) return true
-
-  // Match state
-  const contactStates = MOCK_CONTACTS.filter((c) => c.trip === trip.tripName).map((c) => c.state.toLowerCase())
-  if (contactStates.some((s) => s === q || s.includes(q))) return true
-
-  return false
+function fmt(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`
+  return `$${n}`
 }
+
+function num(n: number): string {
+  return n.toLocaleString()
+}
+
+type MetroSort = "total" | "pipeline" | "client" | "warm" | "cold" | "firmCount"
+type TripSort = "total" | "pipeline" | "client" | "cold" | "firmCount"
 
 /* ═══════════════════════ PAGE ═══════════════════════ */
 
 export default function TerritoryPage() {
-  const [search, setSearch] = useState("")
-  const [repFilter, setRepFilter] = useState<Rep>("all")
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
-  const [sortMode, setSortMode] = useState<SortMode>("opportunity")
-  const [selectedTrip, setSelectedTrip] = useState<string | null>(null)
+  const [data, setData] = useState<TerritoryData | null>(null)
+  const [metroSort, setMetroSort] = useState<MetroSort>("total")
+  const [metroDir, setMetroDir] = useState<"desc" | "asc">("desc")
+  const [tripSort, setTripSort] = useState<TripSort>("total")
+  const [tripDir, setTripDir] = useState<"desc" | "asc">("desc")
+  const [metroSearch, setMetroSearch] = useState("")
+  const [tripSearch, setTripSearch] = useState("")
+  const [expandedTrip, setExpandedTrip] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<"overview" | "metros" | "trips" | "firms" | "pipeline">("overview")
 
-  // Filter and sort trips
-  const filteredTrips = useMemo(() => {
-    let trips = ALL_TRIP_SUMMARIES
-
-    // Rep filter
-    if (repFilter === "Brad") trips = trips.filter((t) => t.rep === "Brad")
-    else if (repFilter === "Bernie") trips = trips.filter((t) => t.rep === "Bernie")
-
-    // Status filter
-    if (statusFilter === "clients") trips = trips.filter((t) => t.hasClients)
-    else if (statusFilter === "pipeline") trips = trips.filter((t) => t.hasPipeline)
-    else if (statusFilter === "warm") trips = trips.filter((t) => t.hasWarm)
-    else if (statusFilter === "cold") trips = trips.filter((t) => t.cold > 0)
-    else if (statusFilter === "nextTime") trips = trips.filter((t) => t.nextTime > 0)
-
-    // Search
-    if (search) trips = trips.filter((t) => matchesSearch(t, search))
-
-    // Sort
-    switch (sortMode) {
-      case "aum": trips = [...trips].sort((a, b) => b.totalAoAum - a.totalAoAum); break
-      case "opportunity": trips = [...trips].sort((a, b) => b.opportunityScore - a.opportunityScore); break
-      case "market": trips = [...trips].sort((a, b) => b.industryAum - a.industryAum); break
-      case "contacts": trips = [...trips].sort((a, b) => b.totalContacts - a.totalContacts); break
-    }
-
-    return trips
-  }, [repFilter, statusFilter, search, sortMode])
-
-  // Selected trip data
-  const tripData = useMemo(() => {
-    if (!selectedTrip) return null
-    const summary = ALL_TRIP_SUMMARIES.find((t) => t.tripName === selectedTrip)
-    if (!summary) return null
-    const contacts = MOCK_CONTACTS.filter((c) => c.trip === selectedTrip)
-    const allCities = summary.cities
-    const offices = MOCK_OFFICES.filter((o) =>
-      allCities.some((city) => city.toLowerCase() === o.city.toLowerCase()) || (o.isFidelityClearing && o.rep === summary.rep)
-    )
-    return { summary, contacts, offices }
-  }, [selectedTrip])
-
-  const handleSelectTrip = useCallback((tripName: string) => {
-    setSelectedTrip(tripName)
+  useEffect(() => {
+    fetch("/data/territory.json")
+      .then(r => r.json())
+      .then(setData)
+      .catch(console.error)
   }, [])
 
-  // Auto-select first trip when filtered list changes
-  const effectiveSelected = selectedTrip && filteredTrips.some((t) => t.tripName === selectedTrip) ? selectedTrip : (filteredTrips[0]?.tripName || null)
-  if (effectiveSelected !== selectedTrip && effectiveSelected) {
-    // Will update on next render
+  const sortedMetros = useMemo(() => {
+    if (!data) return []
+    return Object.entries(data.metroStats)
+      .filter(([name]) => !metroSearch || name.toLowerCase().includes(metroSearch.toLowerCase()))
+      .sort((a, b) => {
+        const va = a[1][metroSort] as number
+        const vb = b[1][metroSort] as number
+        return metroDir === "desc" ? vb - va : va - vb
+      })
+  }, [data, metroSort, metroDir, metroSearch])
+
+  const sortedTrips = useMemo(() => {
+    if (!data) return []
+    return Object.entries(data.tripStats)
+      .filter(([name]) => name !== 'Unassigned' && (!tripSearch || name.toLowerCase().includes(tripSearch.toLowerCase())))
+      .sort((a, b) => {
+        const va = a[1][tripSort] as number
+        const vb = b[1][tripSort] as number
+        return tripDir === "desc" ? vb - va : va - vb
+      })
+  }, [data, tripSort, tripDir, tripSearch])
+
+  if (!data) {
+    return (
+      <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: "#f8fafc" }}>
+        <div className="text-sm" style={{ color: "#64748b" }}>Loading territory data...</div>
+      </div>
+    )
   }
 
-  const activeTripData = useMemo(() => {
-    const active = effectiveSelected
-    if (!active) return null
-    const summary = ALL_TRIP_SUMMARIES.find((t) => t.tripName === active)
-    if (!summary) return null
-    const contacts = MOCK_CONTACTS.filter((c) => c.trip === active)
-    const allCities = summary.cities
-    const offices = MOCK_OFFICES.filter((o) =>
-      allCities.some((city) => city.toLowerCase() === o.city.toLowerCase()) || (o.isFidelityClearing && o.rep === summary.rep)
-    )
-    return { summary, contacts, offices }
-  }, [effectiveSelected])
+  const o = data.overview
+
+  function toggleMetroSort(col: MetroSort) {
+    if (metroSort === col) setMetroDir(d => d === "desc" ? "asc" : "desc")
+    else { setMetroSort(col); setMetroDir("desc") }
+  }
+
+  function toggleTripSort(col: TripSort) {
+    if (tripSort === col) setTripDir(d => d === "desc" ? "asc" : "desc")
+    else { setTripSort(col); setTripDir("desc") }
+  }
+
+  function SortIcon({ col, current, dir }: { col: string; current: string; dir: string }) {
+    if (col !== current) return null
+    return dir === "desc" ? <ChevronDown className="inline h-3 w-3" /> : <ChevronUp className="inline h-3 w-3" />
+  }
+
+  const statusBadge = (label: string, count: number, bg: string, text: string) => (
+    <span key={label} className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ backgroundColor: bg, color: text }}>
+      {label}: {num(count)}
+    </span>
+  )
 
   return (
     <div className="flex min-h-screen flex-col" style={{ backgroundColor: "#f8fafc" }}>
@@ -185,134 +121,363 @@ export default function TerritoryPage() {
         <div className="mx-auto flex max-w-[1400px] items-center justify-between">
           <div>
             <h1 className="text-base font-bold text-white sm:text-lg">Territory Intelligence</h1>
-            <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.5)" }}>Internal trip planning & prospect tracker</p>
+            <p className="text-[10px]" style={{ color: "rgba(255,255,255,0.5)" }}>East Coast IBD — {num(o.totalContacts)} contacts across {o.totalTrips} trips</p>
           </div>
-          <Link
-            href="/"
-            className="flex min-h-[44px] items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors"
-            style={{ color: "rgba(255,255,255,0.7)" }}
-          >
+          <Link href="/" className="flex min-h-[44px] items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors" style={{ color: "rgba(255,255,255,0.7)" }}>
             <ArrowLeft className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Fund Discovery</span>
           </Link>
         </div>
       </header>
 
-      {/* Search & Filters */}
-      <div className="border-b px-3 py-3 sm:px-6" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
-        <div className="mx-auto flex max-w-[1400px] flex-col gap-2.5">
-          {/* Search input */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "#94a3b8" }} />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by trip, metro, or city..."
-              className="w-full rounded-lg border py-2.5 pl-10 pr-4 text-sm outline-none transition-colors"
-              style={{
-                borderColor: search ? "#0f3d6b" : "#e2e8f0",
-                color: "#0f172a",
-                backgroundColor: "#fff",
-              }}
-            />
-          </div>
-
-          {/* Filter pills */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Rep filter */}
-            <div className="flex gap-1">
-              {([["all", "All Reps"], ["Brad", "Brad (East)"], ["Bernie", "Bernie (West)"]] as [Rep, string][]).map(([val, label]) => (
-                <button
-                  key={val}
-                  onClick={() => setRepFilter(val)}
-                  className="min-h-[36px] rounded-full px-3 py-1 text-[11px] font-medium transition-colors"
-                  style={{
-                    backgroundColor: repFilter === val ? "#0f3d6b" : "#f1f5f9",
-                    color: repFilter === val ? "#fff" : "#64748b",
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <div className="h-4 w-px" style={{ backgroundColor: "#e2e8f0" }} />
-
-            {/* Status filter */}
-            <div className="flex flex-wrap gap-1">
-              {([["all", "All"], ["clients", "Clients"], ["pipeline", "Pipeline"], ["warm", "Warm"], ["cold", "Cold"], ["nextTime", "Next Time"]] as [StatusFilter, string][]).map(([val, label]) => (
-                <button
-                  key={val}
-                  onClick={() => setStatusFilter(val)}
-                  className="min-h-[36px] rounded-full px-3 py-1 text-[11px] font-medium transition-colors"
-                  style={{
-                    backgroundColor: statusFilter === val ? "#0f3d6b" : "#f1f5f9",
-                    color: statusFilter === val ? "#fff" : "#64748b",
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <div className="h-4 w-px" style={{ backgroundColor: "#e2e8f0" }} />
-
-            {/* Sort */}
-            <div className="flex items-center gap-1.5">
-              <SortAsc className="h-3.5 w-3.5" style={{ color: "#94a3b8" }} />
-              <select
-                value={sortMode}
-                onChange={(e) => setSortMode(e.target.value as SortMode)}
-                className="rounded border py-1 pl-2 pr-6 text-[11px]"
-                style={{ borderColor: "#e2e8f0", color: "#64748b", backgroundColor: "#fff" }}
-              >
-                <option value="opportunity">By Opportunity</option>
-                <option value="aum">By AO AUM</option>
-                <option value="market">By Market Size</option>
-                <option value="contacts">By # Contacts</option>
-              </select>
-            </div>
-
-            {/* Count */}
-            <span className="ml-auto text-[10px]" style={{ color: "#94a3b8" }}>
-              {filteredTrips.length} trip{filteredTrips.length !== 1 ? "s" : ""}
-            </span>
-          </div>
+      {/* Tab Nav */}
+      <div className="border-b px-3 sm:px-6" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+        <div className="mx-auto flex max-w-[1400px] gap-0 overflow-x-auto">
+          {([["overview", "Overview"], ["metros", "Metros"], ["trips", "Trip Planner"], ["firms", "Firms & AUM"], ["pipeline", "Pipeline"]] as [typeof activeTab, string][]).map(([key, label]) => (
+            <button key={key} onClick={() => setActiveTab(key)}
+              className="whitespace-nowrap border-b-2 px-4 py-3 text-xs font-medium transition-colors"
+              style={{ borderColor: activeTab === key ? "#0f3d6b" : "transparent", color: activeTab === key ? "#0f3d6b" : "#64748b" }}>
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Split Panel */}
-      <div className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col lg:flex-row">
-        {/* Left panel — Trip List */}
-        <div
-          className="w-full shrink-0 overflow-y-auto border-b lg:w-[380px] lg:border-b-0 lg:border-r"
-          style={{ borderColor: "#e2e8f0", maxHeight: "calc(100vh - 180px)" }}
-        >
-          <TripList
-            trips={filteredTrips}
-            selectedTrip={effectiveSelected}
-            onSelect={handleSelectTrip}
-          />
-        </div>
+      {/* Content */}
+      <div className="mx-auto w-full max-w-[1400px] p-3 sm:p-6">
 
-        {/* Right panel — Trip Detail */}
-        <div
-          className="flex-1 overflow-y-auto"
-          style={{ maxHeight: "calc(100vh - 180px)" }}
-        >
-          {activeTripData ? (
-            <TripDetail
-              trip={activeTripData.summary}
-              contacts={activeTripData.contacts}
-              offices={activeTripData.offices}
-            />
-          ) : (
-            <div className="flex h-64 items-center justify-center">
-              <p className="text-sm" style={{ color: "#94a3b8" }}>Select a trip to view details.</p>
+        {/* ════════ OVERVIEW TAB ════════ */}
+        {activeTab === "overview" && (
+          <div className="space-y-6">
+            {/* Cards */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+              {[
+                { icon: Users, label: "Total Contacts", value: num(o.totalContacts), color: "#0f3d6b" },
+                { icon: MapPin, label: "Metros", value: num(o.totalMetros), color: "#7c3aed" },
+                { icon: Plane, label: "Trips", value: num(o.totalTrips), color: "#0891b2" },
+                { icon: Target, label: "Pipeline", value: num(o.totalPipeline), color: "#dc2626" },
+                { icon: Building2, label: "Clients", value: num(o.totalClient), color: "#15803d" },
+              ].map(({ icon: Icon, label, value, color }) => (
+                <div key={label} className="rounded-xl border p-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-lg p-2" style={{ backgroundColor: `${color}10` }}>
+                      <Icon className="h-4 w-4" style={{ color }} />
+                    </div>
+                  </div>
+                  <div className="mt-3 text-2xl font-bold" style={{ color: "#0f172a" }}>{value}</div>
+                  <div className="text-[11px]" style={{ color: "#64748b" }}>{label}</div>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
+
+            {/* Status Breakdown */}
+            <div className="rounded-xl border p-4 sm:p-6" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+              <h2 className="mb-4 text-sm font-semibold" style={{ color: "#0f172a" }}>Contact Status Breakdown</h2>
+              <div className="flex flex-wrap gap-2">
+                {statusBadge("Pipeline", o.totalPipeline, "#ede9fe", "#7c3aed")}
+                {statusBadge("Client", o.totalClient, "#dcfce7", "#15803d")}
+                {statusBadge("Warm", o.totalWarm, "#fef9c3", "#a16207")}
+                {statusBadge("Cold", o.totalCold, "#dbeafe", "#1d4ed8")}
+                {statusBadge("Drip", o.totalDrip, "#ffedd5", "#c2410c")}
+                {statusBadge("Untagged", o.totalUntagged, "#f1f5f9", "#94a3b8")}
+              </div>
+              {/* Bar */}
+              <div className="mt-4 flex h-6 w-full overflow-hidden rounded-full">
+                {[
+                  { count: o.totalPipeline, color: "#7c3aed" },
+                  { count: o.totalClient, color: "#15803d" },
+                  { count: o.totalWarm, color: "#eab308" },
+                  { count: o.totalCold, color: "#3b82f6" },
+                  { count: o.totalDrip, color: "#ea580c" },
+                  { count: o.totalUntagged, color: "#cbd5e1" },
+                ].map(({ count, color }, i) => (
+                  <div key={i} style={{ width: `${(count / o.totalContacts) * 100}%`, backgroundColor: color, minWidth: count > 0 ? "2px" : 0 }} />
+                ))}
+              </div>
+              <p className="mt-2 text-[11px]" style={{ color: "#94a3b8" }}>
+                {((1 - o.totalUntagged / o.totalContacts) * 100).toFixed(1)}% of contacts have been tagged
+              </p>
+            </div>
+
+            {/* Top Firms by AUM (quick preview) */}
+            <div className="rounded-xl border p-4 sm:p-6" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+              <h2 className="mb-4 text-sm font-semibold" style={{ color: "#0f172a" }}>Top 5 Firms by Angel Oak AUM (IBD East)</h2>
+              <div className="space-y-2">
+                {data.topFirmsByAUM.slice(0, 5).map((f, i) => (
+                  <div key={f.name} className="flex items-center gap-3">
+                    <span className="w-5 text-right text-[11px] font-medium" style={{ color: "#94a3b8" }}>{i + 1}</span>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium" style={{ color: "#0f172a" }}>{f.name}</span>
+                        <span className="text-xs font-bold" style={{ color: "#0f3d6b" }}>{fmt(f.aum)}</span>
+                      </div>
+                      <div className="mt-1 h-2 w-full rounded-full" style={{ backgroundColor: "#f1f5f9" }}>
+                        <div className="h-2 rounded-full" style={{ backgroundColor: "#0f3d6b", width: `${(f.aum / data.topFirmsByAUM[0].aum) * 100}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={() => setActiveTab("firms")} className="mt-3 text-[11px] font-medium" style={{ color: "#0f3d6b" }}>
+                View all firms →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ════════ METROS TAB ════════ */}
+        {activeTab === "metros" && (
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "#94a3b8" }} />
+              <input type="text" value={metroSearch} onChange={e => setMetroSearch(e.target.value)} placeholder="Search metros..."
+                className="w-full rounded-lg border py-2.5 pl-10 pr-4 text-sm" style={{ borderColor: "#e2e8f0" }} />
+            </div>
+            <div className="overflow-x-auto rounded-xl border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr style={{ backgroundColor: "#f8fafc" }}>
+                    <th className="px-4 py-3 text-left font-semibold" style={{ color: "#0f172a" }}>Metro</th>
+                    <th className="cursor-pointer px-3 py-3 text-right font-semibold" style={{ color: "#0f172a" }} onClick={() => toggleMetroSort("total")}>Contacts <SortIcon col="total" current={metroSort} dir={metroDir} /></th>
+                    <th className="cursor-pointer px-3 py-3 text-right font-semibold" style={{ color: "#0f172a" }} onClick={() => toggleMetroSort("firmCount")}>Firms <SortIcon col="firmCount" current={metroSort} dir={metroDir} /></th>
+                    <th className="cursor-pointer px-3 py-3 text-right font-semibold" style={{ color: "#7c3aed" }} onClick={() => toggleMetroSort("pipeline")}>Pipeline <SortIcon col="pipeline" current={metroSort} dir={metroDir} /></th>
+                    <th className="cursor-pointer px-3 py-3 text-right font-semibold" style={{ color: "#15803d" }} onClick={() => toggleMetroSort("client")}>Client <SortIcon col="client" current={metroSort} dir={metroDir} /></th>
+                    <th className="cursor-pointer px-3 py-3 text-right font-semibold" style={{ color: "#a16207" }} onClick={() => toggleMetroSort("warm")}>Warm <SortIcon col="warm" current={metroSort} dir={metroDir} /></th>
+                    <th className="cursor-pointer px-3 py-3 text-right font-semibold" style={{ color: "#1d4ed8" }} onClick={() => toggleMetroSort("cold")}>Cold <SortIcon col="cold" current={metroSort} dir={metroDir} /></th>
+                    <th className="px-3 py-3 text-left font-semibold" style={{ color: "#64748b" }}>Trip</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedMetros.map(([name, s], i) => (
+                    <tr key={name} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderTop: "1px solid #f1f5f9" }}>
+                      <td className="px-4 py-2.5 font-medium" style={{ color: "#0f172a" }}>{name}</td>
+                      <td className="px-3 py-2.5 text-right" style={{ color: "#0f172a" }}>{num(s.total)}</td>
+                      <td className="px-3 py-2.5 text-right" style={{ color: "#64748b" }}>{s.firmCount}</td>
+                      <td className="px-3 py-2.5 text-right" style={{ color: s.pipeline > 0 ? "#7c3aed" : "#cbd5e1" }}>{s.pipeline || "—"}</td>
+                      <td className="px-3 py-2.5 text-right" style={{ color: s.client > 0 ? "#15803d" : "#cbd5e1" }}>{s.client || "—"}</td>
+                      <td className="px-3 py-2.5 text-right" style={{ color: s.warm > 0 ? "#a16207" : "#cbd5e1" }}>{s.warm || "—"}</td>
+                      <td className="px-3 py-2.5 text-right" style={{ color: s.cold > 0 ? "#1d4ed8" : "#cbd5e1" }}>{s.cold || "—"}</td>
+                      <td className="px-3 py-2.5 text-[11px]" style={{ color: "#64748b" }}>{s.trip}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[11px]" style={{ color: "#94a3b8" }}>Showing {sortedMetros.length} of {Object.keys(data.metroStats).length} metros</p>
+          </div>
+        )}
+
+        {/* ════════ TRIPS TAB ════════ */}
+        {activeTab === "trips" && (
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "#94a3b8" }} />
+              <input type="text" value={tripSearch} onChange={e => setTripSearch(e.target.value)} placeholder="Search trips..."
+                className="w-full rounded-lg border py-2.5 pl-10 pr-4 text-sm" style={{ borderColor: "#e2e8f0" }} />
+            </div>
+            <div className="space-y-3">
+              {sortedTrips.map(([name, s]) => {
+                const isExpanded = expandedTrip === name
+                const metros = data.tripMetroMap[name] || {}
+                return (
+                  <div key={name} className="overflow-hidden rounded-xl border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+                    <button onClick={() => setExpandedTrip(isExpanded ? null : name)} className="flex w-full items-center justify-between px-4 py-3 text-left">
+                      <div>
+                        <span className="text-sm font-semibold" style={{ color: "#0f172a" }}>{name}</span>
+                        <span className="ml-2 text-[11px]" style={{ color: "#64748b" }}>{s.metroCount} metros · {s.firmCount} firms</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-bold" style={{ color: "#0f3d6b" }}>{num(s.total)}</span>
+                        <div className="flex gap-1">
+                          {s.pipeline > 0 && statusBadge("P", s.pipeline, "#ede9fe", "#7c3aed")}
+                          {s.client > 0 && statusBadge("C", s.client, "#dcfce7", "#15803d")}
+                          {s.warm > 0 && statusBadge("W", s.warm, "#fef9c3", "#a16207")}
+                          {s.cold > 0 && statusBadge("❄", s.cold, "#dbeafe", "#1d4ed8")}
+                        </div>
+                        {isExpanded ? <ChevronUp className="h-4 w-4" style={{ color: "#94a3b8" }} /> : <ChevronDown className="h-4 w-4" style={{ color: "#94a3b8" }} />}
+                      </div>
+                    </button>
+                    {isExpanded && (
+                      <div className="border-t px-4 py-3" style={{ borderColor: "#f1f5f9", backgroundColor: "#f8fafc" }}>
+                        <div className="text-[11px] font-semibold mb-2" style={{ color: "#64748b" }}>METROS IN THIS TRIP</div>
+                        <div className="space-y-1.5">
+                          {Object.entries(metros).map(([metro, cities]) => {
+                            const ms = data.metroStats[metro]
+                            return (
+                              <div key={metro} className="flex items-center justify-between rounded-lg px-3 py-2" style={{ backgroundColor: "#fff" }}>
+                                <div>
+                                  <span className="text-xs font-medium" style={{ color: "#0f172a" }}>{metro}</span>
+                                  <span className="ml-2 text-[10px]" style={{ color: "#94a3b8" }}>{(cities as string[]).length} cities</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-medium" style={{ color: "#0f3d6b" }}>{ms ? num(ms.total) : "—"}</span>
+                                  {ms && ms.client > 0 && <span className="text-[10px]" style={{ color: "#15803d" }}>{ms.client}C</span>}
+                                  {ms && ms.pipeline > 0 && <span className="text-[10px]" style={{ color: "#7c3aed" }}>{ms.pipeline}P</span>}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        {/* Tagged contacts in this trip */}
+                        {data.taggedContacts.filter(c => c.trip === name).length > 0 && (
+                          <div className="mt-3">
+                            <div className="text-[11px] font-semibold mb-1.5" style={{ color: "#64748b" }}>TAGGED CONTACTS</div>
+                            <div className="space-y-1">
+                              {data.taggedContacts.filter(c => c.trip === name).slice(0, 20).map(c => (
+                                <div key={c.id} className="flex items-center justify-between rounded px-3 py-1.5 text-[11px]" style={{ backgroundColor: "#fff" }}>
+                                  <span style={{ color: "#0f172a" }}>{c.firstName} {c.lastName} — <span style={{ color: "#64748b" }}>{c.firmName}</span></span>
+                                  <div className="flex gap-1">
+                                    {c.pipeline && <span className="rounded-full px-1.5 py-0.5" style={{ backgroundColor: "#ede9fe", color: "#7c3aed" }}>Pipeline</span>}
+                                    {c.client && <span className="rounded-full px-1.5 py-0.5" style={{ backgroundColor: "#dcfce7", color: "#15803d" }}>Client</span>}
+                                    {c.warm && <span className="rounded-full px-1.5 py-0.5" style={{ backgroundColor: "#fef9c3", color: "#a16207" }}>Warm</span>}
+                                    {c.cold && <span className="rounded-full px-1.5 py-0.5" style={{ backgroundColor: "#dbeafe", color: "#1d4ed8" }}>Cold</span>}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ════════ FIRMS TAB ════════ */}
+        {activeTab === "firms" && (
+          <div className="space-y-6">
+            {/* AUM Table */}
+            <div className="rounded-xl border p-4 sm:p-6" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+              <div className="mb-1 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" style={{ color: "#0f3d6b" }} />
+                <h2 className="text-sm font-semibold" style={{ color: "#0f172a" }}>Angel Oak AUM by Firm (IBD East — ~$214M Total)</h2>
+              </div>
+              <p className="mb-4 text-[11px]" style={{ color: "#94a3b8" }}>Source: Dec IBD AUM report</p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr style={{ backgroundColor: "#f8fafc" }}>
+                      <th className="px-3 py-2 text-left font-semibold" style={{ color: "#64748b" }}>#</th>
+                      <th className="px-3 py-2 text-left font-semibold" style={{ color: "#0f172a" }}>Firm</th>
+                      <th className="px-3 py-2 text-right font-semibold" style={{ color: "#0f172a" }}>AUM</th>
+                      <th className="px-3 py-2 text-right font-semibold" style={{ color: "#64748b" }}>% of Total</th>
+                      <th className="px-3 py-2 text-left font-semibold" style={{ color: "#64748b" }}>Share</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.topFirmsByAUM.map((f, i) => {
+                      const totalAUM = 214000000
+                      const pct = (f.aum / totalAUM) * 100
+                      return (
+                        <tr key={f.name} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderTop: "1px solid #f1f5f9" }}>
+                          <td className="px-3 py-2.5" style={{ color: "#94a3b8" }}>{i + 1}</td>
+                          <td className="px-3 py-2.5 font-medium" style={{ color: "#0f172a" }}>{f.name}</td>
+                          <td className="px-3 py-2.5 text-right font-bold" style={{ color: "#0f3d6b" }}>{fmt(f.aum)}</td>
+                          <td className="px-3 py-2.5 text-right" style={{ color: "#64748b" }}>{pct.toFixed(1)}%</td>
+                          <td className="px-3 py-2.5 w-32">
+                            <div className="h-2 w-full rounded-full" style={{ backgroundColor: "#f1f5f9" }}>
+                              <div className="h-2 rounded-full" style={{ backgroundColor: i < 3 ? "#0f3d6b" : i < 6 ? "#3b82f6" : "#93c5fd", width: `${(f.aum / data.topFirmsByAUM[0].aum) * 100}%` }} />
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Firms by Contact Count */}
+            <div className="rounded-xl border p-4 sm:p-6" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+              <h2 className="mb-4 text-sm font-semibold" style={{ color: "#0f172a" }}>Top Firms by Contact Count</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr style={{ backgroundColor: "#f8fafc" }}>
+                      <th className="px-3 py-2 text-left font-semibold" style={{ color: "#0f172a" }}>Firm</th>
+                      <th className="px-3 py-2 text-right font-semibold" style={{ color: "#0f172a" }}>Contacts</th>
+                      <th className="px-3 py-2 text-right font-semibold" style={{ color: "#7c3aed" }}>Pipeline</th>
+                      <th className="px-3 py-2 text-right font-semibold" style={{ color: "#15803d" }}>Client</th>
+                      <th className="px-3 py-2 text-right font-semibold" style={{ color: "#a16207" }}>Warm</th>
+                      <th className="px-3 py-2 text-right font-semibold" style={{ color: "#1d4ed8" }}>Cold</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.topFirms.map((f, i) => (
+                      <tr key={f.name} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderTop: "1px solid #f1f5f9" }}>
+                        <td className="px-3 py-2.5 font-medium" style={{ color: "#0f172a" }}>{f.name}</td>
+                        <td className="px-3 py-2.5 text-right font-bold" style={{ color: "#0f3d6b" }}>{num(f.total)}</td>
+                        <td className="px-3 py-2.5 text-right" style={{ color: f.pipeline > 0 ? "#7c3aed" : "#cbd5e1" }}>{f.pipeline || "—"}</td>
+                        <td className="px-3 py-2.5 text-right" style={{ color: f.client > 0 ? "#15803d" : "#cbd5e1" }}>{f.client || "—"}</td>
+                        <td className="px-3 py-2.5 text-right" style={{ color: f.warm > 0 ? "#a16207" : "#cbd5e1" }}>{f.warm || "—"}</td>
+                        <td className="px-3 py-2.5 text-right" style={{ color: f.cold > 0 ? "#1d4ed8" : "#cbd5e1" }}>{f.cold || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ════════ PIPELINE TAB ════════ */}
+        {activeTab === "pipeline" && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              {[
+                { label: "Pipeline", count: o.totalPipeline, bg: "#ede9fe", color: "#7c3aed" },
+                { label: "Client", count: o.totalClient, bg: "#dcfce7", color: "#15803d" },
+                { label: "Warm", count: o.totalWarm, bg: "#fef9c3", color: "#a16207" },
+                { label: "Cold", count: o.totalCold, bg: "#dbeafe", color: "#1d4ed8" },
+                { label: "Untagged", count: o.totalUntagged, bg: "#f1f5f9", color: "#94a3b8" },
+              ].map(({ label, count, bg, color }) => (
+                <div key={label} className="rounded-xl border p-4" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+                  <div className="text-2xl font-bold" style={{ color }}>{num(count)}</div>
+                  <div className="text-[11px]" style={{ color: "#64748b" }}>{label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Tagged contacts list */}
+            <div className="rounded-xl border p-4 sm:p-6" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
+              <h2 className="mb-4 text-sm font-semibold" style={{ color: "#0f172a" }}>All Tagged Contacts ({data.taggedContacts.length})</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr style={{ backgroundColor: "#f8fafc" }}>
+                      <th className="px-3 py-2 text-left font-semibold" style={{ color: "#0f172a" }}>Name</th>
+                      <th className="px-3 py-2 text-left font-semibold" style={{ color: "#0f172a" }}>Firm</th>
+                      <th className="px-3 py-2 text-left font-semibold" style={{ color: "#64748b" }}>Metro</th>
+                      <th className="px-3 py-2 text-left font-semibold" style={{ color: "#64748b" }}>Trip</th>
+                      <th className="px-3 py-2 text-left font-semibold" style={{ color: "#64748b" }}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.taggedContacts.map((c, i) => (
+                      <tr key={c.id} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderTop: "1px solid #f1f5f9" }}>
+                        <td className="px-3 py-2 font-medium" style={{ color: "#0f172a" }}>{c.firstName} {c.lastName}</td>
+                        <td className="px-3 py-2" style={{ color: "#64748b" }}>{c.firmName}</td>
+                        <td className="px-3 py-2" style={{ color: "#64748b" }}>{c.metro}</td>
+                        <td className="px-3 py-2" style={{ color: "#64748b" }}>{c.trip}</td>
+                        <td className="px-3 py-2">
+                          <div className="flex gap-1">
+                            {c.pipeline && <span className="rounded-full px-1.5 py-0.5 text-[10px]" style={{ backgroundColor: "#ede9fe", color: "#7c3aed" }}>Pipeline</span>}
+                            {c.client && <span className="rounded-full px-1.5 py-0.5 text-[10px]" style={{ backgroundColor: "#dcfce7", color: "#15803d" }}>Client</span>}
+                            {c.warm && <span className="rounded-full px-1.5 py-0.5 text-[10px]" style={{ backgroundColor: "#fef9c3", color: "#a16207" }}>Warm</span>}
+                            {c.cold && <span className="rounded-full px-1.5 py-0.5 text-[10px]" style={{ backgroundColor: "#dbeafe", color: "#1d4ed8" }}>Cold</span>}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
