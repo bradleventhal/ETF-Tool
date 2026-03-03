@@ -24,11 +24,21 @@ function useIsMobile(breakpoint = 640) {
   return mobile
 }
 
+const CREDIT_ORDER = ["AAA / US Gov", "AA", "A", "BBB", "BB", "B", "CCC", "Below CCC"]
+
 export function SectorPieChart({ data, ticker, subtitle, mode = "internal" }: Props) {
   if (data.length === 0) return null
   const isMobile = useIsMobile()
 
-  const sorted = [...data].sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+  // If data looks like credit quality ratings, preserve the standard order; otherwise sort by size
+  const isCreditData = data.some(d => CREDIT_ORDER.includes(d.name))
+  const sorted = isCreditData
+    ? [...data].sort((a, b) => {
+        const aIdx = CREDIT_ORDER.indexOf(a.name)
+        const bIdx = CREDIT_ORDER.indexOf(b.name)
+        return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx)
+      })
+    : [...data].sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
   const chartData = sorted.map(d => ({ ...d, value: Math.abs(d.value) }))
 
   return (
