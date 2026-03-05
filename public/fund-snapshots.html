@@ -5,120 +5,44 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Public Funds Snapshots — March 4, 2026</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: 'Segoe UI', Calibri, Arial, sans-serif; background: #fff; color: #222; padding: 20px; max-width: 900px; margin: 0 auto; font-size: 14px; }
-.logo-bar { text-align: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #1a3c6e; }
-.logo-bar h1 { font-size: 22px; color: #1a3c6e; font-weight: 700; }
-.logo-bar .date { font-size: 13px; color: #666; margin-top: 4px; }
-.disclaimer-top { font-size: 11px; color: #888; text-align: center; margin-bottom: 20px; font-style: italic; }
-.fund-section { margin-bottom: 24px; }
-.fund-section h2 { font-size: 15px; font-weight: 700; color: #1a3c6e; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #ddd; }
-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-thead th { background: #1a3c6e; color: #fff; font-weight: 600; font-size: 12px; padding: 8px 10px; text-align: right; white-space: nowrap; }
-thead th:first-child { text-align: left; }
-tbody td { padding: 7px 10px; text-align: right; font-size: 13px; border-bottom: 1px solid #eee; }
-tbody td:first-child { text-align: left; font-weight: 600; }
-tbody tr:nth-child(odd) { background: #f8f9fb; }
-tbody tr:nth-child(even) { background: #fff; }
-tbody tr.benchmark td { color: #777; font-weight: 400; font-style: italic; }
-tbody tr.benchmark td:first-child { font-weight: 400; }
-.internal-tag { display: inline-block; background: #fff3cd; color: #856404; font-size: 11px; padding: 2px 8px; border-radius: 3px; font-weight: 600; border: 1px solid #ffc107; margin-bottom: 16px; }
-.footer { margin-top: 30px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 10px; color: #999; line-height: 1.5; }
-@media (max-width: 600px) {
-  body { padding: 12px; font-size: 13px; }
-  thead th, tbody td { padding: 5px 6px; font-size: 11px; }
-  .fund-section h2 { font-size: 14px; }
-}
+body { font-family: Calibri, 'Segoe UI', Arial, sans-serif; margin: 0; padding: 20px; background: #fff; }
+.nav { display: flex; gap: 12px; margin-bottom: 20px; }
+.nav button { padding: 10px 20px; font-size: 14px; font-weight: 600; border: 1px solid #2874A6; border-radius: 4px; cursor: pointer; }
+.nav button.active { background: #2874A6; color: #fff; }
+.nav button:not(.active) { background: #fff; color: #2874A6; }
+.section { display: none; }
+.section.active { display: block; }
+.pdf-container { width: 100%; height: 90vh; }
+.pdf-container iframe { width: 100%; height: 100%; border: none; }
+.email-container { max-width: 100%; overflow-x: auto; }
 </style>
 </head>
 <body>
 
-<div class="logo-bar">
-<h1>Angel Oak Public Funds Snapshots</h1>
-<div class="date">Data as of March 4, 2026</div>
+<div class="nav">
+<button class="active" onclick="show('snapshots', this)">Fund Snapshots (PDF)</button>
+<button onclick="show('monitoring', this)">Performance Monitoring</button>
 </div>
 
-<div class="disclaimer-top">FOR FINANCIAL PROFESSIONALS ONLY — NOT FOR DISTRIBUTION TO THE PUBLIC</div>
-
-<span class="internal-tag">INTERNAL USE ONLY</span>
-
-<div class="fund-section">
-<h2>Mortgage ETF</h2>
-<table>
-<thead><tr><th>Investment</th><th>YTW</th><th>M* Eff. Dur (Lagged)</th><th>Eff. Duration</th><th>Avg AUM</th><th>YTD Flows (% of AUM)</th></tr></thead>
-<tbody>
-<tr><td>MBS</td><td>4.99</td><td>6.25</td><td>5.73</td><td>160</td><td>0.11</td></tr>
-<tr class="benchmark"><td>BBG MBS Index</td><td>4.55</td><td>—</td><td>5.14</td><td>—</td><td>—</td></tr>
-<tr class="benchmark"><td>Core Plus</td><td>—</td><td>6.17</td><td>—</td><td>—</td><td>—</td></tr>
-</tbody>
-</table>
+<div id="snapshots" class="section active">
+<div class="pdf-container">
+<iframe src="/PublicSnapshots_20260304.pdf"></iframe>
+</div>
 </div>
 
-<div class="fund-section">
-<h2>Multi-Strategy Income MF & ETF</h2>
-<table>
-<thead><tr><th>Investment</th><th>YTW</th><th>M* Eff. Dur (Lagged)</th><th>Eff. Duration</th><th>Avg AUM</th><th>YTD Flows (% of AUM)</th></tr></thead>
-<tbody>
-<tr><td>ANGIX</td><td>6.97</td><td>4.13</td><td>3.89</td><td>2,552</td><td>-0.01</td></tr>
-<tr class="benchmark"><td>Multisector</td><td>—</td><td>4.66</td><td>—</td><td>—</td><td>—</td></tr>
-<tr><td>CARY</td><td>5.86</td><td>4.11</td><td>3.80</td><td>981</td><td>0.24</td></tr>
-</tbody>
-</table>
+<div id="monitoring" class="section">
+<div class="email-container">
+<iframe src="/performance-monitoring.html" style="width:100%; height:90vh; border:none;"></iframe>
+</div>
 </div>
 
-<div class="fund-section">
-<h2>UltraShort Income MF & ETF</h2>
-<table>
-<thead><tr><th>Investment</th><th>YTW</th><th>M* Eff. Dur (Lagged)</th><th>Eff. Duration</th><th>Avg AUM</th><th>YTD Flows (% of AUM)</th></tr></thead>
-<tbody>
-<tr><td>AOUIX</td><td>4.57</td><td>0.84</td><td>0.81</td><td>811</td><td>0.02</td></tr>
-<tr class="benchmark"><td>Ultrashort</td><td>—</td><td>0.71</td><td>—</td><td>—</td><td>—</td></tr>
-<tr><td>UYLD</td><td>4.52</td><td>0.83</td><td>0.77</td><td>1,355</td><td>0.09</td></tr>
-</tbody>
-</table>
-</div>
-
-<div class="fund-section">
-<h2>High Yield ETF</h2>
-<table>
-<thead><tr><th>Investment</th><th>YTW</th><th>M* Eff. Dur (Lagged)</th><th>Eff. Duration</th><th>Avg AUM</th><th>YTD Flows (% of AUM)</th></tr></thead>
-<tbody>
-<tr><td>AOHY</td><td>7.02</td><td>3.06</td><td>2.98</td><td>125</td><td>0.02</td></tr>
-<tr class="benchmark"><td>BBG HY Index</td><td>6.74</td><td>—</td><td>2.85</td><td>—</td><td>—</td></tr>
-<tr class="benchmark"><td>High-Yield</td><td>—</td><td>2.61</td><td>—</td><td>—</td><td>—</td></tr>
-</tbody>
-</table>
-</div>
-
-<div class="fund-section">
-<h2>Strategic Credit</h2>
-<table>
-<thead><tr><th>Investment</th><th>YTW</th><th>M* Eff. Dur (Lagged)</th><th>Eff. Duration</th><th>Avg AUM</th><th>YTD Flows (% of AUM)</th></tr></thead>
-<tbody>
-<tr><td>ASCIX</td><td>7.48</td><td>3.99</td><td>3.45</td><td>88</td><td>0.02</td></tr>
-<tr class="benchmark"><td>BBG HY Index</td><td>6.74</td><td>—</td><td>2.85</td><td>—</td><td>—</td></tr>
-<tr class="benchmark"><td>High-Yield</td><td>—</td><td>2.61</td><td>—</td><td>—</td><td>—</td></tr>
-</tbody>
-</table>
-</div>
-
-<div class="fund-section">
-<h2>Total Return ETF</h2>
-<table>
-<thead><tr><th>Investment</th><th>YTW</th><th>M* Eff. Dur (Lagged)</th><th>Eff. Duration</th><th>Avg AUM</th><th>YTD Flows (% of AUM)</th></tr></thead>
-<tbody>
-<tr><td>TRBF</td><td>4.95</td><td>—</td><td>6.08</td><td>22</td><td>0.14</td></tr>
-<tr class="benchmark"><td>BBG Agg</td><td>4.30</td><td>—</td><td>5.93</td><td>—</td><td>—</td></tr>
-<tr class="benchmark"><td>Core Plus</td><td>—</td><td>6.17</td><td>—</td><td>—</td><td>—</td></tr>
-</tbody>
-</table>
-</div>
-
-<div class="footer">
-Angel Oak Capital Advisors, LLC · 980 Hammond Drive, Suite 200, Atlanta, GA 30328<br>
-Performance data quoted represents past performance; past performance does not guarantee future results. The investment return and principal value of an investment will fluctuate so that an investor's shares, when redeemed, may be worth more or less than their original cost. Current performance may be lower or higher than quoted. Performance data current to the most recent month end may be obtained by calling 1.855.751.4324 or visiting angeloakcapital.com.<br><br>
-The Angel Oak Funds are distributed by Quasar Distributors, LLC. Angel Oak is a trademark of Angel Oak Companies, LP.
-</div>
-
+<script>
+function show(id, btn) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
 </body>
 </html>
