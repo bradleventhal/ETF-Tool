@@ -1,4 +1,5 @@
-import OpenAI from "openai"
+import { generateText } from "ai"
+import { openai } from "@ai-sdk/openai"
 
 const STARTER_SYSTEM_PROMPT = `You are generating starter questions for an analytical copilot chat about a fund comparison.
 
@@ -18,18 +19,15 @@ export async function POST(req: Request) {
     const body = await req.json()
     const warRoomContext: string = body.warRoomContext || ""
 
-    const openai = new OpenAI()
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: STARTER_SYSTEM_PROMPT },
-        { role: "user", content: warRoomContext },
-      ],
+    const result = await generateText({
+      model: openai("gpt-4o-mini"),
+      system: STARTER_SYSTEM_PROMPT,
+      prompt: warRoomContext,
       temperature: 0.4,
-      max_tokens: 400,
+      maxOutputTokens: 400,
     })
 
-    const raw = completion.choices[0]?.message?.content || ""
+    const raw = result.text || ""
     const questions = raw
       .split("\n")
       .map((l) => l.trim())

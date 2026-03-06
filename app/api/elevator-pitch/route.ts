@@ -1,4 +1,5 @@
-import OpenAI from "openai"
+import { generateText } from "ai"
+import { openai } from "@ai-sdk/openai"
 
 const SYSTEM_PROMPT = `You are a senior external wholesaler's pitch coach. Given two funds (ours vs competitor) and their data, generate a tight, ready-to-use elevator pitch.
 
@@ -33,18 +34,15 @@ export async function POST(req: Request) {
   try {
     const { fundContext } = await req.json()
 
-    const openai = new OpenAI()
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: fundContext },
-      ],
+    const result = await generateText({
+      model: openai("gpt-4o-mini"),
+      system: SYSTEM_PROMPT,
+      prompt: fundContext,
       temperature: 0.5,
-      max_tokens: 800,
+      maxOutputTokens: 800,
     })
 
-    const raw = completion.choices[0]?.message?.content || ""
+    const raw = result.text || ""
 
     // Parse the labeled sections
     const sections: Record<string, string> = {}

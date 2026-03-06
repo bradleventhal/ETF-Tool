@@ -1,4 +1,5 @@
-import OpenAI from "openai"
+import { generateText } from "ai"
+import { openai } from "@ai-sdk/openai"
 
 export const maxDuration = 60
 
@@ -62,21 +63,18 @@ export async function POST(req: Request) {
       ? SYSTEM_PROMPT + '\n\nCURRENT FUND COMPARISON DATA:\n' + fundContext
       : SYSTEM_PROMPT
 
-    const openai = new OpenAI()
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemContent },
-        ...userMessages.map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        })),
-      ],
+    const result = await generateText({
+      model: openai("gpt-4o-mini"),
+      system: systemContent,
+      messages: userMessages.map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })),
       temperature: 0.2,
-      max_tokens: 800,
+      maxOutputTokens: 800,
     })
 
-    const raw = completion.choices[0]?.message?.content || "No response generated."
+    const raw = result.text || "No response generated."
 
     // Parse follow-up questions from the response
     const lines = raw.split("\n")

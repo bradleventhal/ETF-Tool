@@ -1,13 +1,15 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown, Copy, Check, Award } from "lucide-react"
+import { ChevronDown, Copy, Check, Award, Mail } from "lucide-react"
 import type { TerritoryContact } from "@/lib/territory-types"
 import { getContactStatus, STATUS_CONFIG } from "@/lib/territory-types"
+import { FollowUpGenerator } from "./follow-up-generator"
 
-export function ContactRow({ contact, onCopyEmail }: { contact: TerritoryContact; onCopyEmail?: () => void }) {
+export function ContactRow({ contact, repName = "Brad", onCopyEmail }: { contact: TerritoryContact; repName?: string; onCopyEmail?: () => void }) {
   const [expanded, setExpanded] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showFollowUp, setShowFollowUp] = useState(false)
   const status = getContactStatus(contact)
   const cfg = STATUS_CONFIG[status]
 
@@ -115,7 +117,7 @@ export function ContactRow({ contact, onCopyEmail }: { contact: TerritoryContact
                 <span style={{ color: "#475569" }}>{contact.notes}</span>
               </div>
             )}
-            <div className="flex flex-wrap gap-2 pt-0.5">
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
               {contact.nextTime && <span className="rounded-full px-1.5 py-0.5 text-[9px] font-medium" style={{ backgroundColor: "#dbeafe", color: "#1d4ed8" }}>Next Time</span>}
               {contact.dripList && <span className="rounded-full px-1.5 py-0.5 text-[9px] font-medium" style={{ backgroundColor: "#ffedd5", color: "#c2410c" }}>Drip List</span>}
               {contact.blastContact && !contact.removeFromBlast && !contact.unsubscribe && (
@@ -123,8 +125,37 @@ export function ContactRow({ contact, onCopyEmail }: { contact: TerritoryContact
               )}
               {contact.forbes && <span className="rounded-full px-1.5 py-0.5 text-[9px] font-medium" style={{ backgroundColor: "#fef9c3", color: "#a16207" }}>Forbes</span>}
               {contact.barrons && <span className="rounded-full px-1.5 py-0.5 text-[9px] font-medium" style={{ backgroundColor: "#fef9c3", color: "#a16207" }}>{"Barron's"}</span>}
+              
+              {/* Generate Follow Up Button */}
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowFollowUp(true) }}
+                className="ml-auto flex items-center gap-1 rounded px-2 py-1 text-[10px] font-medium transition-colors hover:opacity-90"
+                style={{ backgroundColor: "#3b82f6", color: "#fff" }}
+              >
+                <Mail className="h-3 w-3" />
+                Generate Follow Up
+              </button>
             </div>
           </div>
+
+          {/* Follow Up Generator Modal */}
+          {showFollowUp && (
+            <div className="mt-3">
+              <FollowUpGenerator
+                contact={{
+                  firstName: contact.combinedName.split(" ")[0] || contact.combinedName,
+                  lastName: contact.combinedName.split(" ").slice(1).join(" ") || "",
+                  firm: contact.firmName,
+                  city: contact.city,
+                  state: contact.state,
+                  status: getContactStatus(contact),
+                  relevantStrategies: contact.relevantStrategies.join(", "),
+                }}
+                repName={repName}
+                onClose={() => setShowFollowUp(false)}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

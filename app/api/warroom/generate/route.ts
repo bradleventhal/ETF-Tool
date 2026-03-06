@@ -1,4 +1,5 @@
-import OpenAI from "openai"
+import { generateText } from "ai"
+import { openai } from "@ai-sdk/openai"
 import type { FundData, YahooAnalytics, WarRoom } from '@/lib/fund-types'
 
 export const maxDuration = 30
@@ -105,21 +106,15 @@ export async function POST(req: Request) {
 
     const dataPayload = buildDataPayload(fundA, fundB, yahoo)
 
-    const openai = new OpenAI()
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: `Generate the war room briefing for ${fundA.ticker} (our fund) vs ${fundB.ticker} (competitor).\n\nDATA:\n${dataPayload}`,
-        },
-      ],
+    const result = await generateText({
+      model: openai("gpt-4o-mini"),
+      system: SYSTEM_PROMPT,
+      prompt: `Generate the war room briefing for ${fundA.ticker} (our fund) vs ${fundB.ticker} (competitor).\n\nDATA:\n${dataPayload}`,
       temperature: 0.3,
-      max_tokens: 2500,
+      maxOutputTokens: 2500,
     })
 
-    const text = completion.choices[0]?.message?.content || ''
+    const text = result.text || ''
     // Parse the JSON from GPT response
     const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
     const warRoom: WarRoom = JSON.parse(cleaned)

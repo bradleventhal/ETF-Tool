@@ -1,4 +1,5 @@
 import { generateText } from "ai"
+import { openai } from "@ai-sdk/openai"
 import type { FundData } from "@/lib/fund-types"
 
 export const maxDuration = 60
@@ -388,7 +389,7 @@ export async function POST(req: Request) {
     }
 
     const result = await generateText({
-      model: "openai/gpt-4o-mini",
+      model: openai("gpt-4o-mini"),
       system: SYSTEM_PROMPT,
       prompt: userContent,
       temperature: 0.3,

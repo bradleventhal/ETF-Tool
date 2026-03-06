@@ -137,3 +137,15 @@ export const DEFAULT_THRESHOLDS: SignalThresholds = {
   penetrationMax: 0.001,
   marketMin: 1_000_000_000,
 }
+
+/* ═══════════════════════ FOLLOW UP GENERATOR TYPES ═══════════════════════ */
+
+export interface Contact {
+  firstName: string
+  lastName: string
+  firm: string
+  city: string
+  state: string
+  status: ContactStatus | string
+  relevantStrategies: string
+}
