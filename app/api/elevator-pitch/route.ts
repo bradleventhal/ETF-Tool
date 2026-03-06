@@ -1,5 +1,7 @@
 import { generateText } from "ai"
-import { openai } from "@ai-sdk/openai"
+import { createOpenAI } from "@ai-sdk/openai"
+
+const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 const SYSTEM_PROMPT = `You are a senior external wholesaler's pitch coach. Given two funds (ours vs competitor) and their data, generate a tight, ready-to-use elevator pitch.
 

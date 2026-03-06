@@ -1,5 +1,7 @@
 import { generateText } from "ai"
-import { openai } from "@ai-sdk/openai"
+import { createOpenAI } from "@ai-sdk/openai"
+
+const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
 export const maxDuration = 60
 
