@@ -1,7 +1,17 @@
-import { generateText } from "ai"
-import { createOpenAI } from "@ai-sdk/openai"
-
-const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
+async function callOpenAIChat(system: string, messages: Array<{role: string, content: string}>): Promise<string> {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${process.env.OPENAI_API_KEY}` },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [{ role: "system", content: system }, ...messages],
+      temperature: 0.2, max_tokens: 800,
+    }),
+  })
+  if (!res.ok) throw new Error(`OpenAI error: ${res.status}`)
+  const data = await res.json()
+  return data.choices?.[0]?.message?.content || ""
+}
 
 export const maxDuration = 60
 
@@ -65,18 +75,10 @@ export async function POST(req: Request) {
       ? SYSTEM_PROMPT + '\n\nCURRENT FUND COMPARISON DATA:\n' + fundContext
       : SYSTEM_PROMPT
 
-    const result = await generateText({
-      model: openai("gpt-4o-mini"),
-      system: systemContent,
-      messages: userMessages.map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
-      temperature: 0.2,
-      maxOutputTokens: 800,
-    })
-
-    const raw = result.text || "No response generated."
+    const raw = await callOpenAIChat(systemContent, userMessages.map((m) => ({
+      role: m.role as "user" | "assistant",
+      content: m.content,
+    })))
 
     // Parse follow-up questions from the response
     const lines = raw.split("\n")

@@ -1,7 +1,17 @@
-import { generateText } from "ai"
-import { createOpenAI } from "@ai-sdk/openai"
-
-const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
+async function callOpenAI(system: string, prompt: string): Promise<string> {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${process.env.OPENAI_API_KEY}` },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [{ role: "system", content: system }, { role: "user", content: prompt }],
+      temperature: 0.5, max_tokens: 800,
+    }),
+  })
+  if (!res.ok) throw new Error(`OpenAI error: ${res.status}`)
+  const data = await res.json()
+  return data.choices?.[0]?.message?.content || ""
+}
 
 const SYSTEM_PROMPT = `You are a senior external wholesaler's pitch coach. Given two funds (ours vs competitor) and their data, generate a tight, ready-to-use elevator pitch.
 
@@ -36,15 +46,7 @@ export async function POST(req: Request) {
   try {
     const { fundContext } = await req.json()
 
-    const result = await generateText({
-      model: openai("gpt-4o-mini"),
-      system: SYSTEM_PROMPT,
-      prompt: fundContext,
-      temperature: 0.5,
-      maxOutputTokens: 800,
-    })
-
-    const raw = result.text || ""
+    const raw = await callOpenAI(SYSTEM_PROMPT, fundContext)
 
     // Parse the labeled sections
     const sections: Record<string, string> = {}

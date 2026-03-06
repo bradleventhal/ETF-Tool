@@ -1,8 +1,23 @@
-import { generateText } from "ai"
-import { createOpenAI } from "@ai-sdk/openai"
 import type { FundData, YahooAnalytics, WarRoom } from '@/lib/fund-types'
 
-const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
+async function callOpenAI(system: string, prompt: string, maxTokens = 2500): Promise<string> {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [{ role: "system", content: system }, { role: "user", content: prompt }],
+      temperature: 0.3,
+      max_tokens: maxTokens,
+    }),
+  })
+  if (!res.ok) throw new Error(`OpenAI error: ${res.status} ${await res.text()}`)
+  const data = await res.json()
+  return data.choices?.[0]?.message?.content || ""
+}
 
 export const maxDuration = 30
 
@@ -108,15 +123,7 @@ export async function POST(req: Request) {
 
     const dataPayload = buildDataPayload(fundA, fundB, yahoo)
 
-    const result = await generateText({
-      model: openai("gpt-4o-mini"),
-      system: SYSTEM_PROMPT,
-      prompt: `Generate the war room briefing for ${fundA.ticker} (our fund) vs ${fundB.ticker} (competitor).\n\nDATA:\n${dataPayload}`,
-      temperature: 0.3,
-      maxOutputTokens: 2500,
-    })
-
-    const text = result.text || ''
+    const text = await callOpenAI(SYSTEM_PROMPT, `Generate the war room briefing for ${fundA.ticker} (our fund) vs ${fundB.ticker} (competitor).\n\nDATA:\n${dataPayload}`)
     // Parse the JSON from GPT response
     const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
     const warRoom: WarRoom = JSON.parse(cleaned)

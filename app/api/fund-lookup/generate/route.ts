@@ -1,11 +1,30 @@
-import { generateText } from "ai"
-import { createOpenAI } from "@ai-sdk/openai"
 import type { FundData } from "@/lib/fund-types"
 
-// Use OpenAI directly with API key, bypass Vercel AI Gateway
-const openai = createOpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Raw fetch to OpenAI - completely bypasses AI SDK and Gateway
+async function callOpenAI(system: string, prompt: string): Promise<string> {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.3,
+      max_tokens: 1500,
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`OpenAI API error: ${res.status} ${err}`)
+  }
+  const data = await res.json()
+  return data.choices?.[0]?.message?.content || ""
+}
 
 export const maxDuration = 60
 
@@ -393,15 +412,7 @@ export async function POST(req: Request) {
       userContent += `\n\nFUND COMPANY COMMENTARY (scraped from their quarterly PDF at ${commentary.sourceUrl} -- use this heavily to inform your analysis):\n${commentary.text}`
     }
 
-    const result = await generateText({
-      model: openai("gpt-4o-mini"),
-      system: SYSTEM_PROMPT,
-      prompt: userContent,
-      temperature: 0.3,
-      maxOutputTokens: 1500,
-    })
-
-    const text = result.text || ""
+    const text = await callOpenAI(SYSTEM_PROMPT, userContent)
 
     const cleaned = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()
     const parsed = JSON.parse(cleaned)
