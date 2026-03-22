@@ -137,12 +137,33 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
       .catch(() => {})
   }, [fund.ticker, fund.commonInception])
 
-  // AI insights temporarily disabled
   const fetchInsights = useCallback(() => {
-    setLoading(false)
-  }, [])
+    setLoading(true)
+    setInsights(null)
+    setErrorMsg("")
+    fetch("/api/fund-lookup/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fund }),
+    })
+      .then(async r => {
+        const text = await r.text()
+        try { return JSON.parse(text) } catch { return { error: "Bad JSON: " + text.slice(0, 200) } }
+      })
+      .then(data => {
+        if (data?.error) {
+          setErrorMsg(data.error)
+        } else if (data?.performanceDrivers) {
+          setInsights(data)
+        } else {
+          setErrorMsg("Unexpected response format")
+        }
+      })
+      .catch((err) => { setErrorMsg(String(err)) })
+      .finally(() => setLoading(false))
+  }, [fund])
 
-  // useEffect(() => { fetchInsights() }, [fetchInsights])
+  useEffect(() => { fetchInsights() }, [fetchInsights])
 
   // Filter tickers for compare search
   const compareQ = compareSearch.toLowerCase()
