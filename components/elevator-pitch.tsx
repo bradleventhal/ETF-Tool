@@ -107,10 +107,10 @@ export function ElevatorPitch({ result }: { result: AnalysisResult }) {
     }
   }, [result])
 
-  // Auto-fetch when comparison changes
-  useEffect(() => {
-    fetchPitch()
-  }, [fetchPitch])
+  // Auto-fetch disabled - AI feature temporarily unavailable
+  // useEffect(() => {
+  //   fetchPitch()
+  // }, [fetchPitch])
 
   return (
     <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>

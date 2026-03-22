@@ -171,32 +171,8 @@ export default function Page() {
           setPolishing(true)
           setWarRoom(buildWarRoom(fA, fB))
 
-          const yahooPromise = fetch(`/api/growth/analytics?tickerA=${tickerA}&tickerB=${tickerB}`)
-            .then(r => r.ok ? r.json() : null)
-            .catch(() => null)
-
-          yahooPromise.then((yahoo: YahooAnalytics | null) => {
-            return fetch("/api/warroom/generate", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ fundA: fA, fundB: fB, yahoo }),
-            })
-              .then(r => r.ok ? r.json() : null)
-              .then(gptWarRoom => {
-                if (
-                  gptWarRoom &&
-                  !gptWarRoom.error &&
-                  Array.isArray(gptWarRoom.competitorArguments) &&
-                  Array.isArray(gptWarRoom.rebuttals) &&
-                  gptWarRoom.overallDifficulty &&
-                  gptWarRoom.competitorArguments.every((a: Record<string, unknown>) => a.id && a.metric && a.argument)
-                ) {
-                  setWarRoom(gptWarRoom)
-                }
-              })
-              .catch(() => {})
-              .finally(() => setPolishing(false))
-          })
+          // AI features temporarily disabled
+          setPolishing(false)
         } else {
           setWarRoom(null)
           setPolishing(false)
