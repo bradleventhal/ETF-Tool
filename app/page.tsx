@@ -106,7 +106,7 @@ export default function Page() {
   const [warRoom, setWarRoom] = useState<WarRoom | null>(null)
   const [polishing, setPolishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showUpload, setShowUpload] = useState(false)
+
   const [refreshingRatings, setRefreshingRatings] = useState(false)
   const [section, setSection] = useState<"comparison" | "lookup" | "map">("lookup")
   const [lookupTicker, setLookupTicker] = useState("")
@@ -252,11 +252,7 @@ export default function Page() {
               {refreshingRatings ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Star className="h-3.5 w-3.5" />}
               <span className="hidden sm:inline">{refreshingRatings ? "Fetching..." : "Refresh Ratings"}</span>
             </button>
-            <button onClick={() => setShowUpload(!showUpload)} className="flex min-h-[44px] items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors" style={{ color: "rgba(255,255,255,0.7)" }}>
-              {showUpload ? <X className="h-3.5 w-3.5" /> : <Upload className="h-3.5 w-3.5" />}
-              {showUpload ? "Close" : "Update Data"}
-            </button>
-            <div className="hidden sm:block" style={{ width: 1, height: 16, backgroundColor: "rgba(255,255,255,0.15)" }} />
+
             <Link
               href="/territory"
               className="flex min-h-[44px] items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors"
@@ -311,13 +307,7 @@ export default function Page() {
         </div>
       </div>
 
-      {showUpload && (
-        <div className="border-b px-3 py-5 sm:px-6" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
-          <div className="mx-auto max-w-sm">
-            <FileUpload onFileLoaded={handleFileLoaded} compact />
-          </div>
-        </div>
-      )}
+
 
       {/* ===== FUND COMPARISON SECTION ===== */}
       {section === "comparison" && (
