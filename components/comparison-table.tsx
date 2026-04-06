@@ -45,7 +45,7 @@ function SourcedValue({ value, url, style }: { value: string; url?: string; styl
     <a href={url} target="_blank" rel="noopener noreferrer"
       className="group inline-flex items-center gap-0.5"
       style={style}
-      title="Click to verify source">
+      title="Click to verify current value at source">
       <span className="group-hover:underline">{value}</span>
       <ExternalLink size={8} className="opacity-0 transition-opacity group-hover:opacity-40" style={{ flexShrink: 0 }} />
     </a>
@@ -82,6 +82,10 @@ export function ComparisonTable({ title, rows, tickerA, tickerB, highlight = fal
     return sources?.[key]
   }
 
+  const asOfA = fundA?.asOfDate || null
+  const asOfB = fundB?.asOfDate || null
+  const asOf = asOfA || asOfB
+
   return (
     <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
       <div className="overflow-x-auto">
@@ -114,6 +118,12 @@ export function ComparisonTable({ title, rows, tickerA, tickerB, highlight = fal
           </tbody>
         </table>
       </div>
+      {(asOf || (sourcesA || sourcesB)) && (
+        <div className="flex items-center justify-between border-t px-3 py-1.5 sm:px-4" style={{ borderColor: "#f1f5f9", backgroundColor: "#fafbfc" }}>
+          {asOf && <span className="text-[9px] font-medium" style={{ color: "#b0b8c4" }}>Data as of {asOf}</span>}
+          <span className="text-[9px] font-medium" style={{ color: "#b0b8c4" }}>Click any value to verify at source</span>
+        </div>
+      )}
     </div>
   )
 }
