@@ -107,12 +107,14 @@ export default function Page() {
   const [polishing, setPolishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showUpload, setShowUpload] = useState(false)
+  const [fundSources, setFundSources] = useState<Record<string, Record<string, string>>>({})
   const [refreshingRatings, setRefreshingRatings] = useState(false)
   const [section, setSection] = useState<"comparison" | "lookup" | "map">("lookup")
   const [lookupTicker, setLookupTicker] = useState("")
   const [cameFromMap, setCameFromMap] = useState(false)
 
   useEffect(() => {
+    fetch("/data/fund_sources.json").then(r => r.json()).then(setFundSources).catch(() => {})
     fetch("/api/funds")
       .then(r => r.json())
       .then(json => {
@@ -459,7 +461,7 @@ export default function Page() {
 
         {result && mode === "internal" && (
           <div className="space-y-4 py-4 sm:space-y-6 sm:py-6">
-            <ComparisonTable title="Key Statistics" rows={result.keyStats} tickerA={result.tickerA} tickerB={result.tickerB} highlight fundA={currentFundA} fundB={currentFundB} />
+            <ComparisonTable title="Key Statistics" rows={result.keyStats} tickerA={result.tickerA} tickerB={result.tickerB} highlight fundA={currentFundA} fundB={currentFundB} sourcesA={fundSources[tickerA]} sourcesB={fundSources[tickerB]} />
 
             <PieWithTable title="Sector Allocation" dataA={result.pieDataA} dataB={result.pieDataB}
               tickerA={result.tickerA} tickerB={result.tickerB}
@@ -534,7 +536,7 @@ export default function Page() {
 
             <div style={{ height: 2, backgroundColor: "#0f3d6b", opacity: 0.15 }} />
 
-            <ComparisonTable title="Key Statistics" rows={result.keyStats} tickerA={result.tickerA} tickerB={result.tickerB} fundA={currentFundA} fundB={currentFundB} />
+            <ComparisonTable title="Key Statistics" rows={result.keyStats} tickerA={result.tickerA} tickerB={result.tickerB} fundA={currentFundA} fundB={currentFundB} sourcesA={fundSources[tickerA]} sourcesB={fundSources[tickerB]} />
 
             <PieWithTable title="Sector Allocation" dataA={result.pieDataA} dataB={result.pieDataB}
               tickerA={result.tickerA} tickerB={result.tickerB}
@@ -545,7 +547,7 @@ export default function Page() {
               subtitleA={"Avg Credit Quality: " + result.avgCreditA} subtitleB={"Avg Credit Quality: " + result.avgCreditB}
               rows={result.creditQuality} rowLabel="Rating" viewMode="advisor" />
 
-            <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} fundA={currentFundA} fundB={currentFundB} />
+            <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} fundA={currentFundA} fundB={currentFundB} sourcesA={fundSources[tickerA]} sourcesB={fundSources[tickerB]} />
 
             <GrowthChart tickerA={result.tickerA} tickerB={result.tickerB} mode="advisor" />
 
