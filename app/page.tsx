@@ -17,6 +17,7 @@ import { FundChat } from "@/components/fund-chat"
 import { ElevatorPitch } from "@/components/elevator-pitch"
 import { PortfolioImpact } from "@/components/portfolio-impact"
 import { BattleCard } from "@/components/battle-card"
+import { StressTest } from "@/components/stress-test"
 import { FundLookup } from "@/components/fund-lookup"
 import { UniverseChart } from "@/components/universe-chart"
 import type { FundData, AnalysisMode, AnalysisResult, WarRoom, YahooAnalytics } from "@/lib/fund-types"
@@ -514,6 +515,8 @@ export default function Page() {
             )}
 
             {warRoom && <CompetitorWarRoom warRoom={warRoom} competitorTicker={result.tickerB} ourTicker={result.tickerA} polishing={polishing} />}
+
+            <StressTest result={result} />
 
             {warRoom && <BattleCard result={result} warRoom={warRoom} />}
 
