@@ -129,9 +129,19 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
       .then(r => r.json())
       .then(json => {
         const fundData = json.funds?.[0]
-        if (fundData?.data?.length > 0) {
+        if (fundData?.data?.length > 1) {
           const lastGrowth = fundData.data[fundData.data.length - 1].growth
-          setInceptionReturn(lastGrowth / 100)
+          const totalReturn = lastGrowth / 100 // e.g., 0.453 for 45.3%
+          // Annualize: (1 + totalReturn)^(1/years) - 1
+          const firstDate = new Date(fundData.data[0].date)
+          const lastDate = new Date(fundData.data[fundData.data.length - 1].date)
+          const years = (lastDate.getTime() - firstDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
+          if (years > 0) {
+            const annualized = Math.pow(1 + totalReturn, 1 / years) - 1
+            setInceptionReturn(annualized)
+          } else {
+            setInceptionReturn(totalReturn)
+          }
         }
       })
       .catch(() => {})

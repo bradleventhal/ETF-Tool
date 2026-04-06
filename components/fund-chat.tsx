@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react"
-import type { AnalysisResult } from "@/lib/fund-types"
+import type { AnalysisResult, WarRoom } from "@/lib/fund-types"
 import { MessageSquare, Send, ChevronDown } from "lucide-react"
 
 interface ChatMessage {
@@ -55,13 +55,41 @@ function buildFundContext(result: AnalysisResult): string {
   return lines.join("\n")
 }
 
-function buildWarRoomContext(result: AnalysisResult): string {
+function buildWarRoomContext(result: AnalysisResult, warRoom: WarRoom | null): string {
   const lines: string[] = []
   lines.push(`Our Fund: ${result.tickerA} (${result.nameA})`)
   lines.push(`Competitor: ${result.tickerB} (${result.nameB})`)
   lines.push("")
 
-  // Include competitive difficulty
+  // Include competitive difficulty from war room
+  if (warRoom) {
+    lines.push(`COMPETITIVE DIFFICULTY: ${warRoom.overallDifficulty}`)
+    lines.push(`SUMMARY: ${warRoom.difficultySummary}`)
+    if (warRoom.leadWith) lines.push(`LEAD WITH: ${warRoom.leadWith}`)
+    lines.push("")
+
+    if (warRoom.competitorArguments.length > 0) {
+      lines.push("COMPETITOR ARGUMENTS:")
+      for (const arg of warRoom.competitorArguments) {
+        lines.push(`  ${arg.metric} (${arg.difficulty}): ${arg.argument}`)
+        lines.push(`    Their value: ${arg.theirValue} vs Ours: ${arg.ourValue}`)
+      }
+      lines.push("")
+    }
+
+    if (warRoom.rebuttals.length > 0) {
+      lines.push("OUR REBUTTALS:")
+      for (const reb of warRoom.rebuttals) {
+        lines.push(`  ${reb.metric} (${reb.confidence}):`)
+        lines.push(`    ${reb.opener}`)
+        reb.bullets.forEach(b => lines.push(`    - ${b}`))
+        if (reb.oneLiner) lines.push(`    Quick comeback: ${reb.oneLiner}`)
+      }
+      lines.push("")
+    }
+  }
+
+  // Include narrative analysis
   if (result.narrative) {
     for (const section of result.narrative) {
       lines.push(`${section.title}:`)
@@ -77,16 +105,6 @@ function buildWarRoomContext(result: AnalysisResult): string {
     lines.push("")
   }
 
-  // Include rebuttals
-  if (result.rebuttals) {
-    lines.push("OUR RECOMMENDED REBUTTALS:")
-    result.rebuttals.forEach(r => {
-      lines.push(`  ${r.label} (${r.difficulty}):`)
-      r.lines.forEach(l => lines.push(`    - ${l}`))
-    })
-    lines.push("")
-  }
-
   // Key stats for context
   lines.push("KEY STATS:")
   for (const row of result.keyStats) {
@@ -98,9 +116,10 @@ function buildWarRoomContext(result: AnalysisResult): string {
 
 interface FundChatProps {
   result: AnalysisResult
+  warRoom: WarRoom | null
 }
 
-export function FundChat({ result }: FundChatProps) {
+export function FundChat({ result, warRoom }: FundChatProps) {
   const [open, setOpen] = useState(false)
   const [input, setInput] = useState("")
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -111,7 +130,7 @@ export function FundChat({ result }: FundChatProps) {
   const abortRef = useRef<AbortController | null>(null)
 
   const fundContext = useMemo(() => buildFundContext(result), [result])
-  const warRoomContext = useMemo(() => buildWarRoomContext(result), [result])
+  const warRoomContext = useMemo(() => buildWarRoomContext(result, warRoom), [result, warRoom])
 
   // Reset when comparison changes and fetch AI-generated starter questions
   useEffect(() => {

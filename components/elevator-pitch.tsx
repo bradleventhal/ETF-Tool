@@ -107,10 +107,12 @@ export function ElevatorPitch({ result }: { result: AnalysisResult }) {
     }
   }, [result])
 
-  // Auto-fetch when comparison changes
+  // Reset when comparison changes — user clicks Generate to fetch
   useEffect(() => {
-    fetchPitch()
-  }, [fetchPitch])
+    setPitchData(null)
+    setError(null)
+    setLoading(false)
+  }, [result.tickerA, result.tickerB])
 
   return (
     <div className="overflow-hidden rounded border" style={{ borderColor: "#e2e8f0", backgroundColor: "#fff" }}>
@@ -139,6 +141,21 @@ export function ElevatorPitch({ result }: { result: AnalysisResult }) {
 
       {expanded && (
         <div className="p-3.5 sm:p-5">
+          {/* Initial state — no pitch yet */}
+          {!loading && !error && !pitchData && (
+            <div className="flex flex-col items-center gap-3 py-6">
+              <p className="text-sm" style={{ color: "#94a3b8" }}>Generate a 30-second pitch for {result.tickerA} vs {result.tickerB}</p>
+              <button
+                onClick={fetchPitch}
+                className="flex items-center gap-1.5 rounded px-4 py-2 text-xs font-medium transition-colors hover:opacity-80"
+                style={{ backgroundColor: "#0f3d6b", color: "#fff" }}
+              >
+                <Mic size={12} />
+                Generate Pitch
+              </button>
+            </div>
+          )}
+
           {/* Loading state */}
           {loading && (
             <div className="flex items-center gap-2 py-6 text-sm" style={{ color: "#94a3b8" }}>

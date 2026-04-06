@@ -65,7 +65,6 @@ export async function GET(req: NextRequest) {
         // Start with 1 "share" worth of investment at base price
         const basePrice = priceMap.get(dates[0])!
         let shares = 1.0
-        let prevClose = basePrice
 
         const series: { date: string; growth: number }[] = []
         for (const date of dates) {
@@ -85,7 +84,6 @@ export async function GET(req: NextRequest) {
           const growthPct = ((portfolioValue - basePrice) / basePrice) * 100
 
           series.push({ date, growth: growthPct })
-          prevClose = close
         }
 
         return { ticker, series }

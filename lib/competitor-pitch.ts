@@ -21,7 +21,9 @@ function pickTemplate(templates: string[], tickerA: string, tickerB: string, sal
 // ========================================================================
 // MARKET CONTEXT (hardcoded per spec — editable later via UI)
 // ========================================================================
-const MARKET_CONTEXT = "Market context as of Feb 2026: Securitized credit spreads remain wide vs IG corporates. IG corporate spreads are near historically tight levels. Relative value opportunity in securitized vs corporates is historically attractive."
+// Market context — update quarterly or when spread regime changes
+const MARKET_CONTEXT_DATE = "Q2 2026"
+const MARKET_CONTEXT = `Market context as of ${MARKET_CONTEXT_DATE}: Securitized credit spreads remain wide vs IG corporates. IG corporate spreads are near historically tight levels. Relative value opportunity in securitized vs corporates is historically attractive. Geopolitical risk (Iran/Hormuz) keeping oil elevated, adding inflation uncertainty.`
 
 // ========================================================================
 // STEP 1: IDENTIFY COMPETITOR ADVANTAGES
@@ -469,12 +471,64 @@ function generateRebuttal(adv: RawAdvantage & { tier?: DifficultyTier }, us: Fun
     confidence = "Airtight"
   }
 
+  // Generate memorable one-liner comeback
+  const ONE_LINERS: Record<string, string[]> = {
+    sec_yield: [
+      "Yield without credit quality is just risk you haven't been paid for yet.",
+      "Higher yield, lower quality. Which one shows up in a downturn?",
+      "We'll take less yield with better credit all day long.",
+    ],
+    dist_yield: [
+      "Distribution yield is a vanity metric. Risk-adjusted income is the real number.",
+      "More distribution funded by more risk isn't income — it's leverage.",
+      "Check the credit quality behind that distribution. That's the real story.",
+    ],
+    expense: [
+      "Cheap doesn't mean good. Net-of-fee returns tell you who actually earned it.",
+      "Save 20bps in fees, lose 50bps in yield. That math doesn't work.",
+      "The fee pays for itself in income. Run the numbers.",
+    ],
+    "3y_perf": [
+      "Backward-looking. Forward-looking yield and positioning favor us.",
+      "Three years includes a stress period that reset the opportunity in our favor.",
+      "Past performance, future positioning. We like where we sit.",
+    ],
+    "1y_perf": [
+      "One year is noise. Current yield and positioning is signal.",
+      "Trailing 12 months doesn't predict the next 12. Current carry does.",
+      "Short window, backward-looking. Our setup going forward is stronger.",
+    ],
+    std_dev: [
+      "Slightly more vol, meaningfully more income. That's compensated risk.",
+      "We earn our volatility. The Sharpe ratio proves it.",
+      "Vol is the price of income. We're getting paid for it.",
+    ],
+    sharpe: [
+      "Sharpe doesn't pay bills. Yield does.",
+      "Better Sharpe, less income. Different priorities, different funds.",
+      "Risk-adjusted is one lens. Income is the one clients care about.",
+    ],
+    credit: [
+      "More IG at historically tight spreads means more valuation risk, not less.",
+      "We're in securitized at wide spreads. They're in corporate at tight spreads. Who has more room?",
+      "Ratings don't capture structural protections. Our non-IG is senior and collateralized.",
+    ],
+    duration: [
+      "More duration earns more carry. If rates stabilize, we outperform.",
+      "Duration is a feature when it's earning income. Ours is.",
+      "The extra duration is deliberate and compensated. Not a passive bet.",
+    ],
+  }
+  const oneLiners = ONE_LINERS[adv.id] || ONE_LINERS[adv.category] || ["The data tells a different story when you look at the full picture."]
+  const oneLiner = pickTemplate(oneLiners, us.ticker, them.ticker, adv.id + "_1liner")
+
   return {
     argumentId: adv.id,
     metric: adv.metric,
     opener,
     bullets: bullets.slice(0, 3),
     confidence,
+    oneLiner,
   }
 }
 
@@ -553,6 +607,7 @@ export function buildWarRoom(us: FundData, them: FundData, yahoo?: YahooAnalytic
     theirValue: adv.theirValue,
     ourValue: adv.ourValue,
     deltaBps: adv.deltaBps,
+    oneLiner: generateArgument(adv, us, them).split('.')[0] + '.',
   }))
 
   const rebuttals: Rebuttal[] = ranked.map(adv => generateRebuttal(adv as any, us, them, yahoo))

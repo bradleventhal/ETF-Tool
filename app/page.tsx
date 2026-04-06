@@ -169,17 +169,24 @@ export default function Page() {
         setResult(runAnalysis(fA, fB, mode))
         if (mode === "internal") {
           setPolishing(true)
-          setWarRoom(buildWarRoom(fA, fB))
+          const baseline = buildWarRoom(fA, fB)
+          setWarRoom(baseline)
 
           const yahooPromise = fetch(`/api/growth/analytics?tickerA=${tickerA}&tickerB=${tickerB}`)
             .then(r => r.ok ? r.json() : null)
             .catch(() => null)
 
           yahooPromise.then((yahoo: YahooAnalytics | null) => {
+            // Update baseline with Yahoo data if available
+            if (yahoo) {
+              const updatedBaseline = buildWarRoom(fA, fB, yahoo)
+              setWarRoom(updatedBaseline)
+            }
+            const currentBaseline = yahoo ? buildWarRoom(fA, fB, yahoo) : baseline
             return fetch("/api/warroom/generate", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ fundA: fA, fundB: fB, yahoo }),
+              body: JSON.stringify({ fundA: fA, fundB: fB, yahoo, baseline: currentBaseline }),
             })
               .then(r => r.ok ? r.json() : null)
               .then(gptWarRoom => {
@@ -500,7 +507,7 @@ export default function Page() {
 
             <ElevatorPitch result={result} />
 
-            <FundChat result={result} />
+            <FundChat result={result} warRoom={warRoom} />
 
           </div>
         )}

@@ -155,9 +155,8 @@ export function GrowthChart({ tickerA, tickerB, mode = "internal" }: Props) {
     return null
   }
 
-  // Fetch recommendation on mount (once) -- also gets common inception date
+  // Fetch recommendation when tickers change
   useEffect(() => {
-    if (recFetched.current) return
     recFetched.current = true
     setRecLoading(true)
     fetch(`/api/growth/recommend?tickerA=${tickerA}&tickerB=${tickerB}`)

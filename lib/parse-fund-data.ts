@@ -1,41 +1,6 @@
 import * as XLSX from "xlsx"
 import type { FundData } from "./fund-types"
 
-const HEADER_MAP: Record<string, keyof FundData> = {
-  "Ticker": "ticker",
-  "Name": "name",
-  "As of Date": "asOfDate",
-  "Duration": "duration",
-  "YTW/YTM": "ytwYtm",
-  "Distribution Yield": "distributionYield",
-  "Subsidized 30-Day SEC Yield": "secYield",
-  "Expense": "expense",
-  "Correlation": "correlation",
-  "Standard Deviation": "stdDev",
-  "Sharpe Ratio": "sharpe",
-  "YTD": "ytd",
-  "1Y": "oneYear",
-  "Common Inception Performance (Net of Fees)": "commonInception",
-  "3Y": "threeYear",
-  "Non-Agency MBS": "nonAgencyRmbs",
-  "Agency RMBS": "agencyRmbs",
-  "ABS": "abs",
-  "CLO": "clo",
-  "CMBS": "cmbs",
-  "Securitized": "securitized",
-  "Corporate Credit": "corporateCredit",
-  "Government and Cash": "governmentCash",
-  "Other": "other",
-  "AAA or US Gov": "aaa",
-  "AA": "aa",
-  "A": "a",
-  "BBB": "bbb",
-  "BB": "bb",
-  "B": "b",
-  "CCC": "ccc",
-  "Below CCC": "belowCcc",
-}
-
 function parseNumericValue(val: unknown): number | null {
   if (val === null || val === undefined || val === "") return null
   if (typeof val === "number") return val
@@ -122,7 +87,7 @@ export function parseFile(buffer: ArrayBuffer, fileName: string): FundData[] {
       b: parseNumericValue(row["B"]),
       ccc: parseNumericValue(row["CCC"]),
       belowCcc: parseNumericValue(row["Below CCC"]),
-      creditOther: parseNumericValue(row["Other"]),
+      creditOther: parseNumericValue(row["Credit Other"]) ?? parseNumericValue(row["Not Rated"]),
     }
 
     funds.push(fund)
