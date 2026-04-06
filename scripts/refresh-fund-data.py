@@ -141,6 +141,42 @@ def to_decimal(v, field_name):
     return round(v, 6)
 
 
+# Maximum effective duration by Morningstar category
+# Source: Morningstar category definitions + industry standards
+# If scraped duration exceeds this, it's likely maturity, not effective duration
+CATEGORY_MAX_DURATION: dict[str, float] = {
+    'Ultrashort Bond': 1.0,
+    'Bank Loan': 1.0,
+    'Short-Term Bond': 3.5,
+    'Short Government': 3.5,
+    'Muni National Short': 3.5,
+    'High Yield Bond': 5.0,
+    'Intermediate Core Bond': 7.0,
+    'Intermediate Core-Plus Bond': 7.0,
+    'Intermediate Government': 7.0,
+    'Corporate Bond': 8.0,
+    'Multisector Bond': 8.0,
+    'Nontraditional Bond': 8.0,
+    'Government Mortgage-Backed Bond': 7.0,
+    'Securitized Bond - Diversified': 7.0,
+    'Securitized Bond - Focused': 7.0,
+    'Long Government': 20.0,
+}
+
+
+def validate_duration(fund) -> bool:
+    """Check if a fund's duration makes sense for its category.
+    Returns True if valid, False if likely maturity instead of effective duration."""
+    cat = fund.get('morningstarCategory', '')
+    dur = fund.get('duration')
+    if not dur or not cat:
+        return True
+    max_dur = CATEGORY_MAX_DURATION.get(cat)
+    if max_dur and dur > max_dur:
+        return False
+    return True
+
+
 def validate_fund(fund):
     """Return list of validation warnings for a fund."""
     warnings = []
@@ -161,17 +197,20 @@ def validate_fund(fund):
     if exp and exp > 0.03:
         warnings.append(f"Expense={exp}")
 
-    # Duration should be 0-20
-    dur = fund.get('duration')
-    if dur and (dur < 0 or dur > 20):
-        warnings.append(f"Duration={dur}")
+    # Duration should be reasonable for its category
+    if not validate_duration(fund):
+        cat = fund.get('morningstarCategory', '')
+        max_dur = CATEGORY_MAX_DURATION.get(cat, 20)
+        warnings.append(f"Duration={fund['duration']} exceeds {cat} max={max_dur} (likely maturity)")
 
     return warnings
 
 
 def refresh_from_source_map(funds, source_map):
-    """Refresh yield, duration, and sector data from the source map."""
+    """Refresh yield, duration, and sector data from the source map.
+    Skips duration updates that would exceed the category's maximum."""
     changes = []
+    duration_blocked = 0
     for fund in funds:
         ticker = fund['ticker']
         if ticker in VERIFIED:
@@ -186,8 +225,17 @@ def refresh_from_source_map(funds, source_map):
             new_val = to_decimal(raw, our_key)
             old_val = fund.get(our_key)
             if new_val is not None and new_val != old_val:
+                # Duration guard: reject values that exceed category max
+                if our_key == 'duration':
+                    cat = fund.get('morningstarCategory', '')
+                    max_dur = CATEGORY_MAX_DURATION.get(cat, 20.0)
+                    if new_val > max_dur:
+                        duration_blocked += 1
+                        continue  # Skip — likely maturity, not effective duration
                 changes.append((ticker, our_key, old_val, new_val))
                 fund[our_key] = new_val
+    if duration_blocked:
+        print(f"  Blocked {duration_blocked} duration updates that exceeded category max")
     return changes
 
 
