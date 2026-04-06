@@ -106,14 +106,38 @@ def extract_source_value(field_data):
     return None
 
 
+YIELD_FIELDS = {'secYield', 'distributionYield', 'ytwYtm'}
+RETURN_FIELDS = {'ytd', 'oneYear', 'threeYear', 'commonInception'}
+ALLOC_FIELDS = {'nonAgencyRmbs', 'agencyRmbs', 'abs', 'clo', 'cmbs',
+                'corporateCredit', 'governmentCash', 'securitized',
+                'aaa', 'aa', 'a', 'bbb', 'bb', 'b', 'belowCcc', 'creditOther'}
+
 def to_decimal(v, field_name):
-    """Normalize a value to decimal. Whole percentages (>1) get divided by 100."""
+    """Field-specific normalization. Different fields have different thresholds."""
     if v is None:
         return None
     if field_name in RAW_FIELDS:
         return round(v, 4)
-    if abs(v) > 1:
-        return round(v / 100, 6)
+    if field_name in YIELD_FIELDS:
+        # Yields: 4.43 means 4.43% = 0.0443
+        if v > 0.20:
+            return round(v / 100, 6)
+        return round(v, 6)
+    if field_name in RETURN_FIELDS:
+        # Returns: 5.38 means 5.38% = 0.0538
+        if v > 0.50:
+            return round(v / 100, 6)
+        return round(v, 6)
+    if field_name == 'expense':
+        # Expenses: 0.34 means 0.34% = 0.0034
+        if v > 0.05:
+            return round(v / 100, 6)
+        return round(v, 6)
+    if field_name in ALLOC_FIELDS:
+        # Allocations: 14.3 means 14.3% = 0.143
+        if abs(v) > 1.5:
+            return round(v / 100, 6)
+        return round(v, 6)
     return round(v, 6)
 
 
