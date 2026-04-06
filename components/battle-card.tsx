@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react"
 import type { AnalysisResult, WarRoom } from "@/lib/fund-types"
-import { FileDown, Printer, Copy, Check } from "lucide-react"
+import { FileDown, Printer, Copy, Check, ChevronDown, ChevronRight } from "lucide-react"
 
 interface Props {
   result: AnalysisResult
