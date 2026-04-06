@@ -15,6 +15,7 @@ import { buildWarRoom } from "@/lib/competitor-pitch"
 import { CompetitorWarRoom } from "@/components/competitor-war-room"
 import { FundChat } from "@/components/fund-chat"
 import { ElevatorPitch } from "@/components/elevator-pitch"
+import { PortfolioImpact } from "@/components/portfolio-impact"
 import { FundLookup } from "@/components/fund-lookup"
 import { UniverseChart } from "@/components/universe-chart"
 import type { FundData, AnalysisMode, AnalysisResult, WarRoom, YahooAnalytics } from "@/lib/fund-types"
@@ -512,6 +513,8 @@ export default function Page() {
             )}
 
             {warRoom && <CompetitorWarRoom warRoom={warRoom} competitorTicker={result.tickerB} ourTicker={result.tickerA} polishing={polishing} />}
+
+            <PortfolioImpact funds={funds} />
 
             <ElevatorPitch result={result} />
 
