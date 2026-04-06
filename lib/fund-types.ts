@@ -34,6 +34,8 @@ export interface FundData {
   creditOther: number | null
   morningstarRating: number | null
   morningstarCategory: string | null
+  websiteUrl?: string | null
+  morningstarRatingNote?: string | null
 }
 
 export type AnalysisMode = "advisor" | "internal"

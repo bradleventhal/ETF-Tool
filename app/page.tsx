@@ -212,6 +212,9 @@ export default function Page() {
     } else { setResult(null); setWarRoom(null) }
   }, [tickerA, tickerB, mode, funds])
 
+  const currentFundA = useMemo(() => funds.find(f => f.ticker === tickerA) || null, [funds, tickerA])
+  const currentFundB = useMemo(() => funds.find(f => f.ticker === tickerB) || null, [funds, tickerB])
+
   const swapTickers = useCallback(() => {
     const prevA = tickerA
     const prevB = tickerB
@@ -456,7 +459,7 @@ export default function Page() {
 
         {result && mode === "internal" && (
           <div className="space-y-4 py-4 sm:space-y-6 sm:py-6">
-            <ComparisonTable title="Key Statistics" rows={result.keyStats} tickerA={result.tickerA} tickerB={result.tickerB} highlight />
+            <ComparisonTable title="Key Statistics" rows={result.keyStats} tickerA={result.tickerA} tickerB={result.tickerB} highlight fundA={currentFundA} fundB={currentFundB} />
 
             <PieWithTable title="Sector Allocation" dataA={result.pieDataA} dataB={result.pieDataB}
               tickerA={result.tickerA} tickerB={result.tickerB}
@@ -531,7 +534,7 @@ export default function Page() {
 
             <div style={{ height: 2, backgroundColor: "#0f3d6b", opacity: 0.15 }} />
 
-            <ComparisonTable title="Key Statistics" rows={result.keyStats} tickerA={result.tickerA} tickerB={result.tickerB} />
+            <ComparisonTable title="Key Statistics" rows={result.keyStats} tickerA={result.tickerA} tickerB={result.tickerB} fundA={currentFundA} fundB={currentFundB} />
 
             <PieWithTable title="Sector Allocation" dataA={result.pieDataA} dataB={result.pieDataB}
               tickerA={result.tickerA} tickerB={result.tickerB}
@@ -542,7 +545,7 @@ export default function Page() {
               subtitleA={"Avg Credit Quality: " + result.avgCreditA} subtitleB={"Avg Credit Quality: " + result.avgCreditB}
               rows={result.creditQuality} rowLabel="Rating" viewMode="advisor" />
 
-            <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} />
+            <ComparisonTable title="Performance" rows={result.performance} tickerA={result.tickerA} tickerB={result.tickerB} fundA={currentFundA} fundB={currentFundB} />
 
             <GrowthChart tickerA={result.tickerA} tickerB={result.tickerB} mode="advisor" />
 

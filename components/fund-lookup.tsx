@@ -95,7 +95,14 @@ function InsightSection({ title, items, color }: { title: string; items: string[
   )
 }
 
-function StarRating({ rating }: { rating: number | null }) {
+function StarRating({ rating, note }: { rating: number | null; note?: string | null }) {
+  if (note) {
+    return (
+      <div className="flex items-center gap-1">
+        <span className="text-[10px] font-medium" style={{ color: "#94a3b8" }}>★ {note}</span>
+      </div>
+    )
+  }
   if (!rating || rating < 1 || rating > 5) return null
   return (
     <div className="flex items-center gap-0.5">
@@ -217,7 +224,7 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
             <p className="mt-0.5 text-sm" style={{ color: "#64748b" }}>{fund.name}</p>
           </div>
           <div className="flex flex-col items-end gap-1.5">
-            <StarRating rating={mstarRating} />
+            <StarRating rating={mstarRating} note={fund.morningstarRatingNote} />
             <span className="rounded px-2 py-0.5 text-[11px] font-bold uppercase" style={{ backgroundColor: "#0f3d6b", color: "#fff" }}>
               {mstarCategory || fundCategory(fund.name, dur)}
             </span>

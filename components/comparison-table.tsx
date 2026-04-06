@@ -1,6 +1,7 @@
 "use client"
 
-import type { ComparisonRow } from "@/lib/fund-types"
+import type { ComparisonRow, FundData } from "@/lib/fund-types"
+import { ExternalLink } from "lucide-react"
 
 interface Props {
   title: string
@@ -8,9 +9,22 @@ interface Props {
   tickerA: string
   tickerB: string
   highlight?: boolean
+  fundA?: FundData | null
+  fundB?: FundData | null
 }
 
-export function ComparisonTable({ title, rows, tickerA, tickerB, highlight = false }: Props) {
+function VerifyLink({ url }: { url?: string | null }) {
+  if (!url) return <span style={{ color: "#cbd5e1" }}>—</span>
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer"
+      className="inline-flex items-center gap-0.5 text-[10px] font-medium hover:underline"
+      style={{ color: "#94a3b8" }}>
+      Verify <ExternalLink size={9} />
+    </a>
+  )
+}
+
+export function ComparisonTable({ title, rows, tickerA, tickerB, highlight = false, fundA, fundB }: Props) {
   if (rows.length === 0) return null
 
   function cellStyle(row: ComparisonRow, side: "a" | "b"): React.CSSProperties {
@@ -37,8 +51,12 @@ export function ComparisonTable({ title, rows, tickerA, tickerB, highlight = fal
             {rows.map((row, i) => (
               <tr key={row.label} style={{ backgroundColor: i % 2 === 0 ? "#fff" : "#f8fafc", borderBottom: i < rows.length - 1 ? "1px solid #f1f5f9" : undefined }}>
                 <td className="whitespace-nowrap px-3 py-2 text-[12px] sm:px-4 sm:text-[13px]" style={{ color: "#64748b" }}>{row.label}</td>
-                <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-[12px] sm:px-4 sm:text-[13px]" style={cellStyle(row, "a")}>{row.a}</td>
-                <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-[12px] sm:px-4 sm:text-[13px]" style={cellStyle(row, "b")}>{row.b}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-[12px] sm:px-4 sm:text-[13px]" style={cellStyle(row, "a")}>
+                  {row.a === "\u2014" && fundA?.websiteUrl ? <VerifyLink url={fundA.websiteUrl} /> : row.a}
+                </td>
+                <td className="whitespace-nowrap px-3 py-2 text-right font-mono text-[12px] sm:px-4 sm:text-[13px]" style={cellStyle(row, "b")}>
+                  {row.b === "\u2014" && fundB?.websiteUrl ? <VerifyLink url={fundB.websiteUrl} /> : row.b}
+                </td>
               </tr>
             ))}
           </tbody>
