@@ -33,7 +33,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Intermediate Core Bond"
   },
   {
@@ -70,7 +70,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 5,
     "morningstarCategory": "Intermediate Core Bond"
   },
   {
@@ -107,7 +107,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0292,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Intermediate Core Bond"
   },
   {
@@ -218,7 +218,7 @@
     "ccc": null,
     "belowCcc": 0.0667,
     "creditOther": 0.0145,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "High Yield Bond"
   },
   {
@@ -255,7 +255,7 @@
     "ccc": null,
     "belowCcc": 0.06,
     "creditOther": 0.018,
-    "morningstarRating": 4,
+    "morningstarRating": 5,
     "morningstarCategory": "High Yield Bond"
   },
   {
@@ -385,14 +385,14 @@
     "oneYear": -0.0318,
     "commonInception": 0.1421,
     "threeYear": 0.1376,
-    "nonAgencyRmbs": null,
-    "agencyRmbs": null,
-    "abs": null,
-    "clo": null,
-    "cmbs": null,
+    "nonAgencyRmbs": 0.0,
+    "agencyRmbs": 0.0,
+    "abs": 0.0,
+    "clo": 0.0,
+    "cmbs": 0.0,
     "securitized": 0.0,
-    "corporateCredit": null,
-    "governmentCash": null,
+    "corporateCredit": 0.0,
+    "governmentCash": 0.0,
     "other": null,
     "aaa": 0.5096,
     "aa": 0.3254,
@@ -514,7 +514,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 2,
     "morningstarCategory": "Ultrashort Bond"
   },
   {
@@ -588,7 +588,7 @@
     "ccc": null,
     "belowCcc": 0.0212,
     "creditOther": 0.0195,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Bank Loan"
   },
   {
@@ -625,7 +625,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.15,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Intermediate Core Bond"
   },
   {
@@ -662,7 +662,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": -0.04,
-    "morningstarRating": null,
+    "morningstarRating": 2,
     "morningstarCategory": "Short-Term Bond"
   },
   {
@@ -718,14 +718,14 @@
     "oneYear": 0.044169,
     "commonInception": 0.0563,
     "threeYear": null,
-    "nonAgencyRmbs": 0.0,
-    "agencyRmbs": 0.33,
-    "abs": 0.17,
-    "clo": 0.167,
-    "cmbs": 0.0,
+    "nonAgencyRmbs": null,
+    "agencyRmbs": null,
+    "abs": null,
+    "clo": null,
+    "cmbs": null,
     "securitized": 0.6322,
-    "corporateCredit": 0.272,
-    "governmentCash": 0.062,
+    "corporateCredit": null,
+    "governmentCash": null,
     "other": null,
     "aaa": 0.2377,
     "aa": 0.2554,
@@ -773,7 +773,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.037,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Multisector Bond"
   },
   {
@@ -847,8 +847,45 @@
     "ccc": null,
     "belowCcc": 0.109,
     "creditOther": 0.12,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "High Yield Bond"
+  },
+  {
+    "ticker": "CKSMX",
+    "name": "UNKNOWN - LIKELY DELISTED CKSMX",
+    "asOfDate": "2026-04-05",
+    "duration": null,
+    "ytwYtm": null,
+    "distributionYield": null,
+    "secYield": null,
+    "expense": null,
+    "correlation": null,
+    "stdDev": null,
+    "sharpe": null,
+    "ytd": null,
+    "oneYear": null,
+    "commonInception": null,
+    "threeYear": null,
+    "nonAgencyRmbs": null,
+    "agencyRmbs": null,
+    "abs": null,
+    "clo": null,
+    "cmbs": null,
+    "securitized": null,
+    "corporateCredit": null,
+    "governmentCash": null,
+    "other": null,
+    "aaa": null,
+    "aa": null,
+    "a": null,
+    "bbb": null,
+    "bb": null,
+    "b": null,
+    "ccc": null,
+    "belowCcc": null,
+    "creditOther": null,
+    "morningstarRating": null,
+    "morningstarCategory": null
   },
   {
     "ticker": "CLMZX",
@@ -983,8 +1020,8 @@
     "clo": null,
     "cmbs": null,
     "securitized": 0.9729,
-    "corporateCredit": null,
-    "governmentCash": null,
+    "corporateCredit": 0.0,
+    "governmentCash": 0.0,
     "other": null,
     "aaa": 0.03,
     "aa": 0.0,
@@ -1032,7 +1069,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Short-Term Bond"
   },
   {
@@ -1069,7 +1106,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 1,
     "morningstarCategory": "Securitized Bond - Diversified"
   },
   {
@@ -1094,8 +1131,8 @@
     "clo": null,
     "cmbs": null,
     "securitized": 0.9913,
-    "corporateCredit": null,
-    "governmentCash": null,
+    "corporateCredit": 0.0,
+    "governmentCash": 0.0,
     "other": null,
     "aaa": 0.0,
     "aa": 0.0,
@@ -1168,8 +1205,8 @@
     "clo": null,
     "cmbs": null,
     "securitized": 0.8099,
-    "corporateCredit": null,
-    "governmentCash": null,
+    "corporateCredit": 0.0,
+    "governmentCash": 0.0,
     "other": null,
     "aaa": 0.24,
     "aa": 0.0,
@@ -1291,7 +1328,7 @@
     "ccc": null,
     "belowCcc": 0.0837,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "High Yield Bond"
   },
   {
@@ -1347,14 +1384,14 @@
     "oneYear": 0.047963,
     "commonInception": 0.0252,
     "threeYear": 0.051967,
-    "nonAgencyRmbs": 0.0,
-    "agencyRmbs": 0.4,
-    "abs": 0.0,
-    "clo": 0.0,
-    "cmbs": 0.0,
+    "nonAgencyRmbs": null,
+    "agencyRmbs": null,
+    "abs": null,
+    "clo": null,
+    "cmbs": null,
     "securitized": 0.6105,
-    "corporateCredit": 0.0,
-    "governmentCash": 0.6,
+    "corporateCredit": null,
+    "governmentCash": null,
     "other": null,
     "aaa": 1.0,
     "aa": 0.0,
@@ -1439,7 +1476,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Ultrashort Bond"
   },
   {
@@ -1476,7 +1513,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": -0.2383,
-    "morningstarRating": null,
+    "morningstarRating": 2,
     "morningstarCategory": "Securitized Bond - Diversified"
   },
   {
@@ -1513,7 +1550,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Short-Term Bond"
   },
   {
@@ -1550,7 +1587,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0654,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Short Government"
   },
   {
@@ -1587,7 +1624,7 @@
     "ccc": null,
     "belowCcc": 0.0557,
     "creditOther": 0.0388,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Bank Loan"
   },
   {
@@ -1624,7 +1661,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Ultrashort Bond"
   },
   {
@@ -1698,7 +1735,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 2,
     "morningstarCategory": "Ultrashort Bond"
   },
   {
@@ -1791,14 +1828,14 @@
     "oneYear": 0.046853,
     "commonInception": 0.0256,
     "threeYear": 0.062608,
-    "nonAgencyRmbs": 0.187,
-    "agencyRmbs": 0.089,
-    "abs": 0.118,
-    "clo": 0.133,
-    "cmbs": 0.027,
+    "nonAgencyRmbs": null,
+    "agencyRmbs": null,
+    "abs": null,
+    "clo": null,
+    "cmbs": null,
     "securitized": 0.5913,
-    "corporateCredit": 0.199,
-    "governmentCash": 0.15,
+    "corporateCredit": null,
+    "governmentCash": null,
     "other": null,
     "aaa": 0.5801,
     "aa": 0.1461,
@@ -1883,7 +1920,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Government Mortgage-Backed Bond"
   },
   {
@@ -1920,7 +1957,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0121,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Ultrashort Bond"
   },
   {
@@ -1939,14 +1976,14 @@
     "oneYear": 0.046005,
     "commonInception": 0.0193,
     "threeYear": 0.055129,
-    "nonAgencyRmbs": 0.0,
-    "agencyRmbs": 0.049,
-    "abs": 0.087,
-    "clo": 0.0,
-    "cmbs": 0.0,
+    "nonAgencyRmbs": null,
+    "agencyRmbs": null,
+    "abs": null,
+    "clo": null,
+    "cmbs": null,
     "securitized": 0.163,
-    "corporateCredit": 0.563,
-    "governmentCash": 0.28,
+    "corporateCredit": null,
+    "governmentCash": null,
     "other": null,
     "aaa": 0.4132,
     "aa": 0.0762,
@@ -1957,7 +1994,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0126,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Ultrashort Bond"
   },
   {
@@ -2031,7 +2068,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 2,
     "morningstarCategory": "Short-Term Bond"
   },
   {
@@ -2050,14 +2087,14 @@
     "oneYear": 0.037245,
     "commonInception": 0.0191,
     "threeYear": 0.045547,
-    "nonAgencyRmbs": 0.0,
-    "agencyRmbs": 0.15,
-    "abs": 0.0,
-    "clo": 0.0,
-    "cmbs": 0.0,
+    "nonAgencyRmbs": null,
+    "agencyRmbs": null,
+    "abs": null,
+    "clo": null,
+    "cmbs": null,
     "securitized": 0.4728,
-    "corporateCredit": 0.35,
-    "governmentCash": 0.5,
+    "corporateCredit": null,
+    "governmentCash": null,
     "other": null,
     "aaa": 0.4825,
     "aa": 0.2897,
@@ -2105,7 +2142,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "High Yield Bond"
   },
   {
@@ -2142,7 +2179,7 @@
     "ccc": null,
     "belowCcc": 0.111,
     "creditOther": 0.002,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "High Yield Bond"
   },
   {
@@ -2179,7 +2216,7 @@
     "ccc": null,
     "belowCcc": 0.07,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "High Yield Bond"
   },
   {
@@ -2216,7 +2253,7 @@
     "ccc": null,
     "belowCcc": 0.1491,
     "creditOther": 0.0466,
-    "morningstarRating": null,
+    "morningstarRating": 2,
     "morningstarCategory": "High Yield Bond"
   },
   {
@@ -2253,7 +2290,7 @@
     "ccc": null,
     "belowCcc": 0.174,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "High Yield Bond"
   },
   {
@@ -2290,7 +2327,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Ultrashort Bond"
   },
   {
@@ -2327,7 +2364,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 2,
     "morningstarCategory": null
   },
   {
@@ -2364,7 +2401,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Short-Term Bond"
   },
   {
@@ -2438,7 +2475,7 @@
     "ccc": null,
     "belowCcc": 0.0101,
     "creditOther": 0.14,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Short-Term Bond"
   },
   {
@@ -2475,7 +2512,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.321,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Securitized Bond - Focused"
   },
   {
@@ -2512,7 +2549,7 @@
     "ccc": null,
     "belowCcc": 0.0053,
     "creditOther": 0.0317,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Government Mortgage-Backed Bond"
   },
   {
@@ -2623,7 +2660,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.064,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Muni National Short"
   },
   {
@@ -2697,7 +2734,7 @@
     "ccc": null,
     "belowCcc": 0.1052,
     "creditOther": 0.0008,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "High Yield Bond"
   },
   {
@@ -2734,7 +2771,7 @@
     "ccc": null,
     "belowCcc": 0.4464,
     "creditOther": 0.0603,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Multisector Bond"
   },
   {
@@ -2771,7 +2808,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Ultrashort Bond"
   },
   {
@@ -2956,7 +2993,7 @@
     "ccc": null,
     "belowCcc": 0.0297,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Short-Term Bond"
   },
   {
@@ -2993,7 +3030,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Long Government"
   },
   {
@@ -3067,7 +3104,7 @@
     "ccc": null,
     "belowCcc": 0.0235,
     "creditOther": 0.1707,
-    "morningstarRating": null,
+    "morningstarRating": 5,
     "morningstarCategory": "Short Government"
   },
   {
@@ -3178,7 +3215,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Government Mortgage-Backed Bond"
   },
   {
@@ -3215,7 +3252,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.012,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Securitized Bond - Diversified"
   },
   {
@@ -3289,7 +3326,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Ultrashort Bond"
   },
   {
@@ -3474,7 +3511,7 @@
     "ccc": null,
     "belowCcc": 0.09,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Short-Term Bond"
   },
   {
@@ -3548,7 +3585,7 @@
     "ccc": null,
     "belowCcc": 0.0294,
     "creditOther": 0.0993,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "High Yield Bond"
   },
   {
@@ -3567,14 +3604,14 @@
     "oneYear": 0.065417,
     "commonInception": 0.0693,
     "threeYear": 0.077658,
-    "nonAgencyRmbs": 0.0,
-    "agencyRmbs": 0.0,
-    "abs": 0.0,
-    "clo": 0.0,
-    "cmbs": 0.0,
+    "nonAgencyRmbs": null,
+    "agencyRmbs": null,
+    "abs": null,
+    "clo": null,
+    "cmbs": null,
     "securitized": 0.0002,
-    "corporateCredit": 0.98,
-    "governmentCash": 0.02,
+    "corporateCredit": null,
+    "governmentCash": null,
     "other": null,
     "aaa": 0.0032,
     "aa": 0.1923,
@@ -3648,7 +3685,7 @@
     "cmbs": 0.02,
     "securitized": 0.3028,
     "corporateCredit": 0.0348,
-    "governmentCash": 0.7861,
+    "governmentCash": 0.3262,
     "other": null,
     "aaa": 0.13,
     "aa": 0.64,
@@ -3733,7 +3770,7 @@
     "ccc": null,
     "belowCcc": 0.0163,
     "creditOther": 0.3132,
-    "morningstarRating": null,
+    "morningstarRating": 5,
     "morningstarCategory": "Government Mortgage-Backed Bond"
   },
   {
@@ -3992,7 +4029,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0149,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Ultrashort Bond"
   },
   {
@@ -4029,7 +4066,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0041,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Ultrashort Bond"
   },
   {
@@ -4048,14 +4085,14 @@
     "oneYear": 0.05903,
     "commonInception": 0.0665,
     "threeYear": 0.070386,
-    "nonAgencyRmbs": 0.626,
-    "agencyRmbs": 0.247,
-    "abs": 0.0,
-    "clo": 0.0,
-    "cmbs": 0.0,
+    "nonAgencyRmbs": null,
+    "agencyRmbs": null,
+    "abs": null,
+    "clo": null,
+    "cmbs": null,
     "securitized": 0.7745,
-    "corporateCredit": 0.0,
-    "governmentCash": 0.079,
+    "corporateCredit": null,
+    "governmentCash": null,
     "other": null,
     "aaa": 0.5316,
     "aa": 0.0038,
@@ -4085,14 +4122,14 @@
     "oneYear": 0.053531,
     "commonInception": 0.0553,
     "threeYear": 0.073505,
-    "nonAgencyRmbs": 0.18,
-    "agencyRmbs": 0.04,
-    "abs": 0.28,
-    "clo": 0.01,
-    "cmbs": 0.02,
+    "nonAgencyRmbs": null,
+    "agencyRmbs": null,
+    "abs": null,
+    "clo": null,
+    "cmbs": null,
     "securitized": 0.5697,
-    "corporateCredit": 0.33,
-    "governmentCash": 0.1,
+    "corporateCredit": null,
+    "governmentCash": null,
     "other": null,
     "aaa": 0.043,
     "aa": 0.0108,
@@ -4122,14 +4159,14 @@
     "oneYear": 0.048165,
     "commonInception": 0.0424,
     "threeYear": 0.060699,
-    "nonAgencyRmbs": 0.7,
-    "agencyRmbs": 0.15,
-    "abs": 0.05,
-    "clo": 0.02,
-    "cmbs": 0.02,
+    "nonAgencyRmbs": null,
+    "agencyRmbs": null,
+    "abs": null,
+    "clo": null,
+    "cmbs": null,
     "securitized": 0.787,
-    "corporateCredit": 0.0,
-    "governmentCash": 0.058,
+    "corporateCredit": null,
+    "governmentCash": null,
     "other": null,
     "aaa": 0.0,
     "aa": 0.0,
@@ -4177,7 +4214,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0119,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Corporate Bond"
   },
   {
@@ -4214,7 +4251,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0001,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Short-Term Bond"
   },
   {
@@ -4251,7 +4288,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Intermediate Core Bond"
   },
   {
@@ -4288,7 +4325,7 @@
     "ccc": null,
     "belowCcc": 0.0918,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Securitized Bond - Diversified"
   },
   {
@@ -4436,7 +4473,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Ultrashort Bond"
   },
   {
@@ -4473,7 +4510,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 2,
     "morningstarCategory": "Ultrashort Bond"
   },
   {
@@ -4510,7 +4547,7 @@
     "ccc": null,
     "belowCcc": 0.1364,
     "creditOther": 0.0019,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "High Yield Bond"
   },
   {
@@ -4529,14 +4566,14 @@
     "oneYear": 0.048472,
     "commonInception": 0.0233,
     "threeYear": 0.054798,
-    "nonAgencyRmbs": 0.0,
-    "agencyRmbs": 0.663,
-    "abs": 0.061,
-    "clo": 0.0,
-    "cmbs": 0.205,
+    "nonAgencyRmbs": null,
+    "agencyRmbs": null,
+    "abs": null,
+    "clo": null,
+    "cmbs": null,
     "securitized": 0.9206,
-    "corporateCredit": 0.0,
-    "governmentCash": 0.072,
+    "corporateCredit": null,
+    "governmentCash": null,
     "other": null,
     "aaa": 0.0,
     "aa": 0.977,
@@ -4584,7 +4621,7 @@
     "ccc": null,
     "belowCcc": 0.1317,
     "creditOther": 0.0091,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "High Yield Bond"
   },
   {
@@ -4621,7 +4658,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Short-Term Bond"
   },
   {
@@ -4658,7 +4695,7 @@
     "ccc": null,
     "belowCcc": 0.102,
     "creditOther": 0.0057,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "High Yield Bond"
   },
   {
@@ -4695,7 +4732,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Short-Term Bond"
   },
   {
@@ -4732,7 +4769,7 @@
     "ccc": null,
     "belowCcc": 0.0667,
     "creditOther": 0.0662,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Bank Loan"
   },
   {
@@ -4751,14 +4788,14 @@
     "oneYear": 0.06626,
     "commonInception": 0.0519,
     "threeYear": 0.068099,
-    "nonAgencyRmbs": 0.0,
-    "agencyRmbs": 0.0,
-    "abs": 0.0,
-    "clo": 0.0,
-    "cmbs": 0.0,
-    "securitized": 0.321,
-    "corporateCredit": 0.369,
-    "governmentCash": 0.631,
+    "nonAgencyRmbs": null,
+    "agencyRmbs": null,
+    "abs": null,
+    "clo": null,
+    "cmbs": null,
+    "securitized": 0.3093,
+    "corporateCredit": null,
+    "governmentCash": null,
     "other": null,
     "aaa": 0.1654,
     "aa": 0.212,
@@ -4788,14 +4825,14 @@
     "oneYear": 0.033841,
     "commonInception": 0.0472,
     "threeYear": null,
-    "nonAgencyRmbs": 0.111,
-    "agencyRmbs": 0.466,
-    "abs": 0.117,
-    "clo": 0.05,
-    "cmbs": 0.0,
+    "nonAgencyRmbs": null,
+    "agencyRmbs": null,
+    "abs": null,
+    "clo": null,
+    "cmbs": null,
     "securitized": 0.5669,
-    "corporateCredit": 0.099,
-    "governmentCash": 0.156,
+    "corporateCredit": null,
+    "governmentCash": null,
     "other": null,
     "aaa": 0.0842,
     "aa": 0.6483,
@@ -4880,7 +4917,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Short-Term Bond"
   },
   {
@@ -4917,7 +4954,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 2,
     "morningstarCategory": "Ultrashort Bond"
   },
   {
@@ -5028,7 +5065,7 @@
     "ccc": null,
     "belowCcc": 0.0017,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Nontraditional Bond"
   },
   {
@@ -5065,7 +5102,7 @@
     "ccc": null,
     "belowCcc": 0.1519,
     "creditOther": 0.0031,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Ultrashort Bond"
   },
   {
@@ -5139,7 +5176,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.0,
-    "morningstarRating": null,
+    "morningstarRating": 2,
     "morningstarCategory": "Ultrashort Bond"
   },
   {
@@ -5176,7 +5213,7 @@
     "ccc": null,
     "belowCcc": 0.1125,
     "creditOther": 0.0015,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "High Yield Bond"
   },
   {
@@ -5238,8 +5275,8 @@
     "clo": null,
     "cmbs": null,
     "securitized": 0.9745,
-    "corporateCredit": null,
-    "governmentCash": null,
+    "corporateCredit": 0.0,
+    "governmentCash": 0.0,
     "other": null,
     "aaa": 0.3982,
     "aa": 0.0682,
@@ -5250,7 +5287,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.017,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Securitized Bond - Diversified"
   },
   {
@@ -5269,14 +5306,14 @@
     "oneYear": 0.055744,
     "commonInception": 0.0403,
     "threeYear": 0.076427,
-    "nonAgencyRmbs": 0.354,
-    "agencyRmbs": 0.0,
-    "abs": 0.122,
-    "clo": 0.108,
-    "cmbs": 0.343,
+    "nonAgencyRmbs": null,
+    "agencyRmbs": null,
+    "abs": null,
+    "clo": null,
+    "cmbs": null,
     "securitized": 0.7034,
-    "corporateCredit": 0.0,
-    "governmentCash": 0.074,
+    "corporateCredit": null,
+    "governmentCash": null,
     "other": null,
     "aaa": 0.128,
     "aa": 0.1066,
@@ -5324,7 +5361,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": -0.0465,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Short-Term Bond"
   },
   {
@@ -5361,7 +5398,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": -0.12,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Short Government"
   },
   {
@@ -5398,7 +5435,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": 0.3065,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Government Mortgage-Backed Bond"
   },
   {
@@ -5435,7 +5472,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": -0.82,
-    "morningstarRating": null,
+    "morningstarRating": 4,
     "morningstarCategory": "Ultrashort Bond"
   },
   {
@@ -5472,7 +5509,7 @@
     "ccc": null,
     "belowCcc": 0.0,
     "creditOther": -0.0024,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Ultrashort Bond"
   },
   {
@@ -5583,7 +5620,7 @@
     "ccc": null,
     "belowCcc": 0.0003,
     "creditOther": 0.0032,
-    "morningstarRating": null,
+    "morningstarRating": 3,
     "morningstarCategory": "Ultrashort Bond"
   }
 ]
