@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { promises as fs } from "fs"
+import path from "path"
 
 function num(v: unknown): number | null {
   if (v == null) return null
@@ -86,15 +88,31 @@ function fundToRow(f: Record<string, unknown>) {
   }
 }
 
+async function loadStaticFunds() {
+  const filePath = path.join(process.cwd(), "public", "data", "funds.json")
+  const raw = await fs.readFile(filePath, "utf-8")
+  return JSON.parse(raw)
+}
+
 export async function GET() {
+  // Try Supabase first, fall back to static JSON
   try {
     const supabase = createClient()
     const { data, error } = await supabase.from("funds").select("*").order("ticker")
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ funds: (data ?? []).map(rowToFund) })
+    if (!error && data && data.length > 0) {
+      return NextResponse.json({ funds: data.map(rowToFund) })
+    }
+  } catch {
+    // Supabase unavailable — fall through to static
+  }
+
+  // Fallback: load from static JSON file
+  try {
+    const funds = await loadStaticFunds()
+    return NextResponse.json({ funds })
   } catch (err) {
-    console.error("[v0] Funds fetch error:", err)
-    return NextResponse.json({ error: "Failed to fetch funds" }, { status: 500 })
+    console.error("[funds] Static fallback failed:", err)
+    return NextResponse.json({ error: "No fund data available" }, { status: 500 })
   }
 }
 
@@ -106,15 +124,13 @@ export async function POST(req: Request) {
     }
 
     const supabase = createClient()
-
-    // Upsert each fund by ticker
     const rows = funds.map(fundToRow)
     const { error } = await supabase.from("funds").upsert(rows, { onConflict: "ticker" })
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     return NextResponse.json({ ok: true, count: rows.length })
   } catch (err) {
-    console.error("[v0] Funds save error:", err)
+    console.error("[funds] Save error:", err)
     return NextResponse.json({ error: "Failed to save funds" }, { status: 500 })
   }
 }
