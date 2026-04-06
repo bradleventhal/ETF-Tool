@@ -876,44 +876,6 @@
     "websiteUrl": "https://fundresearch.fidelity.com/mutual-funds/summary/CDX"
   },
   {
-    "ticker": "CKSMX",
-    "name": "UNKNOWN - LIKELY DELISTED CKSMX",
-    "asOfDate": "2026-04-05",
-    "duration": null,
-    "ytwYtm": null,
-    "distributionYield": null,
-    "secYield": null,
-    "expense": null,
-    "correlation": null,
-    "stdDev": null,
-    "sharpe": null,
-    "ytd": null,
-    "oneYear": null,
-    "commonInception": null,
-    "threeYear": null,
-    "nonAgencyRmbs": null,
-    "agencyRmbs": null,
-    "abs": null,
-    "clo": null,
-    "cmbs": null,
-    "securitized": null,
-    "corporateCredit": null,
-    "governmentCash": null,
-    "other": null,
-    "aaa": null,
-    "aa": null,
-    "a": null,
-    "bbb": null,
-    "bb": null,
-    "b": null,
-    "ccc": null,
-    "belowCcc": null,
-    "creditOther": null,
-    "morningstarRating": null,
-    "morningstarCategory": null,
-    "websiteUrl": "https://fundresearch.fidelity.com/mutual-funds/summary/CKSMX"
-  },
-  {
     "ticker": "CLMZX",
     "name": "Columbia Mortgage Opportunities Inst",
     "asOfDate": "2026-04-05",
@@ -948,7 +910,7 @@
     "belowCcc": 0.0,
     "creditOther": 0.1683,
     "morningstarRating": 4,
-    "morningstarCategory": null,
+    "morningstarCategory": "Multisector Bond",
     "websiteUrl": "https://www.columbiathreadneedleus.com/investment-products/mutual-funds/product/inst/clmzx/"
   },
   {
@@ -1936,7 +1898,7 @@
     "belowCcc": 0.1233,
     "creditOther": 0.0361,
     "morningstarRating": 4,
-    "morningstarCategory": null,
+    "morningstarCategory": "Nontraditional Bond",
     "websiteUrl": "https://www.morningstar.com/funds/xnas/gmolx/quote"
   },
   {
@@ -2430,7 +2392,7 @@
     "belowCcc": 0.0,
     "creditOther": 0.0,
     "morningstarRating": 2,
-    "morningstarCategory": null,
+    "morningstarCategory": "Bank Loan",
     "websiteUrl": "https://www.morningstar.com/etfs/xnas/ifln/quote"
   },
   {
@@ -2506,7 +2468,7 @@
     "belowCcc": 0,
     "creditOther": 1.0,
     "morningstarRating": 2,
-    "morningstarCategory": null,
+    "morningstarCategory": "Nontraditional Bond",
     "websiteUrl": "https://fundresearch.fidelity.com/mutual-funds/summary/IOFIX"
   },
   {
@@ -3914,7 +3876,7 @@
     "belowCcc": 0.0151,
     "creditOther": 0.0,
     "morningstarRating": 4,
-    "morningstarCategory": null,
+    "morningstarCategory": "Nontraditional Bond",
     "websiteUrl": "https://www.pimco.com/us/en/investments/mutual-fund/pimco-income-fund/inst-usd"
   },
   {
@@ -4218,7 +4180,7 @@
     "belowCcc": 0.0564,
     "creditOther": 0.4,
     "morningstarRating": 5,
-    "morningstarCategory": null,
+    "morningstarCategory": "Securitized Bond - Focused",
     "websiteUrl": "https://www.morningstar.com/funds/xnas/rcirx/quote"
   },
   {
@@ -4560,7 +4522,7 @@
     "belowCcc": 0.0511,
     "creditOther": 0.1524,
     "morningstarRating": 4,
-    "morningstarCategory": null,
+    "morningstarCategory": "Multisector Bond",
     "websiteUrl": "https://fundresearch.fidelity.com/mutual-funds/summary/SEMMX"
   },
   {
@@ -5473,7 +5435,7 @@
     "belowCcc": 0.0096,
     "creditOther": 0.1183,
     "morningstarRating": 4,
-    "morningstarCategory": null,
+    "morningstarCategory": "Securitized Bond - Focused",
     "websiteUrl": "https://www.morningstar.com/funds/xnas/vcfix/quote"
   },
   {
