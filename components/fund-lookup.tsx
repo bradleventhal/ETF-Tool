@@ -69,11 +69,25 @@ interface FundInsights {
   positioning: string
 }
 
-function StatRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function StatRow({ label, value, highlight, sourceUrl }: { label: string; value: string; highlight?: boolean; sourceUrl?: string }) {
   return (
     <tr style={{ backgroundColor: highlight ? "#f0f7ff" : "#fff", borderBottom: "1px solid #f1f5f9" }}>
       <td className="px-2.5 py-1.5 text-[12px] sm:px-4 sm:text-[13px]" style={{ color: "#64748b" }}>{label}</td>
-      <td className="px-2.5 py-1.5 text-right font-mono text-[12px] font-medium sm:px-4 sm:text-[13px]" style={{ color: "#334155" }}>{value}</td>
+      <td className="px-2.5 py-1.5 text-right font-mono text-[12px] font-medium sm:px-4 sm:text-[13px]">
+        {sourceUrl ? (
+          <a href={sourceUrl} target="_blank" rel="noopener noreferrer"
+            className="group inline-flex items-center gap-0.5 hover:underline"
+            style={{ color: "#334155" }}
+            title="Click to verify at source">
+            {value}
+            <svg className="h-2 w-2 opacity-0 transition-opacity group-hover:opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} style={{ flexShrink: 0 }}>
+              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+            </svg>
+          </a>
+        ) : (
+          <span style={{ color: "#334155" }}>{value}</span>
+        )}
+      </td>
     </tr>
   )
 }
@@ -116,7 +130,7 @@ function StarRating({ rating, note }: { rating: number | null; note?: string | n
   )
 }
 
-export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; allTickers?: { ticker: string; name: string }[]; onCompare?: (competitorTicker: string) => void }) {
+export function FundLookup({ fund, allTickers, onCompare, sources }: { fund: FundData; allTickers?: { ticker: string; name: string }[]; onCompare?: (competitorTicker: string) => void; sources?: Record<string, string> | null }) {
   const [insights, setInsights] = useState<FundInsights | null>(null)
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
@@ -180,7 +194,8 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
       .finally(() => setLoading(false))
   }, [fund])
 
-  useEffect(() => { fetchInsights() }, [fetchInsights])
+  // Don't auto-fetch insights — wait for user to click "Generate Insights"
+  useEffect(() => { setInsights(null); setLoading(false); setErrorMsg("") }, [fund.ticker])
 
   // Filter tickers for compare search
   const compareQ = compareSearch.toLowerCase()
@@ -249,14 +264,14 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
         </div>
         <table className="w-full text-sm">
           <tbody>
-            <StatRow label="30-Day SEC Yield" value={fPct(fund.secYield)} highlight />
-            <StatRow label="Distribution Yield" value={fPct(fund.distributionYield)} />
-            <StatRow label="YTW / YTM" value={fPct(fund.ytwYtm)} highlight />
-            <StatRow label="Duration" value={fNum(fund.duration) + " yrs"} />
+            <StatRow label="30-Day SEC Yield" value={fPct(fund.secYield)} highlight sourceUrl={sources?.secYield} />
+            <StatRow label="Distribution Yield" value={fPct(fund.distributionYield)} sourceUrl={sources?.distributionYield} />
+            <StatRow label="YTW / YTM" value={fPct(fund.ytwYtm)} highlight sourceUrl={sources?.ytwYtm} />
+            <StatRow label="Duration" value={fNum(fund.duration) + " yrs"} sourceUrl={sources?.duration} />
             <StatRow label="Avg Credit Quality" value={avgCredit} highlight />
-            <StatRow label="Std Deviation" value={fNum(fund.stdDev)} />
-            <StatRow label="Sharpe Ratio" value={fNum(fund.sharpe)} highlight />
-            <StatRow label="Expense Ratio" value={fPct(fund.expense)} />
+            <StatRow label="Std Deviation" value={fNum(fund.stdDev)} sourceUrl={sources?.stdDev} />
+            <StatRow label="Sharpe Ratio" value={fNum(fund.sharpe)} highlight sourceUrl={sources?.sharpe} />
+            <StatRow label="Expense Ratio" value={fPct(fund.expense)} sourceUrl={sources?.expense} />
           </tbody>
         </table>
       </div>
@@ -446,13 +461,14 @@ export function FundLookup({ fund, allTickers, onCompare }: { fund: FundData; al
           )}
           {!loading && !insights && (
             <div className="flex flex-col items-center gap-3 py-6">
-              <p className="text-sm" style={{ color: "#94a3b8" }}>{errorMsg || "Analysis unavailable"}</p>
+              <p className="text-sm" style={{ color: "#94a3b8" }}>{errorMsg || `Generate AI-powered insights for ${fund.ticker}`}</p>
               <button
                 onClick={fetchInsights}
-                className="rounded px-4 py-2 text-[12px] font-semibold transition-colors"
+                className="flex items-center gap-1.5 rounded px-4 py-2 text-[12px] font-semibold transition-colors hover:opacity-90"
                 style={{ backgroundColor: "#0f3d6b", color: "#fff" }}
               >
-                Retry Analysis
+                <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" /></svg>
+                {errorMsg ? "Retry Analysis" : "Generate Insights"}
               </button>
             </div>
           )}

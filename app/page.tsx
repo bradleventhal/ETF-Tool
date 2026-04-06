@@ -278,20 +278,7 @@ export default function Page() {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={refreshRatings}
-              disabled={refreshingRatings || funds.length === 0}
-              className="flex min-h-[44px] items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors disabled:opacity-40"
-              style={{ color: "rgba(255,255,255,0.7)" }}
-              title="Fetch real Morningstar star ratings from Yahoo Finance for all funds"
-            >
-              {refreshingRatings ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Star className="h-3.5 w-3.5" />}
-              <span className="hidden sm:inline">{refreshingRatings ? "Fetching..." : "Refresh Ratings"}</span>
-            </button>
-            <button onClick={() => setShowUpload(!showUpload)} className="flex min-h-[44px] items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors" style={{ color: "rgba(255,255,255,0.7)" }}>
-              {showUpload ? <X className="h-3.5 w-3.5" /> : <Upload className="h-3.5 w-3.5" />}
-              {showUpload ? "Close" : "Update Data"}
-            </button>
+            {/* Admin buttons hidden — accessible via /admin page */}
             <div className="hidden sm:block" style={{ width: 1, height: 16, backgroundColor: "rgba(255,255,255,0.15)" }} />
             <Link
               href="/territory"
@@ -346,6 +333,22 @@ export default function Page() {
           </button>
         </div>
       </div>
+
+      {/* Angel Oak Quick Access */}
+      {section === "lookup" && (
+        <div className="border-b" style={{ borderColor: "#f1f5f9", backgroundColor: "#fafbfc" }}>
+          <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-2 sm:px-6">
+            <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#94a3b8" }}>Our Funds</span>
+            {["UYLD", "CARY", "ANGIX", "AOHY", "AOUIX", "MBS"].map(t => (
+              <button key={t} onClick={() => setLookupTicker(t)}
+                className="rounded-full border px-3 py-1 text-[11px] font-bold tracking-wide transition-colors hover:border-[#0f3d6b] hover:bg-[#0f3d6b] hover:text-white"
+                style={{ borderColor: lookupTicker === t ? "#0f3d6b" : "#d1d5db", color: lookupTicker === t ? "#fff" : "#0f3d6b", backgroundColor: lookupTicker === t ? "#0f3d6b" : "transparent" }}>
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {showUpload && (
         <div className="border-b px-3 py-5 sm:px-6" style={{ borderColor: "#e2e8f0", backgroundColor: "#f1f5f9" }}>
@@ -619,7 +622,7 @@ export default function Page() {
           const fund = funds.find(f => f.ticker === lookupTicker)
           if (!fund) return null
           const ANGEL_OAK_TICKERS = new Set(["ANGIX", "CARY", "UYLD", "AOUIX", "ASCIX", "TRBF", "AOHY", "MBS", "FINS"])
-          return <FundLookup fund={fund} allTickers={tickers} onCompare={(ticker) => {
+          return <FundLookup fund={fund} allTickers={tickers} sources={fundSources[lookupTicker.toUpperCase()]} onCompare={(ticker) => {
             if (ANGEL_OAK_TICKERS.has(ticker)) {
               // Angel Oak fund goes into "Our Fund" slot
               setTickerA(ticker)
