@@ -548,6 +548,8 @@ export default function Page() {
               fundBYield={currentFundB?.secYield || undefined}
             />
 
+            <ScenarioEngine result={result} />
+
             <StressTest result={result} />
 
             {warRoom && <BattleCard result={result} warRoom={warRoom} />}
