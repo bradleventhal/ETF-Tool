@@ -396,6 +396,26 @@ def main():
     # 3. Normalize sectors
     normalize_sectors(funds)
 
+    # 3.5. Apply factsheet locks — ALWAYS last, NEVER overridden
+    locks_path = REPO_DIR / "public" / "data" / "factsheet_locks.json"
+    if locks_path.exists():
+        print("\n--- Applying factsheet locks (FINAL, overrides everything) ---")
+        with open(locks_path) as f:
+            locks = json.load(f)
+        lock_count = 0
+        for ticker, overrides in locks.items():
+            if ticker.startswith('_'):
+                continue
+            fund = next((f for f in funds if f['ticker'] == ticker), None)
+            if not fund:
+                continue
+            for key, val in overrides.items():
+                fund[key] = val
+                lock_count += 1
+        print(f"  {lock_count} fields locked from factsheet_locks.json")
+    else:
+        print("\n  No factsheet_locks.json found")
+
     # 4. Validate
     print("\n--- Validation ---")
     total_warnings = 0

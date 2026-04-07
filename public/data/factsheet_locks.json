@@ -1,0 +1,55 @@
+{
+  "_comment": "LOCKED factsheet-verified data. NO automated process may overwrite these values. Manually verified against actual fund company factsheets and SEC filings.",
+  "UYLD": {
+    "duration": 0.8,
+    "distributionYield": 0.0515,
+    "morningstarRating": 5,
+    "aaa": 0.342, "aa": 0.270, "a": 0.118, "bbb": 0.246,
+    "bb": 0.015, "b": 0.002, "belowCcc": 0.0, "creditOther": 0.007,
+    "nonAgencyRmbs": 0.143, "agencyRmbs": 0.162, "abs": 0.235,
+    "clo": 0.165, "cmbs": 0.011, "corporateCredit": 0.243, "governmentCash": 0.041
+  },
+  "ANGIX": {
+    "duration": 4.25, "expense": 0.0099,
+    "aaa": 0.089, "aa": 0.195, "a": 0.058, "bbb": 0.117,
+    "bb": 0.239, "b": 0.054, "belowCcc": 0.036, "creditOther": 0.212,
+    "nonAgencyRmbs": 0.473, "agencyRmbs": 0.108, "abs": 0.184,
+    "clo": 0.078, "corporateCredit": 0.066, "cmbs": 0.046, "governmentCash": 0.029
+  },
+  "AOHY": {
+    "duration": 3.1, "morningstarRating": 4, "governmentCash": 0.01
+  },
+  "BINC": {
+    "duration": 4.12, "expense": 0.004,
+    "aaa": 0.2535, "aa": 0.1867, "a": 0.089, "bbb": 0.1224,
+    "bb": 0.2119, "b": 0.1396, "belowCcc": 0.0133, "creditOther": 0.0,
+    "nonAgencyRmbs": 0.11, "agencyRmbs": 0.35, "abs": 0.07, "clo": 0.05,
+    "cmbs": 0.03, "corporateCredit": 0.38, "governmentCash": 0.01
+  },
+  "JSI": {
+    "duration": 2.95, "secYield": 0.0572, "distributionYield": 0.0559, "expense": 0.0049,
+    "aaa": 0.2843, "aa": 0.2938, "a": 0.1432, "bbb": 0.2501,
+    "bb": 0.1075, "b": 0.0343, "belowCcc": 0.0, "creditOther": 0.0826,
+    "nonAgencyRmbs": 0.2485, "agencyRmbs": 0.23, "abs": 0.3769,
+    "cmbs": 0.2487, "clo": 0.0669, "governmentCash": 0.0, "corporateCredit": 0.0
+  },
+  "PIMIX": {
+    "duration": 5.36, "expense": 0.0054, "morningstarRating": 5,
+    "aaa": 0.13, "aa": 0.64, "a": 0.03, "bbb": 0.09,
+    "bb": 0.04, "b": 0.03, "belowCcc": 0.04, "creditOther": 0.0,
+    "governmentCash": 0.3262, "corporateCredit": 0.0348, "securitized": 0.3028,
+    "nonAgencyRmbs": 0.012, "agencyRmbs": 0.017, "abs": 0.13, "clo": 0.0, "cmbs": 0.02
+  },
+  "CARY": {
+    "duration": 4.1,
+    "aaa": 0.0637, "aa": 0.2775, "a": 0.0939, "bbb": 0.1921,
+    "bb": 0.2651, "b": 0.0951, "belowCcc": 0.0047, "creditOther": 0.037,
+    "nonAgencyRmbs": 0.308, "agencyRmbs": 0.21, "abs": 0.162,
+    "clo": 0.12, "cmbs": 0.043, "corporateCredit": 0.135, "governmentCash": 0.022
+  },
+  "AOUIX": {
+    "duration": 0.8,
+    "aaa": 0.3415, "aa": 0.271, "a": 0.117, "bbb": 0.2265,
+    "bb": 0.0258, "b": 0.0023, "belowCcc": 0.0, "creditOther": 0.0159
+  }
+}
