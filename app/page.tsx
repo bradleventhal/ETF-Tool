@@ -18,6 +18,8 @@ import { ElevatorPitch } from "@/components/elevator-pitch"
 import { PortfolioImpact } from "@/components/portfolio-impact"
 import { BattleCard } from "@/components/battle-card"
 import { StressTest } from "@/components/stress-test"
+import { WhatIfScenarios } from "@/components/what-if-scenarios"
+import { ScenarioEngine } from "@/components/scenario-engine"
 import { FundLookup } from "@/components/fund-lookup"
 import { UniverseChart } from "@/components/universe-chart"
 import type { FundData, AnalysisMode, AnalysisResult, WarRoom, YahooAnalytics } from "@/lib/fund-types"
@@ -461,7 +463,27 @@ export default function Page() {
         {!result && (
           <div className="flex flex-col items-center justify-center py-20 text-center sm:py-28">
             <ArrowRightLeft className="h-8 w-8" style={{ color: "#e2e8f0" }} />
-            <p className="mt-4 text-sm" style={{ color: "#94a3b8" }}>Select a fund and add competitors above to compare</p>
+            <p className="mt-4 text-sm" style={{ color: "#94a3b8" }}>Select a fund and add competitors above, or try a common matchup:</p>
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              {[
+                { a: "UYLD", b: "VNLA", label: "UYLD vs VNLA" },
+                { a: "CARY", b: "PIMIX", label: "CARY vs PIMIX" },
+                { a: "AOHY", b: "HYG", label: "AOHY vs HYG" },
+                { a: "ANGIX", b: "BINC", label: "ANGIX vs BINC" },
+                { a: "UYLD", b: "MINT", label: "UYLD vs MINT" },
+                { a: "CARY", b: "BINC", label: "CARY vs BINC" },
+                { a: "AOHY", b: "JNK", label: "AOHY vs JNK" },
+                { a: "UYLD", b: "JPST", label: "UYLD vs JPST" },
+              ].map(preset => (
+                <button key={preset.label}
+                  onClick={() => { setTickerA(preset.a); setTickerB(preset.b); if (!competitors.includes(preset.b)) setCompetitors(prev => [...prev.slice(0, 4), preset.b]) }}
+                  className="rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors hover:border-[#0f3d6b] hover:bg-[#0f3d6b] hover:text-white"
+                  style={{ borderColor: "#d1d5db", color: "#0f3d6b" }}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -515,6 +537,16 @@ export default function Page() {
             )}
 
             {warRoom && <CompetitorWarRoom warRoom={warRoom} competitorTicker={result.tickerB} ourTicker={result.tickerA} polishing={polishing} />}
+
+            <WhatIfScenarios
+              result={result}
+              fundACategory={currentFundA?.morningstarCategory || undefined}
+              fundBCategory={currentFundB?.morningstarCategory || undefined}
+              fundADuration={currentFundA?.duration || undefined}
+              fundBDuration={currentFundB?.duration || undefined}
+              fundAYield={currentFundA?.secYield || undefined}
+              fundBYield={currentFundB?.secYield || undefined}
+            />
 
             <StressTest result={result} />
 
