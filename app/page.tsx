@@ -21,6 +21,7 @@ import { StressTest } from "@/components/stress-test"
 import { WhatIfScenarios } from "@/components/what-if-scenarios"
 import { TheFlip } from "@/components/the-flip"
 import { ScenarioEngine } from "@/components/scenario-engine"
+import { AdvisorPersona } from "@/components/advisor-persona"
 import { FundLookup } from "@/components/fund-lookup"
 import { UniverseChart } from "@/components/universe-chart"
 import type { FundData, AnalysisMode, AnalysisResult, WarRoom, YahooAnalytics } from "@/lib/fund-types"
@@ -554,6 +555,8 @@ export default function Page() {
             <StressTest result={result} />
 
             <TheFlip result={result} fundA={currentFundA} fundB={currentFundB} />
+
+            {warRoom && <AdvisorPersona result={result} warRoom={warRoom} />}
 
             {warRoom && <BattleCard result={result} warRoom={warRoom} />}
 
