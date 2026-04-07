@@ -19,6 +19,7 @@ import { PortfolioImpact } from "@/components/portfolio-impact"
 import { BattleCard } from "@/components/battle-card"
 import { StressTest } from "@/components/stress-test"
 import { WhatIfScenarios } from "@/components/what-if-scenarios"
+import { TheFlip } from "@/components/the-flip"
 import { ScenarioEngine } from "@/components/scenario-engine"
 import { FundLookup } from "@/components/fund-lookup"
 import { UniverseChart } from "@/components/universe-chart"
@@ -551,6 +552,8 @@ export default function Page() {
             <ScenarioEngine result={result} />
 
             <StressTest result={result} />
+
+            <TheFlip result={result} fundA={currentFundA} fundB={currentFundB} />
 
             {warRoom && <BattleCard result={result} warRoom={warRoom} />}
 
